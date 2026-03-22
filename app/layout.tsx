@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { StoreHydration } from "@/components/StoreHydration";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "HealthOS",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
@@ -19,8 +20,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body>
-        <StoreHydration />
-        {children}
+        <Providers>
+          <StoreHydration />
+          {children}
+        </Providers>
       </body>
     </html>
   );

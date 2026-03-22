@@ -3,4 +3,8 @@ node_modules
 out
 *.log
 .DS_Store
+.env
 .env*.local
+prisma/dev.db
+prisma/dev.db-journal
+*.tsbuildinfo

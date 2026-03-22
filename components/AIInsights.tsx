@@ -7,10 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import {
-  getEntryForDate,
-  getTodayKey,
-} from "@/lib/calculations";
+import { getEntryForDate } from "@/lib/calculations";
 import {
   generateInsights,
   getYesterdayEntry,
@@ -18,6 +15,7 @@ import {
 } from "@/lib/insights";
 import { useHealthStore } from "@/lib/store";
 import type { Insight } from "@/lib/types";
+import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 
 function iconFor(severity: Insight["severity"]) {
   switch (severity) {
@@ -47,24 +45,26 @@ function borderFor(severity: Insight["severity"]) {
 
 export function AIInsights() {
   const entries = useHealthStore((s) => s.entries);
-  const today = getTodayKey();
-  const todayEntry = getEntryForDate(entries, today);
+  const today = useClientTodayKey();
+  const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
   let insights: Insight[] = [];
-  if (todayEntry) {
+  if (today && todayEntry) {
     const yesterday = getYesterdayEntry(entries, today);
     const last7 = lastSevenEntries(entries);
     insights = generateInsights(todayEntry, yesterday, last7);
   }
 
   return (
-    <Card title="Insights">
-      {!todayEntry ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+    <Card title="Insight of the day" variant="surface">
+      {today === null ? (
+        <p className="text-sm text-slate-500">Loading…</p>
+      ) : !todayEntry ? (
+        <p className="text-sm text-slate-500">
           Log a few days to unlock your first insight.
         </p>
       ) : insights.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-slate-500">
           No nudges right now — keep logging.
         </p>
       ) : (
@@ -72,7 +72,7 @@ export function AIInsights() {
           {insights.map((ins) => (
             <li
               key={ins.id}
-              className={`flex gap-3 rounded-xl border border-zinc-200 border-l-4 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50 ${borderFor(
+              className={`flex gap-3 rounded-xl border border-slate-200 border-l-4 bg-slate-50/90 p-4 text-slate-800 ${borderFor(
                 ins.severity
               )}`}
             >

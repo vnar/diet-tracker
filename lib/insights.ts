@@ -78,6 +78,21 @@ export function generateInsights(
     );
   }
 
+  if (today.workout) {
+    insights.push(
+      make("success", "Training logged — great for consistency and metabolism.")
+    );
+  }
+
+  if (today.alcohol) {
+    insights.push(
+      make(
+        "info",
+        "Alcohol adds calories and can disrupt sleep — hydrate and plan lighter meals."
+      )
+    );
+  }
+
   if (today.sleep !== undefined && today.sleep < 6) {
     insights.push(
       make(

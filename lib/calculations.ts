@@ -8,14 +8,26 @@ export function sortEntriesByDateAsc(entries: DailyEntry[]): DailyEntry[] {
   return [...entries].sort((a, b) => parseDateKey(a.date) - parseDateKey(b.date));
 }
 
+/** Calendar YYYY-MM-DD in the given Date's local timezone (not UTC). */
+export function formatDateKeyLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * @deprecated For UI use `useClientTodayKey()` so SSR/hydration match; this is only for non-React code.
+ * Uses the runtime environment's local calendar (UTC on many servers).
+ */
 export function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateKeyLocal(new Date());
 }
 
 export function addDaysKey(dateStr: string, delta: number): string {
   const d = new Date(dateStr + "T12:00:00");
   d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
+  return formatDateKeyLocal(d);
 }
 
 export function getEntryForDate(
@@ -91,8 +103,22 @@ export function consecutiveDownDays(
   return streak;
 }
 
-export function daysUntilTarget(targetDateStr: string): number {
+export function daysUntilTarget(
+  targetDateStr: string,
+  asOfDateKey: string
+): number {
   const target = new Date(targetDateStr + "T12:00:00").getTime();
-  const today = new Date(getTodayKey() + "T12:00:00").getTime();
+  const today = new Date(asOfDateKey + "T12:00:00").getTime();
   return Math.ceil((target - today) / 86400000);
+}
+
+/** Positive = 7-day avg higher than a week earlier (often “heavier” trend). */
+export function sevenDayAvgDeltaVsPriorWeek(
+  entries: DailyEntry[],
+  today: string
+): number | null {
+  const curr = rollingSevenDayAverage(entries, today);
+  const prior = rollingSevenDayAverage(entries, addDaysKey(today, -7));
+  if (curr === null || prior === null) return null;
+  return curr - prior;
 }

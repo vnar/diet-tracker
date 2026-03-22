@@ -9,22 +9,27 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Badge } from "@/components/ui/Badge";
 import {
   getEntryForDate,
-  getTodayKey,
   getYesterdayKey,
 } from "@/lib/calculations";
 import { inputToKg, kgToInput } from "@/lib/units";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
+import { useClientTodayKey } from "@/hooks/useClientTodayKey";
+import { useSaveEntry } from "@/hooks/useHealthActions";
 
 export function DailyInput() {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
-  const addEntry = useHealthStore((s) => s.addEntry);
+  const saveEntry = useSaveEntry();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const today = getTodayKey();
-  const yesterdayKey = getYesterdayKey(today);
-  const yesterdayEntry = getEntryForDate(entries, yesterdayKey);
-  const todayEntry = getEntryForDate(entries, today);
+  const today = useClientTodayKey();
+  const yesterdayKey = today ? getYesterdayKey(today) : "";
+  const yesterdayEntry =
+    today && yesterdayKey
+      ? getEntryForDate(entries, yesterdayKey)
+      : undefined;
+  const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
   const u = settings.unit;
   const weightRef = useRef<HTMLInputElement>(null);
@@ -37,6 +42,8 @@ export function DailyInput() {
   const [sleep, setSleep] = useState("");
   const [lateSnack, setLateSnack] = useState(false);
   const [highSodium, setHighSodium] = useState(false);
+  const [workout, setWorkout] = useState(false);
+  const [alcohol, setAlcohol] = useState(false);
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
@@ -61,6 +68,8 @@ export function DailyInput() {
       setSleep(todayEntry.sleep !== undefined ? String(todayEntry.sleep) : "");
       setLateSnack(todayEntry.lateSnack);
       setHighSodium(todayEntry.highSodium);
+      setWorkout(todayEntry.workout ?? false);
+      setAlcohol(todayEntry.alcohol ?? false);
     } else {
       setMorning("");
       setNight("");
@@ -70,6 +79,8 @@ export function DailyInput() {
       setSleep("");
       setLateSnack(false);
       setHighSodium(false);
+      setWorkout(false);
+      setAlcohol(false);
     }
   }, [todayEntry, u]);
 
@@ -80,7 +91,7 @@ export function DailyInput() {
     morning.trim() !== "" && !Number.isNaN(morningNum) && morningNum > 0;
 
   function handleSave() {
-    if (!canSave) return;
+    if (!canSave || !today) return;
     const mw = inputToKg(morningNum, u);
     const nw =
       night.trim() === "" ? undefined : inputToKg(parseFloat(night), u);
@@ -97,11 +108,26 @@ export function DailyInput() {
       sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
       lateSnack,
       highSodium,
+      workout,
+      alcohol,
       photoUrl: todayEntry?.photoUrl,
     };
-    addEntry(entry);
-    setPulse(true);
-    window.setTimeout(() => setPulse(false), 600);
+    setSaveError(null);
+    void saveEntry(entry).then((r) => {
+      if (!r.ok) setSaveError(r.error ?? "Could not save");
+      else {
+        setPulse(true);
+        window.setTimeout(() => setPulse(false), 600);
+      }
+    });
+  }
+
+  if (today === null) {
+    return (
+      <Card title="Today's log" variant="surface">
+        <p className="text-sm text-slate-500">Loading…</p>
+      </Card>
+    );
   }
 
   return (
@@ -109,7 +135,7 @@ export function DailyInput() {
       animate={pulse ? { scale: [1, 1.01, 1] } : undefined}
       transition={{ duration: 0.35 }}
     >
-      <Card title="Daily log">
+      <Card title="Today's log" variant="surface">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {todayEntry ? (
             <Badge variant="success">Updated today</Badge>
@@ -184,6 +210,18 @@ export function DailyInput() {
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Toggle
+            id="workout"
+            label="Workout / training"
+            checked={workout}
+            onChange={setWorkout}
+          />
+          <Toggle
+            id="alcohol"
+            label="Alcohol"
+            checked={alcohol}
+            onChange={setAlcohol}
+          />
+          <Toggle
             id="lateSnack"
             label="Late snack"
             checked={lateSnack}
@@ -196,6 +234,11 @@ export function DailyInput() {
             onChange={setHighSodium}
           />
         </div>
+        {saveError ? (
+          <p className="mt-4 text-sm text-rose-600 dark:text-rose-400">
+            {saveError}
+          </p>
+        ) : null}
         <div className="mt-6">
           <button
             type="button"

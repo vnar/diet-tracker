@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: healthos
+      POSTGRES_PASSWORD: healthos
+      POSTGRES_DB: healthos
+    ports:
+      - "5432:5432"
+    volumes:
+      - healthos_pg:/var/lib/postgresql/data
+
+volumes:
+  healthos_pg:

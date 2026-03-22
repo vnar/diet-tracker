@@ -5,10 +5,11 @@ import { Camera } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import {
   getEntryForDate,
-  getTodayKey,
   sortEntriesByDateAsc,
 } from "@/lib/calculations";
 import { useHealthStore } from "@/lib/store";
+import { useClientTodayKey } from "@/hooks/useClientTodayKey";
+import { useSaveEntry } from "@/hooks/useHealthActions";
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -21,25 +22,27 @@ function formatDateLabel(dateStr: string): string {
 
 export function PhotoTracker() {
   const entries = useHealthStore((s) => s.entries);
-  const addEntry = useHealthStore((s) => s.addEntry);
-  const today = getTodayKey();
+  const saveEntry = useSaveEntry();
+  const today = useClientTodayKey();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const todayEntry = getEntryForDate(entries, today);
+  const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
   const withPhotos = sortEntriesByDateAsc(entries)
     .filter((e) => e.photoUrl)
     .reverse();
 
   function onPick(f: File) {
+    if (!today) return;
+    const dateKey = today;
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") return;
       const latest = useHealthStore.getState().entries;
-      const existing = getEntryForDate(latest, today);
+      const existing = getEntryForDate(latest, dateKey);
       if (!existing) return;
-      addEntry({
+      void saveEntry({
         ...existing,
         id: existing.id,
         photoUrl: result,
@@ -48,8 +51,16 @@ export function PhotoTracker() {
     reader.readAsDataURL(f);
   }
 
+  if (today === null) {
+    return (
+      <Card title="Progress photos" variant="surface">
+        <p className="text-sm text-slate-500">Loading…</p>
+      </Card>
+    );
+  }
+
   return (
-    <Card title="Photo tracker">
+    <Card title="Progress photos" variant="surface">
       <div className="mb-4">
         <input
           ref={inputRef}
@@ -58,8 +69,8 @@ export function PhotoTracker() {
           className="hidden"
           disabled={!todayEntry}
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onPick(f);
+            const file = e.target.files?.[0];
+            if (file) onPick(file);
             e.target.value = "";
           }}
         />
@@ -79,9 +90,9 @@ export function PhotoTracker() {
       </div>
 
       {withPhotos.length === 0 ? (
-        <div className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50/50 dark:border-zinc-700 dark:bg-zinc-950/50">
-          <Camera className="mb-2 h-10 w-10 text-zinc-400" />
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80">
+          <Camera className="mb-2 h-10 w-10 text-slate-400" />
+          <p className="text-sm text-slate-500">
             Add a progress photo — it will attach to today&apos;s log.
           </p>
         </div>

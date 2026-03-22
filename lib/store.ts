@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import type { DailyEntry, UserSettings } from "./types";
 import { sortEntriesByDateAsc } from "./calculations";
 
@@ -9,6 +9,10 @@ export interface HealthStore {
   addEntry: (entry: DailyEntry) => void;
   updateEntry: (id: string, entry: Partial<DailyEntry>) => void;
   updateSettings: (s: Partial<UserSettings>) => void;
+  replaceEntriesAndSettings: (
+    entries: DailyEntry[],
+    settings: UserSettings
+  ) => void;
 }
 
 function defaultTargetDate(): string {
@@ -29,6 +33,31 @@ function upsertByDate(entries: DailyEntry[], entry: DailyEntry): DailyEntry[] {
   return sortEntriesByDateAsc([...rest, entry]);
 }
 
+/** When true, skip localStorage read/write (server is source of truth). */
+let cloudMode = false;
+
+export function setHealthStorageMode(cloud: boolean) {
+  cloudMode = cloud;
+}
+
+const healthPersistStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === "undefined") return null;
+    if (cloudMode) return null;
+    return localStorage.getItem(name);
+  },
+  setItem: (name, value) => {
+    if (typeof window === "undefined") return;
+    if (cloudMode) return;
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name) => {
+    if (typeof window === "undefined") return;
+    if (cloudMode) return;
+    localStorage.removeItem(name);
+  },
+};
+
 export const useHealthStore = create<HealthStore>()(
   persist(
     (set) => ({
@@ -48,10 +77,15 @@ export const useHealthStore = create<HealthStore>()(
         set((s) => ({
           settings: { ...s.settings, ...partial },
         })),
+      replaceEntriesAndSettings: (entries, settings) =>
+        set({
+          entries: sortEntriesByDateAsc(entries),
+          settings,
+        }),
     }),
     {
       name: "healthos-data",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => healthPersistStorage),
       skipHydration: true,
     }
   )

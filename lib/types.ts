@@ -9,6 +9,8 @@ export interface DailyEntry {
   sleep?: number;
   lateSnack: boolean;
   highSodium: boolean;
+  workout: boolean;
+  alcohol: boolean;
   photoUrl?: string;
 }
 

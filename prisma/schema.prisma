@@ -1,0 +1,49 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  entries      DailyEntry[]
+  settings     UserSettings?
+}
+
+model UserSettings {
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalWeight  Float
+  startWeight Float
+  targetDate  String
+  unit        String
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyEntry {
+  id              String  @id @default(cuid())
+  userId          String
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            String
+  morningWeight   Float
+  nightWeight     Float?
+  calories        Int?
+  protein         Int?
+  steps           Int?
+  sleep           Float?
+  lateSnack       Boolean
+  highSodium      Boolean
+  workout         Boolean @default(false)
+  alcohol         Boolean @default(false)
+  photoUrl        String?
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
