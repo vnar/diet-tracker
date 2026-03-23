@@ -2,9 +2,12 @@ import type { DailyEntry, Insight } from "./types";
 import { nanoid } from "nanoid";
 import {
   getYesterdayKey,
+  priorLoggedEntry,
+  calendarDaysBetween,
   weightDeltaKg,
   consecutiveDownDays,
   sortEntriesByDateAsc,
+  parseDateKey,
 } from "./calculations";
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -24,25 +27,31 @@ function make(
 export function generateInsights(
   today: DailyEntry,
   yesterday: DailyEntry | null,
-  last7: DailyEntry[]
+  allEntries: DailyEntry[]
 ): Insight[] {
   const insights: Insight[] = [];
 
-  const uniqueDays = new Set(last7.map((e) => e.date)).size;
-  if (uniqueDays < 2) {
+  const upToToday = sortEntriesByDateAsc(allEntries).filter(
+    (e) => parseDateKey(e.date) <= parseDateKey(today.date)
+  );
+  if (upToToday.length < 2) {
     insights.push(
       make(
         "neutral",
-        "Log a few days to unlock insights."
+        "Log at least two days to unlock insights. Gaps between weigh-ins are fine."
       )
     );
     return insights.slice(0, 3);
   }
 
-  const delta = weightDeltaKg(today, yesterday);
+  const baseline = yesterday ?? priorLoggedEntry(allEntries, today.date);
+  const delta = baseline ? weightDeltaKg(today, baseline) : null;
+  const gapDays = baseline ? calendarDaysBetween(baseline.date, today.date) : 999;
+
   if (
     delta !== null &&
     delta >= 0.7 &&
+    gapDays <= 5 &&
     (today.highSodium || (today.sleep !== undefined && today.sleep < 6))
   ) {
     insights.push(
@@ -53,10 +62,10 @@ export function generateInsights(
     );
   }
 
-  const downStreak = consecutiveDownDays(last7, today.date);
+  const downStreak = consecutiveDownDays(allEntries, today.date);
   if (downStreak >= 3) {
     insights.push(
-      make("success", "Solid downward trend. Stay consistent.")
+      make("success", "Solid downward trend across your logs. Stay consistent.")
     );
   }
 

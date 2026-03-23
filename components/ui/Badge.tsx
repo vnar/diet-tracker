@@ -8,11 +8,11 @@ export interface BadgeProps {
 export function Badge({ children, variant = "default" }: BadgeProps) {
   const styles =
     variant === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
       : variant === "danger"
         ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
         : variant === "neutral"
-          ? "border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+          ? "border-slate-500/50 bg-slate-900/60 text-slate-300"
           : "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
 
   return (

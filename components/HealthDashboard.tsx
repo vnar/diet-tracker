@@ -26,35 +26,35 @@ export function HealthDashboard() {
   const patchSettings = usePatchSettings();
 
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-gradient-to-b dark:from-slate-950 dark:via-[#0c1422] dark:to-[#0a1628]">
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 safe-pb">
-        <header className="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/75 dark:shadow-none">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                HealthOS
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+    <main className="min-h-screen bg-[#030711] bg-gradient-to-b from-slate-950 via-[#0a1224] to-[#050a14]">
+      <div className="ui-dashboard-shell safe-pb flex flex-col gap-8">
+        <header className="ui-dashboard-header">
+          <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8">
+            <div className="min-w-0">
+              <h1 className="ui-page-title">HealthOS</h1>
+              <p className="ui-page-subtitle">
                 Daily awareness dashboard
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end sm:gap-3">
               <AuthBar />
               <button
                 type="button"
                 onClick={() =>
                   void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-all duration-200 hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                className="inline-flex h-10 shrink-0 items-center rounded-xl border border-slate-600/80 bg-slate-800/90 px-4 text-sm font-semibold tracking-wide text-slate-100 shadow-sm transition-all duration-200 hover:border-slate-500 hover:bg-slate-700/90"
               >
                 Unit: {unit}
               </button>
-              <ThemeToggle />
+              <div className="flex h-10 shrink-0 items-center">
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </header>
 
-        <div className="flex flex-col gap-6">
+        <div className="ui-dashboard-stack">
           <motion.section {...fadeInUp}>
             <DashboardKpiRow />
           </motion.section>
@@ -63,7 +63,7 @@ export function HealthDashboard() {
             <WeightChart />
           </motion.section>
 
-          <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+          <div className="ui-dashboard-grid-3">
             <motion.section {...fadeInUp} className="min-w-0">
               <DailyInput />
             </motion.section>

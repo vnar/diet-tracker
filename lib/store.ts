@@ -28,9 +28,16 @@ const defaultSettings: UserSettings = {
   unit: "kg",
 };
 
+function normalizeEntry(e: DailyEntry): DailyEntry {
+  return {
+    ...e,
+    nightWeight: e.nightWeight == null ? undefined : e.nightWeight,
+  };
+}
+
 function upsertByDate(entries: DailyEntry[], entry: DailyEntry): DailyEntry[] {
   const rest = entries.filter((e) => e.date !== entry.date);
-  return sortEntriesByDateAsc([...rest, entry]);
+  return sortEntriesByDateAsc([...rest, normalizeEntry(entry)]);
 }
 
 /** When true, skip localStorage read/write (server is source of truth). */
@@ -70,7 +77,7 @@ export const useHealthStore = create<HealthStore>()(
       updateEntry: (id, partial) =>
         set((s) => ({
           entries: s.entries.map((e) =>
-            e.id === id ? { ...e, ...partial } : e
+            e.id === id ? normalizeEntry({ ...e, ...partial }) : e
           ),
         })),
       updateSettings: (partial) =>
@@ -79,7 +86,7 @@ export const useHealthStore = create<HealthStore>()(
         })),
       replaceEntriesAndSettings: (entries, settings) =>
         set({
-          entries: sortEntriesByDateAsc(entries),
+          entries: sortEntriesByDateAsc(entries.map(normalizeEntry)),
           settings,
         }),
     }),

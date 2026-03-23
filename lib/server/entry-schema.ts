@@ -6,7 +6,7 @@ export const dailyEntryUpsertSchema = z.object({
   id: z.string().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   morningWeight: z.number().positive(),
-  nightWeight: z.number().optional(),
+  nightWeight: z.number().nullable().optional(),
   calories: z.number().int().nonnegative().optional(),
   protein: z.number().int().nonnegative().optional(),
   steps: z.number().int().nonnegative().optional(),

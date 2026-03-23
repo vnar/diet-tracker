@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   Area,
   ComposedChart,
@@ -31,6 +32,7 @@ function formatTick(dateStr: string): string {
 }
 
 export function WeightChart() {
+  const gradId = useId().replace(/:/g, "");
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
   const startWeight = useHealthStore((s) => s.settings.startWeight);
@@ -62,23 +64,23 @@ export function WeightChart() {
 
   return (
     <Card variant="surface" className="overflow-hidden">
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="!mb-0 text-lg font-semibold text-slate-800">Weight trend</h3>
-        <p className="text-xs text-slate-500">
-          Starting weight{" "}
-          <span className="font-mono font-medium text-slate-700">
+      <div className="-mt-0.5 mb-6 flex flex-col gap-4 border-b border-slate-600/40 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <h3 className="ui-card-title-lg shrink-0">Weight trend</h3>
+        <div className="flex flex-col gap-1 sm:items-end sm:text-right">
+          <p className="ui-overline">Starting weight</p>
+          <p className="ui-metric text-xl font-semibold leading-none text-slate-50">
             {displayWeight(startWeight, unit)} {unit}
-          </span>
-        </p>
+          </p>
+        </div>
       </div>
-      <div className="relative mt-3 h-[280px] w-full">
+      <div className="relative h-[280px] w-full">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80">
-            <p className="text-center text-sm text-slate-500">
-              Log at least 2 days to see your trend
+          <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-600 bg-slate-900/40">
+            <p className="text-center text-[15px] font-medium leading-relaxed text-slate-400">
+              Log at least 2 days to see your trend (gaps between logs are OK)
             </p>
             <svg
-              className="mt-4 h-12 w-full max-w-xs text-slate-300"
+              className="mt-4 h-12 w-full max-w-xs text-slate-600"
               preserveAspectRatio="none"
               viewBox="0 0 200 40"
             >
@@ -95,22 +97,22 @@ export function WeightChart() {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}>
               <defs>
-                <linearGradient id="weightArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                stroke="#cbd5e1"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                stroke="#64748b"
               />
               <YAxis
                 domain={domain}
                 width={48}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                stroke="#cbd5e1"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                stroke="#64748b"
                 tickFormatter={(v: number) => displayWeight(v, unit)}
               />
               <Tooltip
@@ -118,14 +120,14 @@ export function WeightChart() {
                   if (!active || !payload?.length) return null;
                   const p = payload[0].payload as Row;
                   return (
-                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-lg">
-                      <p className="font-medium text-slate-900">{p.label}</p>
-                      <p className="font-mono text-slate-600">
+                    <div className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm shadow-xl">
+                      <p className="font-medium text-slate-100">{p.label}</p>
+                      <p className="font-mono text-slate-300">
                         Daily: {displayWeight(p.weight ?? 0, unit)} {unit}
                       </p>
                       {p.avg !== null ? (
-                        <p className="font-mono text-emerald-600">
-                          7-day avg: {displayWeight(p.avg, unit)} {unit}
+                        <p className="font-mono text-emerald-400">
+                          7-point avg: {displayWeight(p.avg, unit)} {unit}
                         </p>
                       ) : null}
                     </div>
@@ -137,7 +139,7 @@ export function WeightChart() {
                 dataKey="weight"
                 stroke="#2563eb"
                 strokeWidth={2}
-                fill="url(#weightArea)"
+                fill={`url(#${gradId})`}
                 dot={{ r: 3, fill: "#2563eb", strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
                 name="Daily"
@@ -156,17 +158,17 @@ export function WeightChart() {
         )}
       </div>
       {!empty ? (
-        <div className="mt-3 flex flex-wrap gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-4 rounded-sm bg-blue-600" aria-hidden />
+        <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-slate-600/50 pt-5">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-400">
+            <span className="h-2 w-5 rounded-sm bg-blue-500" aria-hidden />
             Daily weight
           </span>
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-400">
             <span
-              className="h-0.5 w-4 border-t-2 border-dashed border-emerald-500"
+              className="h-0.5 w-5 border-t-2 border-dashed border-emerald-400"
               aria-hidden
             />
-            7-day average
+            Rolling average (last 7 logs)
           </span>
         </div>
       ) : null}

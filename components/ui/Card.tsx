@@ -4,7 +4,7 @@ export interface CardProps {
   title?: string;
   children: ReactNode;
   className?: string;
-  /** Elevated white card for dark “portal” backgrounds (dashboard). */
+  /** Dark elevated panel for the dashboard (always dark, readable on blue/slate page). */
   variant?: "default" | "surface";
 }
 
@@ -16,13 +16,13 @@ export function Card({
 }: CardProps) {
   const shell =
     variant === "surface"
-      ? "rounded-2xl border border-slate-200/90 bg-white p-5 text-slate-900 shadow-xl shadow-slate-900/10 dark:border-white/10 dark:shadow-black/35"
-      : "rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900";
+      ? "rounded-2xl border border-slate-600/50 bg-slate-800/95 p-6 text-slate-100 shadow-xl shadow-black/45 backdrop-blur-sm sm:p-7"
+      : "rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 sm:p-7";
 
   const titleClass =
     variant === "surface"
-      ? "mb-3 font-semibold tracking-tight text-slate-800"
-      : "mb-3 font-semibold tracking-tight text-zinc-900 dark:text-zinc-100";
+      ? "ui-card-title mb-4 border-b border-slate-600/40 pb-4"
+      : "mb-4 border-b border-zinc-200 pb-4 text-lg font-semibold leading-snug tracking-[-0.02em] text-zinc-900 dark:border-zinc-800 dark:text-zinc-100";
 
   return (
     <div className={`${shell} ${className}`}>

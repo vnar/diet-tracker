@@ -49,6 +49,26 @@ export function weightDeltaKg(
   return today.morningWeight - yesterday.morningWeight;
 }
 
+/** Latest entry with date strictly before `beforeKey` (handles irregular logging gaps). */
+export function priorLoggedEntry(
+  entries: DailyEntry[],
+  beforeKey: string
+): DailyEntry | null {
+  const sorted = sortEntriesByDateAsc(entries).filter(
+    (e) => parseDateKey(e.date) < parseDateKey(beforeKey)
+  );
+  return sorted.length ? sorted[sorted.length - 1]! : null;
+}
+
+export function calendarDaysBetween(
+  earlierKey: string,
+  laterKey: string
+): number {
+  return Math.round(
+    (parseDateKey(laterKey) - parseDateKey(earlierKey)) / 86400000
+  );
+}
+
 export function rollingSevenDayAverage(
   entries: DailyEntry[],
   asOfDate: string
@@ -69,6 +89,10 @@ export interface MovingAveragePoint {
   avg: number;
 }
 
+/**
+ * Moving average over the last up to 7 **logged** points (not calendar days).
+ * Gaps between weigh-ins do not break the series.
+ */
 export function sevenDayMovingAverageSeries(
   entries: DailyEntry[]
 ): MovingAveragePoint[] {
@@ -84,6 +108,10 @@ export function sevenDayMovingAverageSeries(
   return result;
 }
 
+/**
+ * Counts consecutive **logged** weigh-ins (by date order) where morning weight
+ * dropped vs the previous log. Calendar gaps between logs are allowed.
+ */
 export function consecutiveDownDays(
   entries: DailyEntry[],
   asOfDate: string

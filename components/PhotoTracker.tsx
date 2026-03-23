@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Camera } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import {
   getEntryForDate,
@@ -54,7 +54,7 @@ export function PhotoTracker() {
   if (today === null) {
     return (
       <Card title="Progress photos" variant="surface">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-[15px] font-medium text-slate-400">Loading…</p>
       </Card>
     );
   }
@@ -78,30 +78,39 @@ export function PhotoTracker() {
           type="button"
           disabled={!todayEntry}
           onClick={() => inputRef.current?.click()}
-          className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-800 transition-all duration-200 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-500/80 bg-slate-900/80 px-4 py-2.5 text-sm font-medium text-slate-100 shadow-inner shadow-black/20 transition-all duration-200 hover:border-slate-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
+          <Upload className="h-4 w-4 text-sky-400" aria-hidden />
           Upload photo for today
         </button>
         {!todayEntry ? (
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mt-2 text-xs text-slate-500">
             Save your daily log first — then you can attach a progress photo.
           </p>
         ) : null}
       </div>
 
       {withPhotos.length === 0 ? (
-        <div className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80">
-          <Camera className="mb-2 h-10 w-10 text-slate-400" />
-          <p className="text-sm text-slate-500">
-            Add a progress photo — it will attach to today&apos;s log.
+        <button
+          type="button"
+          disabled={!todayEntry}
+          onClick={() => todayEntry && inputRef.current?.click()}
+          className="flex min-h-[168px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-600 bg-slate-950/50 px-4 py-8 text-center transition-colors hover:border-slate-500 hover:bg-slate-900/60 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Camera className="mb-3 h-11 w-11 text-slate-500" aria-hidden />
+          <p className="text-base font-semibold tracking-wide text-slate-200">
+            No progress photos yet
           </p>
-        </div>
+          <p className="mt-2 max-w-sm text-[13px] font-medium leading-relaxed text-slate-500">
+            Tap to choose an image — it attaches to today&apos;s log.
+          </p>
+        </button>
       ) : (
         <div className="columns-2 gap-3 md:columns-3">
           {withPhotos.map((e) => (
             <div
               key={e.id}
-              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800"
+              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border border-slate-600 bg-slate-950/30"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -109,7 +118,7 @@ export function PhotoTracker() {
                 alt={`Progress ${e.date}`}
                 className="w-full object-cover"
               />
-              <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <span className="p-3 text-xs font-medium text-white">
                   {formatDateLabel(e.date)}
                 </span>

@@ -2,8 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+@layer base {
+  html {
+    @apply scroll-smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply min-h-screen bg-slate-950 font-sans text-slate-100 antialiased;
+  }
+
+  ::selection {
+    @apply bg-sky-500/35 text-white;
+  }
+}
+
+@layer components {
+  /* Page & section hierarchy */
+  .ui-page-title {
+    @apply text-3xl font-bold tracking-[-0.04em] text-white sm:text-[2rem] sm:leading-[1.15];
+  }
+
+  .ui-page-subtitle {
+    @apply mt-2 text-[13px] font-medium leading-relaxed tracking-wide text-slate-400;
+  }
+
+  .ui-card-title {
+    @apply text-lg font-semibold leading-snug tracking-[-0.02em] text-slate-50;
+  }
+
+  .ui-card-title-lg {
+    @apply text-xl font-semibold leading-tight tracking-[-0.03em] text-slate-50;
+  }
+
+  /* KPI / chart / table overlines */
+  .ui-overline {
+    @apply text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-slate-500;
+  }
+
+  .ui-metric {
+    @apply font-mono tabular-nums tracking-tight;
+  }
+
+  .ui-label {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500;
+  }
+
+  /* Shell: consistent horizontal rhythm with dashboard main */
+  .ui-dashboard-shell {
+    @apply mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8;
+  }
+
+  .ui-dashboard-stack {
+    @apply flex flex-col gap-8;
+  }
+
+  .ui-dashboard-header {
+    @apply rounded-2xl border border-slate-700/90 bg-slate-900/90 px-6 py-6 shadow-xl shadow-black/40 backdrop-blur-md sm:px-8 sm:py-7;
+  }
+
+  .ui-dashboard-grid-3 {
+    @apply grid gap-6 sm:gap-8 lg:grid-cols-3 lg:items-start;
+  }
 }
 
 @layer utilities {

@@ -3,6 +3,7 @@
 import {
   getEntryForDate,
   getYesterdayKey,
+  priorLoggedEntry,
   rollingSevenDayAverage,
   sevenDayAvgDeltaVsPriorWeek,
   weightDeltaKg,
@@ -19,18 +20,18 @@ function fmtDelta(kgDelta: number, unit: "kg" | "lbs"): string {
 }
 
 function deltaClass(kgDelta: number | null): string {
-  if (kgDelta === null) return "text-slate-500";
-  if (kgDelta > 0) return "text-rose-600";
-  if (kgDelta < 0) return "text-emerald-600";
-  return "text-slate-500";
+  if (kgDelta === null) return "text-slate-400";
+  if (kgDelta > 0) return "text-rose-400";
+  if (kgDelta < 0) return "text-emerald-400";
+  return "text-slate-400";
 }
 
 /** For week-over-week *average* change: negative kg delta = average dropped (usually good). */
 function weekAvgDeltaClass(kgDelta: number | null): string {
-  if (kgDelta === null) return "text-slate-500";
-  if (kgDelta < 0) return "text-emerald-600";
-  if (kgDelta > 0) return "text-rose-600";
-  return "text-slate-500";
+  if (kgDelta === null) return "text-slate-400";
+  if (kgDelta < 0) return "text-emerald-400";
+  if (kgDelta > 0) return "text-rose-400";
+  return "text-slate-400";
 }
 
 export function DashboardKpiRow() {
@@ -44,9 +45,13 @@ export function DashboardKpiRow() {
 
   const u = settings.unit;
   const currentKg = todayEntry?.morningWeight;
+  const comparisonEntry =
+    today && todayEntry
+      ? (yesterdayEntry ?? priorLoggedEntry(entries, today))
+      : null;
   const dayDelta =
-    todayEntry && yesterdayEntry
-      ? weightDeltaKg(todayEntry, yesterdayEntry)
+    todayEntry && comparisonEntry
+      ? weightDeltaKg(todayEntry, comparisonEntry)
       : null;
 
   const sevenAvg =
@@ -80,7 +85,9 @@ export function DashboardKpiRow() {
           : "—",
       sub:
         dayDelta !== null
-          ? `${fmtDelta(dayDelta, u)} since yesterday`
+          ? yesterdayEntry
+            ? `${fmtDelta(dayDelta, u)} since yesterday`
+            : `${fmtDelta(dayDelta, u)} vs prior weigh-in`
           : "Log morning weight",
       subClass: deltaClass(dayDelta),
     },
@@ -103,7 +110,7 @@ export function DashboardKpiRow() {
         remainingKg !== null
           ? `${displayWeight(remainingKg, u)} ${u} to go`
           : "—",
-      subClass: "text-amber-600",
+      subClass: "text-amber-400",
     },
     {
       title: "Goal horizon",
@@ -124,26 +131,30 @@ export function DashboardKpiRow() {
       subClass:
         daysLeft !== null && daysLeft >= 0
           ? onTrack
-            ? "text-emerald-600"
-            : "text-slate-500"
-          : "text-slate-500",
+            ? "text-emerald-400"
+            : "text-slate-400"
+          : "text-slate-400",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5 lg:items-stretch">
       {kpis.map((k) => (
         <div
           key={k.title}
-          className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-lg shadow-slate-900/10 dark:border-white/10 dark:shadow-black/35"
+          className="flex min-h-[168px] flex-col justify-between rounded-2xl border border-slate-600/50 bg-slate-800/95 p-5 shadow-lg shadow-black/45 backdrop-blur-sm"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {k.title}
+          <div>
+            <p className="ui-overline mb-3">{k.title}</p>
+            <p className="ui-metric min-h-[2.5rem] text-2xl font-semibold leading-none text-slate-50">
+              {k.value}
+            </p>
+          </div>
+          <p
+            className={`mt-4 text-[13px] font-medium leading-snug ${k.subClass}`}
+          >
+            {k.sub}
           </p>
-          <p className="mt-2 font-mono text-xl font-semibold tabular-nums text-slate-900">
-            {k.value}
-          </p>
-          <p className={`mt-1 text-xs font-medium ${k.subClass}`}>{k.sub}</p>
         </div>
       ))}
     </div>

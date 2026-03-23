@@ -46,7 +46,10 @@ export async function PUT(
       userId,
       date: dateParam,
       morningWeight: data.morningWeight,
-      nightWeight: data.nightWeight,
+      nightWeight:
+        data.nightWeight === null || data.nightWeight === undefined
+          ? undefined
+          : data.nightWeight,
       calories: data.calories,
       protein: data.protein,
       steps: data.steps,
@@ -59,7 +62,12 @@ export async function PUT(
     },
     update: {
       morningWeight: data.morningWeight,
-      nightWeight: data.nightWeight,
+      nightWeight:
+        data.nightWeight === null
+          ? null
+          : data.nightWeight === undefined
+            ? undefined
+            : data.nightWeight,
       calories: data.calories,
       protein: data.protein,
       steps: data.steps,

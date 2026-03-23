@@ -2,7 +2,8 @@ export interface DailyEntry {
   id: string;
   date: string;
   morningWeight: number;
-  nightWeight?: number;
+  /** `null` when clearing via API; treat like undefined in UI state. */
+  nightWeight?: number | null;
   calories?: number;
   protein?: number;
   steps?: number;

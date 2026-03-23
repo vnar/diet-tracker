@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Toggle } from "@/components/ui/Toggle";
@@ -17,6 +18,37 @@ import { useSaveEntry } from "@/hooks/useHealthActions";
 import { displayWeight } from "@/lib/units";
 
 const GRID_DAYS = 42;
+
+const LS_SECTION = "healthos-ui-pastdays-open";
+const LS_CALENDAR = "healthos-ui-pastdays-calendar-open";
+
+function usePersistentBool(
+  key: string,
+  defaultValue: boolean
+): [boolean, (next: boolean) => void] {
+  const [v, setV] = useState(defaultValue);
+
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(key);
+      if (s === "1") setV(true);
+      else if (s === "0") setV(false);
+    } catch {
+      /* ignore */
+    }
+  }, [key]);
+
+  const set = (next: boolean) => {
+    setV(next);
+    try {
+      localStorage.setItem(key, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return [v, set];
+}
 
 function weekdayShort(iso: string): string {
   return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
@@ -42,6 +74,12 @@ export function PastDayGrid() {
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
   const today = useClientTodayKey();
+
+  const [sectionOpen, setSectionOpen] = usePersistentBool(LS_SECTION, false);
+  const [calendarOpen, setCalendarOpen] = usePersistentBool(
+    LS_CALENDAR,
+    false
+  );
 
   const [selected, setSelected] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,7 +113,7 @@ export function PastDayGrid() {
     if (e) {
       setMorning(String(kgToInput(e.morningWeight, u)));
       setNight(
-        e.nightWeight !== undefined ? String(kgToInput(e.nightWeight, u)) : ""
+        e.nightWeight != null ? String(kgToInput(e.nightWeight, u)) : ""
       );
       setCalories(e.calories !== undefined ? String(e.calories) : "");
       setProtein(e.protein !== undefined ? String(e.protein) : "");
@@ -109,13 +147,16 @@ export function PastDayGrid() {
   function handleSave() {
     if (!canSave || !selected) return;
     const mw = inputToKg(morningNum, u);
-    const nw =
-      night.trim() === "" ? undefined : inputToKg(parseFloat(night), u);
+    const nightParsed = night.trim() === "" ? NaN : parseFloat(night);
+    const nightWeight =
+      night.trim() === "" || Number.isNaN(nightParsed)
+        ? null
+        : inputToKg(nightParsed, u);
     const entry: DailyEntry = {
       id: selectedEntry?.id ?? nanoid(),
       date: selected,
       morningWeight: mw,
-      nightWeight: nw !== undefined && !Number.isNaN(nw) ? nw : undefined,
+      nightWeight,
       calories:
         calories.trim() === "" ? undefined : Math.round(parseFloat(calories)),
       protein:
@@ -141,7 +182,7 @@ export function PastDayGrid() {
   if (today === null) {
     return (
       <Card title="Past days" variant="surface">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-400">Loading…</p>
       </Card>
     );
   }
@@ -151,81 +192,130 @@ export function PastDayGrid() {
       animate={pulse ? { scale: [1, 1.005, 1] } : undefined}
       transition={{ duration: 0.35 }}
     >
-      <Card title="Past days — grid & edit" variant="surface">
-        <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-          Last {GRID_DAYS} days: tap a cell to load or edit that day. You can
-          also pick a date below.
-        </p>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Jump to date
-          </label>
-          <input
-            type="date"
-            max={today}
-            value={selected ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!v) {
-                setSelected(null);
-                return;
-              }
-              if (v > today) return;
-              setSelected(v);
-            }}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+      <Card variant="surface">
+        <button
+          type="button"
+          onClick={() => setSectionOpen(!sectionOpen)}
+          className="group mb-0 flex w-full items-center justify-between gap-4 rounded-xl text-left transition-colors hover:bg-slate-700/25 -mx-1 px-1 py-0.5"
+          aria-expanded={sectionOpen}
+        >
+          <div className="min-w-0">
+            <h3 className="ui-card-title-lg">
+              Past days — grid &amp; edit
+            </h3>
+            <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-slate-500">
+              {sectionOpen
+                ? "Collapse when you don’t need it."
+                : "Expand to pick a date or use the optional calendar."}
+            </p>
+          </div>
+          <ChevronDown
+            className={`h-6 w-6 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-slate-400 ${
+              sectionOpen ? "rotate-180" : ""
+            }`}
+            aria-hidden
           />
-        </div>
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-          {gridDays.map((d) => {
-            const row = getEntryForDate(entries, d);
-            const isToday = d === today;
-            const isSel = selected === d;
-            return (
+        </button>
+
+        {sectionOpen ? (
+          <div className="mt-6 space-y-6 border-t border-slate-600/50 pt-6">
+            <p className="text-[15px] leading-relaxed text-slate-400">
+              Use{" "}
+              <strong className="font-semibold text-slate-300">Jump to date</strong>{" "}
+              for a quick path — the 42-day grid is optional when you want a
+              visual scan.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="ui-label">Jump to date</label>
+              <input
+                type="date"
+                max={today}
+                value={selected ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) {
+                    setSelected(null);
+                    return;
+                  }
+                  if (v > today) return;
+                  setSelected(v);
+                }}
+                className="rounded-lg border border-slate-600 bg-slate-950/50 px-3 py-2 text-sm text-slate-100 [color-scheme:dark]"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                key={d}
                 type="button"
-                onClick={() => setSelected(d)}
-                className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-0.5 py-1.5 text-center transition-all duration-200 sm:min-h-[56px] ${
-                  isSel
-                    ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/60 dark:border-emerald-600 dark:bg-emerald-950/40"
-                    : row
-                      ? "border-emerald-200/80 bg-emerald-50/80 dark:border-emerald-800/60 dark:bg-emerald-950/30"
-                      : "border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80"
-                } ${isToday ? "font-semibold" : ""}`}
+                onClick={() => setCalendarOpen(!calendarOpen)}
+                className="rounded-xl border border-slate-600/80 bg-slate-900/80 px-4 py-2.5 text-sm font-semibold tracking-wide text-slate-200 shadow-sm transition-colors hover:border-slate-500 hover:bg-slate-800"
+                aria-expanded={calendarOpen}
               >
-                <span className="text-[10px] uppercase leading-none text-zinc-500 dark:text-zinc-400">
-                  {weekdayShort(d)}
-                </span>
-                <span className="text-sm text-zinc-900 dark:text-zinc-100">
-                  {dayNum(d)}
-                </span>
-                {row ? (
-                  <span className="mt-0.5 truncate px-0.5 font-mono text-[10px] leading-none text-emerald-700 dark:text-emerald-300">
-                    {displayWeight(row.morningWeight, u)}
-                  </span>
-                ) : (
-                  <span className="mt-0.5 text-[10px] text-zinc-400">—</span>
-                )}
+                {calendarOpen
+                  ? "Hide 42-day calendar"
+                  : "Show 42-day calendar"}
               </button>
-            );
-          })}
-        </div>
-        {selected ? (
-          <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-medium text-slate-500">
+                Optional — not required if you use the date picker.
+              </span>
+            </div>
+
+            {calendarOpen ? (
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                {gridDays.map((d) => {
+                  const row = getEntryForDate(entries, d);
+                  const isToday = d === today;
+                  const isSel = selected === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSelected(d)}
+                      className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-0.5 py-1.5 text-center transition-all duration-200 sm:min-h-[56px] ${
+                        isSel
+                          ? "border-sky-500 bg-sky-950/50 ring-2 ring-sky-500/50"
+                          : row
+                            ? "border-emerald-700/50 bg-emerald-950/35"
+                            : "border-slate-600 bg-slate-900/50"
+                      } ${isToday ? "font-semibold" : ""}`}
+                    >
+                      <span className="text-[10px] uppercase leading-none text-slate-400">
+                        {weekdayShort(d)}
+                      </span>
+                      <span className="text-sm text-slate-100">
+                        {dayNum(d)}
+                      </span>
+                      {row ? (
+                        <span className="mt-0.5 truncate px-0.5 font-mono text-[10px] leading-none text-emerald-400">
+                          {displayWeight(row.morningWeight, u)}
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 text-[10px] text-slate-500">
+                          —
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {selected ? (
+          <div className="mt-8 border-t border-slate-600/50 pt-8">
+            <div className="mb-5 flex flex-wrap items-center gap-3">
               <Badge variant={selectedEntry ? "success" : "neutral"}>
                 {selectedEntry ? "Saved" : "New entry"}
               </Badge>
-              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="text-base font-semibold tracking-wide text-slate-200">
                 {formatLong(selected)}
               </span>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2">
               <InputField
                 id="pastMorningWeight"
                 label="Morning weight"
                 unit={u}
+                tone="dark"
                 inputMode="decimal"
                 required
                 value={morning}
@@ -236,6 +326,7 @@ export function PastDayGrid() {
                 id="pastNightWeight"
                 label="Night weight (optional)"
                 unit={u}
+                tone="dark"
                 inputMode="decimal"
                 value={night}
                 onChange={(e) => setNight(e.target.value)}
@@ -245,6 +336,7 @@ export function PastDayGrid() {
                 id="pastCalories"
                 label="Calories"
                 unit="kcal"
+                tone="dark"
                 inputMode="numeric"
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}
@@ -254,6 +346,7 @@ export function PastDayGrid() {
                 id="pastProtein"
                 label="Protein"
                 unit="g"
+                tone="dark"
                 inputMode="numeric"
                 value={protein}
                 onChange={(e) => setProtein(e.target.value)}
@@ -262,6 +355,7 @@ export function PastDayGrid() {
               <InputField
                 id="pastSteps"
                 label="Steps"
+                tone="dark"
                 inputMode="numeric"
                 value={steps}
                 onChange={(e) => setSteps(e.target.value)}
@@ -271,13 +365,14 @@ export function PastDayGrid() {
                 id="pastSleep"
                 label="Sleep"
                 unit="h"
+                tone="dark"
                 inputMode="decimal"
                 value={sleep}
                 onChange={(e) => setSleep(e.target.value)}
                 placeholder=""
               />
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3.5 sm:grid-cols-2">
               <Toggle
                 id="pastWorkout"
                 label="Workout / training"
@@ -304,26 +399,26 @@ export function PastDayGrid() {
               />
             </div>
             {saveError ? (
-              <p className="mt-4 text-sm text-rose-600 dark:text-rose-400">
-                {saveError}
-              </p>
+              <p className="mt-4 text-sm text-rose-400">{saveError}</p>
             ) : null}
             <div className="mt-6">
               <button
                 type="button"
                 disabled={!canSave}
                 onClick={handleSave}
-                className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition-all duration-200 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white shadow-lg shadow-sky-900/30 transition-all duration-200 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 Save this day
               </button>
             </div>
           </div>
-        ) : (
-          <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-            Select a day in the grid or use the date picker to edit past data.
-          </p>
-        )}
+            ) : (
+              <p className="text-sm text-slate-400">
+                Choose a date above to load or create an entry for that day.
+              </p>
+            )}
+          </div>
+        ) : null}
       </Card>
     </motion.div>
   );
