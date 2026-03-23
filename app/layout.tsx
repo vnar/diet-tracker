@@ -21,7 +21,7 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ojas-Helath",
+  title: "Ojas-Health",
   description: "Daily awareness dashboard for weight and habits",
 };
 

@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/Badge";
 import { getEntryForDate } from "@/lib/calculations";
 import { addDaysIso, eachDayInclusive } from "@/lib/dates";
 import { inputToKg, kgToInput } from "@/lib/units";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
 import { displayWeight } from "@/lib/units";
+import { isAwsBackendEnabled, uploadPhotoFile } from "@/lib/frontend-api-client";
 
 const GRID_DAYS = 42;
 
@@ -69,6 +71,7 @@ function formatLong(iso: string): string {
 }
 
 export function PastDayGrid() {
+  const { status, getAccessToken } = useCognitoAuth();
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
@@ -185,6 +188,37 @@ export function PastDayGrid() {
 
   function onPickPhoto(file: File) {
     if (!selected || !selectedEntry) return;
+    setSaveError(null);
+    if (isAwsBackendEnabled()) {
+      if (status !== "authenticated") {
+        setSaveError("Please sign in to upload photos.");
+        return;
+      }
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        setSaveError("Session expired. Please sign in again.");
+        return;
+      }
+      setUploadingPhoto(true);
+      void (async () => {
+        const upload = await uploadPhotoFile(file, accessToken);
+        if (!upload.ok || !upload.photoUrl) {
+          setSaveError(upload.error ?? "Could not upload photo.");
+          setUploadingPhoto(false);
+          return;
+        }
+        const saved = await saveEntry({
+          ...selectedEntry,
+          photoUrl: upload.photoUrl,
+        });
+        if (!saved.ok) {
+          setSaveError(saved.error ?? "Could not save photo to this day.");
+        }
+        setUploadingPhoto(false);
+      })();
+      return;
+    }
+
     const reader = new FileReader();
     setUploadingPhoto(true);
     reader.onload = () => {
@@ -196,9 +230,15 @@ export function PastDayGrid() {
       void saveEntry({
         ...selectedEntry,
         photoUrl: result,
-      }).then(() => setUploadingPhoto(false));
+      }).then((r) => {
+        if (!r.ok) setSaveError(r.error ?? "Could not save photo.");
+        setUploadingPhoto(false);
+      });
     };
-    reader.onerror = () => setUploadingPhoto(false);
+    reader.onerror = () => {
+      setSaveError("Could not read selected image.");
+      setUploadingPhoto(false);
+    };
     reader.readAsDataURL(file);
   }
 

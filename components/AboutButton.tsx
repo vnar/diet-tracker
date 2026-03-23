@@ -13,7 +13,7 @@ export function AboutButton() {
         <button
           onClick={() => setOpen(true)}
           className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-600 transition-all duration-200 hover:border-zinc-600 hover:text-zinc-300"
-          aria-label="About Ojas-Helath"
+          aria-label="About Ojas-Health"
           type="button"
         >
           <Info size={12} />

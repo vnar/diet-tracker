@@ -125,7 +125,8 @@ export async function uploadPhotoFile(
 
   const uploadInit = await fetchJson<{
     uploadUrl: string;
-    fileUrl: string;
+    fileUrl?: string;
+    photoUrl?: string;
   }>(
     "/photos/upload-url",
     {
@@ -156,5 +157,10 @@ export async function uploadPhotoFile(
     return { ok: false, error: `Photo upload failed (${putRes.status})` };
   }
 
-  return { ok: true, photoUrl: uploadInit.data.fileUrl };
+  const photoUrl = uploadInit.data.photoUrl ?? uploadInit.data.fileUrl;
+  if (!photoUrl) {
+    return { ok: false, error: "Photo upload init succeeded, but photo URL missing." };
+  }
+
+  return { ok: true, photoUrl };
 }
