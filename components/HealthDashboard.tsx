@@ -12,6 +12,8 @@ import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthBar } from "@/components/AuthBar";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
+import { getSettings, isAwsBackendEnabled } from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings } from "lucide-react";
@@ -33,12 +35,30 @@ export function HealthDashboard() {
   const [targetDate, setTargetDate] = useState("");
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const { status, getAccessToken } = useCognitoAuth();
 
   useEffect(() => {
     setStartWeight(String(settings.startWeight));
     setGoalWeight(String(settings.goalWeight));
     setTargetDate(settings.targetDate);
   }, [settings]);
+
+  async function refreshSettingsFromCloud(): Promise<void> {
+    if (!isAwsBackendEnabled() || status !== "authenticated") return;
+    const accessToken = getAccessToken();
+    if (!accessToken) return;
+
+    setLoadingSettings(true);
+    const result = await getSettings(accessToken);
+    setLoadingSettings(false);
+    if (!result.ok) return;
+
+    useHealthStore.setState({ settings: result.data.settings });
+    setStartWeight(String(result.data.settings.startWeight));
+    setGoalWeight(String(result.data.settings.goalWeight));
+    setTargetDate(result.data.settings.targetDate);
+  }
 
   async function handleSaveSettings() {
     const start = Number.parseFloat(startWeight);
@@ -69,6 +89,7 @@ export function HealthDashboard() {
       setSettingsError(result.error ?? "Could not update settings.");
       return;
     }
+    await refreshSettingsFromCloud();
     setSettingsOpen(false);
   }
 
@@ -100,7 +121,10 @@ export function HealthDashboard() {
               <AuthBar compact />
               <button
                 type="button"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => {
+                  setSettingsOpen(true);
+                  void refreshSettingsFromCloud();
+                }}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
                 aria-label="Open settings"
                 title="Settings"
@@ -167,7 +191,10 @@ export function HealthDashboard() {
               <AuthBar />
               <button
                 type="button"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => {
+                  setSettingsOpen(true);
+                  void refreshSettingsFromCloud();
+                }}
                 className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
               >
                 Settings
@@ -240,12 +267,16 @@ export function HealthDashboard() {
             </div>
 
             <div className="space-y-3">
+              {loadingSettings ? (
+                <p className="text-[11px] text-zinc-500">Loading latest saved settings...</p>
+              ) : null}
               <label className="block">
                 <span className="mb-1 block text-[11px] text-zinc-400">
                   Starting weight ({unit})
                 </span>
                 <input
                   type="number"
+                  step="0.1"
                   inputMode="decimal"
                   value={startWeight}
                   onChange={(e) => setStartWeight(e.target.value)}
@@ -259,6 +290,7 @@ export function HealthDashboard() {
                 </span>
                 <input
                   type="number"
+                  step="0.1"
                   inputMode="decimal"
                   value={goalWeight}
                   onChange={(e) => setGoalWeight(e.target.value)}
