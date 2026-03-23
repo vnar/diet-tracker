@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ElementType, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   Circle,
@@ -262,6 +263,12 @@ function TechTab() {
 
 export function AboutModal({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("problem");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -271,7 +278,9 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -351,6 +360,8 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    ,
+    document.body
   );
 }
 
