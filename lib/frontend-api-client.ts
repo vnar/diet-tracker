@@ -98,6 +98,19 @@ export async function patchSettings(settings: UserSettings, accessToken?: string
   );
 }
 
+export async function getFooterStats(accessToken?: string) {
+  return fetchJson<{ users: number; pageViews: number }>("/stats", undefined, true, accessToken);
+}
+
+export async function trackPageView(accessToken?: string) {
+  return fetchJson<{ pageViews: number }>(
+    "/metrics/page-view",
+    { method: "POST" },
+    true,
+    accessToken
+  );
+}
+
 export async function uploadPhotoFile(
   file: File,
   accessToken?: string

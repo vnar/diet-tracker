@@ -3,6 +3,8 @@ import {
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
+  ScanCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -14,6 +16,7 @@ const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
+const analyticsMetaUserId = "__meta__";
 
 type Claims = {
   sub: string;
@@ -405,33 +408,87 @@ async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpRe
   });
 }
 
+async function getStats(): Promise<HttpResult> {
+  const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const [usersOut, viewsOut] = await Promise.all([
+    ddb.send(
+      new ScanCommand({
+        TableName: tableName,
+        Select: "COUNT",
+        FilterExpression: "#uid <> :metaUserId AND attribute_exists(goalWeight)",
+        ExpressionAttributeNames: { "#uid": "userId" },
+        ExpressionAttributeValues: { ":metaUserId": { S: analyticsMetaUserId } },
+      }),
+    ),
+    ddb.send(
+      new GetItemCommand({
+        TableName: tableName,
+        Key: { userId: { S: analyticsMetaUserId } },
+      }),
+    ),
+  ]);
+
+  return json(200, {
+    users: Number(usersOut.Count ?? 0),
+    pageViews: Number(viewsOut.Item?.pageViews?.N ?? 0),
+  });
+}
+
+async function incrementPageView(): Promise<HttpResult> {
+  const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const out = await ddb.send(
+    new UpdateItemCommand({
+      TableName: tableName,
+      Key: { userId: { S: analyticsMetaUserId } },
+      UpdateExpression: "ADD pageViews :inc SET updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":inc": { N: "1" },
+        ":updatedAt": { S: new Date().toISOString() },
+      },
+      ReturnValues: "UPDATED_NEW",
+    }),
+  );
+
+  return json(200, {
+    pageViews: Number(out.Attributes?.pageViews?.N ?? 0),
+  });
+}
+
 export async function handler(event: HttpEvent): Promise<HttpResult> {
   try {
     const userId = getUserId(event);
     if (!userId) return json(401, { error: "Unauthorized" });
+    const method = (
+      event as { requestContext?: { http?: { method?: string } } }
+    ).requestContext?.http?.method;
 
     if (event.rawPath === "/entries") {
-      if ((event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method === "GET") {
+      if (method === "GET") {
         return getEntries(userId, event.queryStringParameters);
       }
-      if ((event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method === "PUT") {
+      if (method === "PUT") {
         return upsertEntry(userId, event);
       }
     }
 
     if (event.rawPath === "/settings") {
-      if ((event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method === "GET") {
+      if (method === "GET") {
         return getSettings(userId);
       }
-      if ((event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method === "PATCH") {
+      if (method === "PATCH") {
         return patchSettings(userId, event);
       }
     }
 
-    if (
-      event.rawPath === "/photos/upload-url" &&
-      (event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method === "POST"
-    ) {
+    if (event.rawPath === "/stats" && method === "GET") {
+      return getStats();
+    }
+
+    if (event.rawPath === "/metrics/page-view" && method === "POST") {
+      return incrementPageView();
+    }
+
+    if (event.rawPath === "/photos/upload-url" && method === "POST") {
       return createUploadUrl(userId, event);
     }
 

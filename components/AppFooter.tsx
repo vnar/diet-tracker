@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronUp, FileText } from "lucide-react";
 import { AWS_SERVICES, CHANGELOG, type AWSService } from "@/lib/aws-services";
+import { getFooterStats, isAwsBackendEnabled, trackPageView } from "@/lib/frontend-api-client";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 
 function ServicePill({ service }: { service: AWSService }) {
   const [showTip, setShowTip] = useState(false);
@@ -35,6 +37,32 @@ function ServicePill({ service }: { service: AWSService }) {
 
 export function AppFooter() {
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [users, setUsers] = useState<number | null>(null);
+  const [pageViews, setPageViews] = useState<number | null>(null);
+  const pageViewTracked = useRef(false);
+  const { status, getAccessToken } = useCognitoAuth();
+
+  useEffect(() => {
+    if (!isAwsBackendEnabled() || status !== "authenticated") {
+      return;
+    }
+
+    void (async () => {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      if (!pageViewTracked.current) {
+        pageViewTracked.current = true;
+        await trackPageView(token);
+      }
+
+      const stats = await getFooterStats(token);
+      if (stats.ok) {
+        setUsers(stats.data.users);
+        setPageViews(stats.data.pageViews);
+      }
+    })();
+  }, [getAccessToken, status]);
 
   return (
     <footer className="overflow-x-clip border-t border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md">
@@ -49,6 +77,14 @@ export function AppFooter() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 text-[9px] text-zinc-500 sm:text-[10px]">
+            <span>{users ?? "-"}</span>
+            <span className="hidden sm:inline">users</span>
+            <span className="text-zinc-700">/</span>
+            <span>{pageViews ?? "-"}</span>
+            <span className="hidden sm:inline">views</span>
+          </div>
+          <div className="h-3 w-px bg-zinc-800" />
           <div className="flex items-center gap-1.5">
             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             <span className="hidden text-[10px] text-zinc-500 sm:inline">All systems online</span>

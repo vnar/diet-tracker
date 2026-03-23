@@ -133,6 +133,8 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "PUT /entries", id: "EntriesPutRoute" },
       { routeKey: "GET /settings", id: "SettingsGetRoute" },
       { routeKey: "PATCH /settings", id: "SettingsPatchRoute" },
+      { routeKey: "GET /stats", id: "StatsGetRoute" },
+      { routeKey: "POST /metrics/page-view", id: "PageViewPostRoute" },
       { routeKey: "POST /photos/upload-url", id: "PhotoUploadUrlRoute" },
     ];
 
