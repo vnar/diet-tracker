@@ -34,6 +34,20 @@ function weekAvgDeltaClass(kgDelta: number | null): string {
   return "text-slate-400";
 }
 
+function formatGoalDate(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+const GOAL_DATE_TOOLTIP =
+  "This date is the goal deadline saved in your settings — it is not calculated from your weight. The countdown above is calendar days from today to that date.";
+
+const GOAL_DATE_PAST_TOOLTIP =
+  "That goal date is still the one stored in your settings; update it there if you want a new deadline.";
+
 export function DashboardKpiRow() {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
@@ -68,15 +82,13 @@ export function DashboardKpiRow() {
     ? daysUntilTarget(settings.targetDate, today)
     : null;
 
-  const weeksLeft =
-    daysLeft !== null ? Math.max(1, Math.round(Math.abs(daysLeft) / 7)) : null;
-
-  const onTrack =
-    daysLeft !== null &&
-    daysLeft >= 0 &&
-    (weekAvgDelta === null || weekAvgDelta <= 0);
-
-  const kpis = [
+  const kpis: Array<{
+    title: string;
+    value: string;
+    sub: string;
+    subClass: string;
+    subTooltip?: string;
+  }> = [
     {
       title: "Today's weight",
       value:
@@ -113,27 +125,33 @@ export function DashboardKpiRow() {
       subClass: "text-amber-400",
     },
     {
-      title: "Goal horizon",
+      title: "Countdown to goal date",
       value:
-        daysLeft !== null && weeksLeft !== null
-          ? daysLeft >= 0
-            ? `~${weeksLeft} wk`
-            : "Past target"
-          : "—",
+        daysLeft === null
+          ? "—"
+          : daysLeft < 0
+            ? "Date passed"
+            : daysLeft === 0
+              ? "Due today"
+              : daysLeft === 1
+                ? "1 day left"
+                : `${daysLeft} days left`,
       sub:
         daysLeft !== null && daysLeft >= 0
-          ? onTrack
-            ? "On track"
-            : "Keep logging"
+          ? `Target: ${formatGoalDate(settings.targetDate)}`
           : daysLeft !== null && daysLeft < 0
-            ? "Update target date?"
-            : "Set entries",
+            ? `Was ${formatGoalDate(settings.targetDate)} — update target in settings`
+            : "Log today and set a target date in settings",
       subClass:
         daysLeft !== null && daysLeft >= 0
-          ? onTrack
-            ? "text-emerald-400"
-            : "text-slate-400"
-          : "text-slate-400",
+          ? "text-emerald-400"
+          : "text-zinc-400",
+      subTooltip:
+        daysLeft !== null && daysLeft >= 0
+          ? GOAL_DATE_TOOLTIP
+          : daysLeft !== null && daysLeft < 0
+            ? GOAL_DATE_PAST_TOOLTIP
+            : undefined,
     },
   ];
 
@@ -152,7 +170,12 @@ export function DashboardKpiRow() {
           <p className="font-mono text-xl font-semibold tracking-tight text-zinc-100">
             {k.value}
           </p>
-          <p className={`text-[10px] ${k.subClass}`}>
+          <p
+            className={`text-[10px] ${k.subClass} ${
+              k.subTooltip ? "cursor-help" : ""
+            }`}
+            title={k.subTooltip}
+          >
             {k.sub}
           </p>
         </div>
