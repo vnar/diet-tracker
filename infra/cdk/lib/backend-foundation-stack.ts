@@ -74,6 +74,20 @@ export class BackendFoundationStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: true,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD],
+          allowedOrigins: [
+            "https://ojas-health.com",
+            "https://www.ojas-health.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+          ],
+          allowedHeaders: ["*"],
+          exposedHeaders: ["ETag", "x-amz-request-id", "x-amz-id-2"],
+          maxAge: 3600,
+        },
+      ],
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
