@@ -92,12 +92,6 @@ export class BackendFoundationStack extends cdk.Stack {
     settingsTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
-    backendLambdaRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["cognito-idp:ListUsers"],
-        resources: [userPool.userPoolArn],
-      }),
-    );
 
     const apiLambda = new lambda.Function(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
@@ -112,7 +106,6 @@ export class BackendFoundationStack extends cdk.Stack {
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         UPLOAD_URL_TTL_SECONDS: "900",
-        USER_POOL_ID: userPool.userPoolId,
       },
     });
 
