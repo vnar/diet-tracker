@@ -8,7 +8,6 @@ import {
   GitBranch,
   Globe,
   HardDrive,
-  Info,
   Lock,
   Server,
   X,
@@ -164,27 +163,41 @@ function FeaturesTab() {
 function ArchitectureTab() {
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <ArchNode color="border-zinc-700 bg-zinc-900 text-zinc-300" icon={GitBranch} label="GitHub" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-orange-800/50 bg-orange-950/40 text-orange-300" icon={Zap} label="Amplify CI/CD" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-orange-800/50 bg-orange-950/40 text-orange-300" icon={Globe} label="Amplify Hosting" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-zinc-600 bg-zinc-800 text-zinc-200" icon={Activity} label="Next.js App" />
+      <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="space-y-5">
+          <div>
+            <p className="mb-3 text-[9px] uppercase tracking-widest text-zinc-600">CI / CD Pipeline</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <ArchNode color="border-zinc-700 bg-zinc-900 text-zinc-300" icon={GitBranch} label="GitHub" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-orange-800/50 bg-orange-950/40 text-orange-300" icon={Zap} label="Amplify CI/CD" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-orange-800/50 bg-orange-950/40 text-orange-300" icon={Globe} label="Amplify Hosting" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-zinc-600 bg-zinc-800 text-zinc-200" icon={Activity} label="Next.js App" />
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <ArchNode color="border-red-800/50 bg-red-950/40 text-red-300" icon={Lock} label="Cognito Auth" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-pink-800/50 bg-pink-950/40 text-pink-300" icon={Globe} label="API Gateway" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-orange-700/50 bg-orange-950/40 text-orange-300" icon={Server} label="Lambda" />
-            <span className="text-xs text-zinc-700">→</span>
-            <ArchNode color="border-blue-800/50 bg-blue-950/40 text-blue-300" icon={Database} label="DynamoDB" />
-            <ArchNode color="border-green-800/50 bg-green-950/40 text-green-300" icon={HardDrive} label="S3" />
+          <div>
+            <p className="mb-3 text-[9px] uppercase tracking-widest text-zinc-600">User Request Flow</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <ArchNode color="border-zinc-700 bg-zinc-900 text-zinc-400" icon={Circle} label="User" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-red-800/50 bg-red-950/40 text-red-300" icon={Lock} label="Cognito Auth" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-pink-800/50 bg-pink-950/40 text-pink-300" icon={Globe} label="API Gateway" />
+              <span className="text-xs text-zinc-700">→</span>
+              <ArchNode color="border-orange-700/50 bg-orange-950/40 text-orange-300" icon={Server} label="Lambda" />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-[9px] uppercase tracking-widest text-zinc-600">Storage Layer</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <ArchNode color="border-blue-800/50 bg-blue-950/40 text-blue-300" icon={Database} label="DynamoDB Entries" />
+              <ArchNode color="border-blue-800/50 bg-blue-950/40 text-blue-300" icon={Database} label="DynamoDB Settings" />
+              <ArchNode color="border-green-800/50 bg-green-950/40 text-green-300" icon={HardDrive} label="S3 Photos" />
+            </div>
           </div>
         </div>
       </div>
