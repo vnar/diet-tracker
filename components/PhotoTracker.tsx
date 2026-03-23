@@ -75,7 +75,7 @@ export function PhotoTracker() {
 
   return (
     <Card title="Progress photos" variant="surface">
-      <div className="mb-4">
+      <div className="mb-3">
         <input
           ref={inputRef}
           type="file"
@@ -98,7 +98,7 @@ export function PhotoTracker() {
           Upload photo for today
         </button>
         {!todayEntry ? (
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-400">
             Save your daily log first — then you can attach a progress photo.
           </p>
         ) : null}

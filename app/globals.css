@@ -11,7 +11,7 @@
   }
 
   body {
-    @apply min-h-screen bg-slate-950 font-sans text-slate-100 antialiased;
+    @apply min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased;
   }
 
   ::selection {
@@ -22,11 +22,11 @@
 @layer components {
   /* Page & section hierarchy */
   .ui-page-title {
-    @apply text-3xl font-bold tracking-[-0.04em] text-white sm:text-[2rem] sm:leading-[1.15];
+    @apply text-[2rem] font-bold tracking-[-0.04em] text-white sm:text-[1.85rem] sm:leading-[1.12];
   }
 
   .ui-page-subtitle {
-    @apply mt-2 text-[13px] font-medium leading-relaxed tracking-wide text-slate-400;
+    @apply mt-1 text-[12px] font-medium leading-relaxed tracking-wide text-slate-400;
   }
 
   .ui-card-title {
@@ -39,7 +39,7 @@
 
   /* KPI / chart / table overlines */
   .ui-overline {
-    @apply text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-slate-500;
+    @apply text-[11px] font-bold uppercase leading-none tracking-[0.13em] text-slate-500;
   }
 
   .ui-metric {
@@ -52,19 +52,19 @@
 
   /* Shell: consistent horizontal rhythm with dashboard main */
   .ui-dashboard-shell {
-    @apply mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8;
+    @apply mx-auto max-w-6xl px-4 pb-14 pt-6 sm:px-6;
   }
 
   .ui-dashboard-stack {
-    @apply flex flex-col gap-8;
+    @apply flex flex-col gap-5;
   }
 
   .ui-dashboard-header {
-    @apply rounded-2xl border border-slate-700/90 bg-slate-900/90 px-6 py-6 shadow-xl shadow-black/40 backdrop-blur-md sm:px-8 sm:py-7;
+    @apply rounded-2xl border border-slate-700/90 bg-slate-900/90 px-4 py-4 shadow-xl shadow-black/40 backdrop-blur-md sm:px-5 sm:py-4;
   }
 
   .ui-dashboard-grid-3 {
-    @apply grid gap-6 sm:gap-8 lg:grid-cols-3 lg:items-start;
+    @apply grid gap-4 sm:gap-5 lg:grid-cols-[1.08fr_0.92fr_1fr] lg:items-start;
   }
 }
 

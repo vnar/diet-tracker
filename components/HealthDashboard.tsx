@@ -26,33 +26,45 @@ export function HealthDashboard() {
   const patchSettings = usePatchSettings();
 
   return (
-    <main className="min-h-screen bg-[#030711] bg-gradient-to-b from-slate-950 via-[#0a1224] to-[#050a14]">
-      <div className="ui-dashboard-shell safe-pb flex flex-col gap-8">
-        <header className="ui-dashboard-header">
-          <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8">
-            <div className="min-w-0">
-              <h1 className="ui-page-title">HealthOS</h1>
-              <p className="ui-page-subtitle">
-                Daily awareness dashboard
-              </p>
-            </div>
-            <div className="flex flex-shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end sm:gap-3">
-              <AuthBar />
-              <button
-                type="button"
-                onClick={() =>
-                  void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
-                }
-                className="inline-flex h-10 shrink-0 items-center rounded-xl border border-slate-600/80 bg-slate-800/90 px-4 text-sm font-semibold tracking-wide text-slate-100 shadow-sm transition-all duration-200 hover:border-slate-500 hover:bg-slate-700/90"
+    <main className="min-h-screen bg-zinc-950">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/90 backdrop-blur-md">
+        <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                Unit: {unit}
-              </button>
-              <div className="flex h-10 shrink-0 items-center">
-                <ThemeToggle />
-              </div>
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
             </div>
+            <span className="text-sm font-semibold tracking-tight text-zinc-100">
+              HealthOS
+            </span>
           </div>
-        </header>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <AuthBar />
+            <button
+              type="button"
+              onClick={() =>
+                void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
+              }
+              className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+            >
+              {unit}
+            </button>
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-5">
 
         <div className="ui-dashboard-stack">
           <motion.section {...fadeInUp}>
@@ -63,14 +75,11 @@ export function HealthDashboard() {
             <WeightChart />
           </motion.section>
 
-          <div className="ui-dashboard-grid-3">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
             <motion.section {...fadeInUp} className="min-w-0">
               <DailyInput />
             </motion.section>
-            <motion.section
-              {...fadeInUp}
-              className="flex min-w-0 flex-col gap-6"
-            >
+            <motion.section {...fadeInUp} className="flex min-w-0 flex-col gap-3">
               <TodayActivityCard />
               <AIInsights />
             </motion.section>

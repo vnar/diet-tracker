@@ -138,21 +138,21 @@ export function DashboardKpiRow() {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5 lg:items-stretch">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {kpis.map((k) => (
         <div
           key={k.title}
-          className="flex min-h-[168px] flex-col justify-between rounded-2xl border border-slate-600/50 bg-slate-800/95 p-5 shadow-lg shadow-black/45 backdrop-blur-sm"
+          className="flex min-h-[96px] flex-col gap-1.5 rounded-2xl border border-zinc-800 bg-zinc-900 p-3.5"
         >
-          <div>
-            <p className="ui-overline mb-3">{k.title}</p>
-            <p className="ui-metric min-h-[2.5rem] text-2xl font-semibold leading-none text-slate-50">
-              {k.value}
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] font-medium uppercase tracking-widest text-zinc-500">
+              {k.title}
             </p>
           </div>
-          <p
-            className={`mt-4 text-[13px] font-medium leading-snug ${k.subClass}`}
-          >
+          <p className="font-mono text-xl font-semibold tracking-tight text-zinc-100">
+            {k.value}
+          </p>
+          <p className={`text-[10px] ${k.subClass}`}>
             {k.sub}
           </p>
         </div>

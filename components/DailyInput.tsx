@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Toggle } from "@/components/ui/Toggle";
-import { Badge } from "@/components/ui/Badge";
 import {
   getEntryForDate,
   getYesterdayKey,
@@ -40,7 +39,6 @@ export function DailyInput() {
   const [protein, setProtein] = useState("");
   const [steps, setSteps] = useState("");
   const [sleep, setSleep] = useState("");
-  const [notes, setNotes] = useState("");
   const [lateSnack, setLateSnack] = useState(false);
   const [highSodium, setHighSodium] = useState(false);
   const [workout, setWorkout] = useState(false);
@@ -67,7 +65,6 @@ export function DailyInput() {
       );
       setSteps(todayEntry.steps !== undefined ? String(todayEntry.steps) : "");
       setSleep(todayEntry.sleep !== undefined ? String(todayEntry.sleep) : "");
-      setNotes(todayEntry.notes ?? "");
       setLateSnack(todayEntry.lateSnack);
       setHighSodium(todayEntry.highSodium);
       setWorkout(todayEntry.workout ?? false);
@@ -79,7 +76,6 @@ export function DailyInput() {
       setProtein("");
       setSteps("");
       setSleep("");
-      setNotes("");
       setLateSnack(false);
       setHighSodium(false);
       setWorkout(false);
@@ -112,7 +108,7 @@ export function DailyInput() {
         protein.trim() === "" ? undefined : Math.round(parseFloat(protein)),
       steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
       sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
-      notes: notes.trim() === "" ? undefined : notes.trim(),
+      notes: todayEntry?.notes,
       lateSnack,
       highSodium,
       workout,
@@ -143,14 +139,12 @@ export function DailyInput() {
       transition={{ duration: 0.35 }}
     >
       <Card title="Today's log" variant="surface">
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          {todayEntry ? (
-            <Badge variant="success">Updated today</Badge>
-          ) : (
-            <Badge variant="neutral">New entry</Badge>
-          )}
+        <div className="mb-2 flex items-center justify-end">
+          <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+            {todayEntry ? "Saved" : "New"}
+          </span>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <InputField
             id="morningWeight"
             ref={weightRef}
@@ -221,26 +215,10 @@ export function DailyInput() {
             placeholder={ph?.sleep !== undefined ? String(ph.sleep) : ""}
           />
         </div>
-        <div className="mt-5">
-          <label
-            htmlFor="notes"
-            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-          >
-            Notes
-          </label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional context for this day..."
-            rows={3}
-            className="w-full rounded-xl border border-slate-600 bg-slate-900/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-          />
-        </div>
-        <div className="mt-6 grid gap-3.5 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-800 pt-3">
           <Toggle
             id="workout"
-            label="Workout / training"
+            label="Workout"
             checked={workout}
             onChange={setWorkout}
           />
@@ -258,7 +236,7 @@ export function DailyInput() {
           />
           <Toggle
             id="highSodium"
-            label="High sodium day"
+            label="High sodium"
             checked={highSodium}
             onChange={setHighSodium}
           />
@@ -266,14 +244,14 @@ export function DailyInput() {
         {saveError ? (
           <p className="mt-4 text-sm text-rose-400">{saveError}</p>
         ) : null}
-        <div className="mt-6">
+        <div className="mt-3">
           <button
             type="button"
             disabled={!canSave}
             onClick={handleSave}
-            className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white shadow-lg shadow-sky-900/30 transition-all duration-200 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+            className="w-full rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-emerald-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Save today
+            {todayEntry ? "Update today" : "Save today"}
           </button>
         </div>
       </Card>

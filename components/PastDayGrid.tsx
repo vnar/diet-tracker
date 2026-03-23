@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2, Upload } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Toggle } from "@/components/ui/Toggle";
@@ -19,7 +19,6 @@ import { displayWeight } from "@/lib/units";
 
 const GRID_DAYS = 42;
 
-const LS_SECTION = "healthos-ui-pastdays-open";
 const LS_CALENDAR = "healthos-ui-pastdays-calendar-open";
 
 function usePersistentBool(
@@ -75,7 +74,6 @@ export function PastDayGrid() {
   const saveEntry = useSaveEntry();
   const today = useClientTodayKey();
 
-  const [sectionOpen, setSectionOpen] = usePersistentBool(LS_SECTION, false);
   const [calendarOpen, setCalendarOpen] = usePersistentBool(
     LS_CALENDAR,
     false
@@ -107,6 +105,8 @@ export function PastDayGrid() {
     selected && entries.length
       ? getEntryForDate(entries, selected)
       : undefined;
+
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!selected) return;
@@ -183,6 +183,33 @@ export function PastDayGrid() {
     });
   }
 
+  function onPickPhoto(file: File) {
+    if (!selected || !selectedEntry) return;
+    const reader = new FileReader();
+    setUploadingPhoto(true);
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        setUploadingPhoto(false);
+        return;
+      }
+      void saveEntry({
+        ...selectedEntry,
+        photoUrl: result,
+      }).then(() => setUploadingPhoto(false));
+    };
+    reader.onerror = () => setUploadingPhoto(false);
+    reader.readAsDataURL(file);
+  }
+
+  function clearSelectedPhoto() {
+    if (!selectedEntry) return;
+    void saveEntry({
+      ...selectedEntry,
+      photoUrl: null,
+    });
+  }
+
   if (today === null) {
     return (
       <Card title="Past days" variant="surface">
@@ -197,72 +224,40 @@ export function PastDayGrid() {
       transition={{ duration: 0.35 }}
     >
       <Card variant="surface">
-        <button
-          type="button"
-          onClick={() => setSectionOpen(!sectionOpen)}
-          className="group mb-0 flex w-full items-center justify-between gap-4 rounded-xl text-left transition-colors hover:bg-slate-700/25 -mx-1 px-1 py-0.5"
-          aria-expanded={sectionOpen}
-        >
-          <div className="min-w-0">
-            <h3 className="ui-card-title-lg">
-              Past days — grid &amp; edit
-            </h3>
-            <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-slate-500">
-              {sectionOpen
-                ? "Collapse when you don’t need it."
-                : "Expand to pick a date or use the optional calendar."}
-            </p>
-          </div>
-          <ChevronDown
-            className={`h-6 w-6 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-slate-400 ${
-              sectionOpen ? "rotate-180" : ""
-            }`}
-            aria-hidden
-          />
-        </button>
-
-        {sectionOpen ? (
-          <div className="mt-6 space-y-6 border-t border-slate-600/50 pt-6">
-            <p className="text-[15px] leading-relaxed text-slate-400">
-              Use{" "}
-              <strong className="font-semibold text-slate-300">Jump to date</strong>{" "}
-              for a quick path — the 42-day grid is optional when you want a
-              visual scan.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="ui-label">Jump to date</label>
-              <input
-                type="date"
-                max={today}
-                value={selected ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (!v) {
-                    setSelected(null);
-                    return;
-                  }
-                  if (v > today) return;
-                  setSelected(v);
-                }}
-                className="rounded-lg border border-slate-600 bg-slate-950/50 px-3 py-2 text-sm text-slate-100 [color-scheme:dark]"
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold tracking-tight text-zinc-100">Past days</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              max={today}
+              value={selected ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) {
+                  setSelected(null);
+                  return;
+                }
+                if (v > today) return;
+                setSelected(v);
+              }}
+              className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] text-zinc-300 [color-scheme:dark]"
+            />
+            <button
+              type="button"
+              onClick={() => setCalendarOpen(!calendarOpen)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 transition-all hover:bg-zinc-700"
+              aria-expanded={calendarOpen}
+            >
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${calendarOpen ? "rotate-180" : ""}`}
+                aria-hidden
               />
-            </div>
+            </button>
+          </div>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCalendarOpen(!calendarOpen)}
-                className="rounded-xl border border-slate-600/80 bg-slate-900/80 px-4 py-2.5 text-sm font-semibold tracking-wide text-slate-200 shadow-sm transition-colors hover:border-slate-500 hover:bg-slate-800"
-                aria-expanded={calendarOpen}
-              >
-                {calendarOpen
-                  ? "Hide 42-day calendar"
-                  : "Show 42-day calendar"}
-              </button>
-              <span className="text-[13px] font-medium text-slate-500">
-                Optional — not required if you use the date picker.
-              </span>
-            </div>
+        <div className="space-y-6 border-t border-zinc-800/60 pt-4">
 
             {calendarOpen ? (
               <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
@@ -275,12 +270,12 @@ export function PastDayGrid() {
                       key={d}
                       type="button"
                       onClick={() => setSelected(d)}
-                      className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-0.5 py-1.5 text-center transition-all duration-200 sm:min-h-[56px] ${
+                    className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-0.5 py-1.5 text-center transition-all duration-200 sm:min-h-[56px] ${
                         isSel
-                          ? "border-sky-500 bg-sky-950/50 ring-2 ring-sky-500/50"
+                          ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/40"
                           : row
-                            ? "border-emerald-700/50 bg-emerald-950/35"
-                            : "border-slate-600 bg-slate-900/50"
+                            ? "border-zinc-600 bg-zinc-900"
+                            : "border-zinc-800 bg-zinc-900/50"
                       } ${isToday ? "font-semibold" : ""}`}
                     >
                       <span className="text-[10px] uppercase leading-none text-slate-400">
@@ -418,6 +413,56 @@ export function PastDayGrid() {
                 onChange={setHighSodium}
               />
             </div>
+            <div className="mt-5 border-t border-zinc-800/60 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                  Photo
+                </span>
+                <div className="flex items-center gap-2">
+                  <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] text-zinc-300 transition-all hover:bg-zinc-700">
+                    <Upload className="h-3.5 w-3.5" aria-hidden />
+                    {uploadingPhoto ? "Uploading…" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={!selectedEntry || uploadingPhoto}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onPickPhoto(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!selectedEntry?.photoUrl}
+                    onClick={clearSelectedPhoto}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 transition-all hover:bg-zinc-700 disabled:opacity-35"
+                    aria-label="Remove selected date photo"
+                    title="Remove photo"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+              </div>
+              {selectedEntry?.photoUrl ? (
+                <div className="mt-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedEntry.photoUrl}
+                    alt={`Photo for ${selected}`}
+                    className="h-24 w-24 rounded-lg border border-zinc-700 object-cover"
+                  />
+                </div>
+              ) : selectedEntry ? (
+                <p className="mt-2 text-xs text-zinc-600">No photo saved for this day yet.</p>
+              ) : (
+                <p className="mt-2 text-xs text-zinc-600">
+                  Save this day first, then upload a photo for this date.
+                </p>
+              )}
+            </div>
             {saveError ? (
               <p className="mt-4 text-sm text-rose-400">{saveError}</p>
             ) : null}
@@ -432,13 +477,8 @@ export function PastDayGrid() {
               </button>
             </div>
           </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                Choose a date above to load or create an entry for that day.
-              </p>
-            )}
+            ) : null}
           </div>
-        ) : null}
       </Card>
     </motion.div>
   );

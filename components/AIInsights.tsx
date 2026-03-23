@@ -67,11 +67,11 @@ export function AIInsights() {
           No nudges right now — keep logging.
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2.5">
           {insights.map((ins) => (
             <li
               key={ins.id}
-              className={`flex gap-3 rounded-xl border border-slate-600/80 border-l-4 bg-slate-900/60 p-4 ${borderFor(
+              className={`flex gap-2.5 rounded-xl border border-slate-600/80 border-l-4 bg-slate-900/60 p-3.5 ${borderFor(
                 ins.severity
               )}`}
             >

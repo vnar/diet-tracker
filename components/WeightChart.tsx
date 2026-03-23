@@ -35,9 +35,10 @@ export function WeightChart() {
   const gradId = useId().replace(/:/g, "");
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
-  const startWeight = useHealthStore((s) => s.settings.startWeight);
+  const settingsStartWeight = useHealthStore((s) => s.settings.startWeight);
 
   const sorted = sortEntriesByDateAsc(entries);
+  const startWeight = sorted[0]?.morningWeight ?? settingsStartWeight;
   const ma = sevenDayMovingAverageSeries(sorted);
   const maByDate = new Map(ma.map((m) => [m.date, m.avg]));
 
@@ -75,23 +76,22 @@ export function WeightChart() {
       </div>
       <div className="relative h-[280px] w-full">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-600 bg-slate-900/40">
-            <p className="text-center text-[15px] font-medium leading-relaxed text-slate-400">
-              Log at least 2 days to see your trend (gaps between logs are OK)
-            </p>
+          <div className="flex h-[220px] flex-col items-center justify-center gap-3">
             <svg
-              className="mt-4 h-12 w-full max-w-xs text-slate-600"
-              preserveAspectRatio="none"
-              viewBox="0 0 200 40"
+              width="160"
+              height="24"
+              viewBox="0 0 160 24"
+              className="opacity-20"
             >
               <path
-                d="M0,30 Q50,10 100,25 T200,15"
+                d="M 0,12 Q 20,4 40,12 Q 60,20 80,12 Q 100,4 120,12 Q 140,20 160,12"
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeDasharray="4 4"
+                stroke="#71717a"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
               />
             </svg>
+            <p className="text-xs text-zinc-600">Log at least 2 days to see your trend</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
