@@ -39,6 +39,17 @@ export class BackendFoundationStack extends cdk.Stack {
 
     const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
       apiName: `${this.stackName}-http-api`,
+      corsPreflight: {
+        allowHeaders: ["Authorization", "Content-Type"],
+        allowMethods: [
+          apigwv2.CorsHttpMethod.GET,
+          apigwv2.CorsHttpMethod.POST,
+          apigwv2.CorsHttpMethod.PUT,
+          apigwv2.CorsHttpMethod.PATCH,
+          apigwv2.CorsHttpMethod.OPTIONS,
+        ],
+        allowOrigins: ["*"],
+      },
     });
 
     const entriesTable = new dynamodb.Table(this, "EntriesTable", {
