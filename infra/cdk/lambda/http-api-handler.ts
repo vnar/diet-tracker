@@ -6,17 +6,23 @@ import {
   ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import {
+  CognitoIdentityProviderClient,
+  ListUsersCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
+const cognito = new CognitoIdentityProviderClient({});
 
 const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const analyticsMetaUserId = "__meta__";
+const userPoolId = process.env.USER_POOL_ID;
 
 type Claims = {
   sub: string;
@@ -410,16 +416,8 @@ async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpRe
 
 async function getStats(): Promise<HttpResult> {
   const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
-  const [usersOut, viewsOut] = await Promise.all([
-    ddb.send(
-      new ScanCommand({
-        TableName: tableName,
-        Select: "COUNT",
-        FilterExpression: "#uid <> :metaUserId AND attribute_exists(goalWeight)",
-        ExpressionAttributeNames: { "#uid": "userId" },
-        ExpressionAttributeValues: { ":metaUserId": { S: analyticsMetaUserId } },
-      }),
-    ),
+  const [users, viewsOut] = await Promise.all([
+    countUsers(),
     ddb.send(
       new GetItemCommand({
         TableName: tableName,
@@ -429,9 +427,43 @@ async function getStats(): Promise<HttpResult> {
   ]);
 
   return json(200, {
-    users: Number(usersOut.Count ?? 0),
+    users,
     pageViews: Number(viewsOut.Item?.pageViews?.N ?? 0),
   });
+}
+
+async function countUsers(): Promise<number> {
+  if (userPoolId) {
+    let total = 0;
+    let paginationToken: string | undefined;
+
+    do {
+      const out = await cognito.send(
+        new ListUsersCommand({
+          UserPoolId: userPoolId,
+          PaginationToken: paginationToken,
+          Limit: 60,
+        }),
+      );
+      total += out.Users?.length ?? 0;
+      paginationToken = out.PaginationToken;
+    } while (paginationToken);
+
+    return total;
+  }
+
+  // Fallback path for legacy stacks without USER_POOL_ID wired.
+  const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const usersOut = await ddb.send(
+    new ScanCommand({
+      TableName: tableName,
+      Select: "COUNT",
+      FilterExpression: "#uid <> :metaUserId AND attribute_exists(goalWeight)",
+      ExpressionAttributeNames: { "#uid": "userId" },
+      ExpressionAttributeValues: { ":metaUserId": { S: analyticsMetaUserId } },
+    }),
+  );
+  return Number(usersOut.Count ?? 0);
 }
 
 async function incrementPageView(): Promise<HttpResult> {

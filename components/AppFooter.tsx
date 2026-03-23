@@ -41,6 +41,9 @@ export function AppFooter() {
   const [pageViews, setPageViews] = useState<number | null>(null);
   const pageViewTracked = useRef(false);
   const { status, getAccessToken } = useCognitoAuth();
+  const costDashboardUrl =
+    process.env.NEXT_PUBLIC_COST_DASHBOARD_URL ??
+    "https://console.aws.amazon.com/costmanagement/home#/cost-explorer";
 
   useEffect(() => {
     if (!isAwsBackendEnabled() || status !== "authenticated") {
@@ -89,6 +92,16 @@ export function AppFooter() {
             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             <span className="hidden text-[10px] text-zinc-500 sm:inline">All systems online</span>
           </div>
+          <div className="h-3 w-px bg-zinc-800" />
+          <a
+            href={costDashboardUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] text-zinc-500 transition-colors hover:text-zinc-300"
+            title="Open AWS cost dashboard"
+          >
+            Cost
+          </a>
           <div className="h-3 w-px bg-zinc-800" />
           <button
             onClick={() => setChangelogOpen(!changelogOpen)}
