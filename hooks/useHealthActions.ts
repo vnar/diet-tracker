@@ -3,6 +3,7 @@
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
 import {
+  deleteEntry as deleteEntryApi,
   getEntries,
   isAwsBackendEnabled,
   patchSettings,
@@ -141,6 +142,52 @@ export function usePatchSettings() {
       return { ok: true };
     } catch {
       revertSettings(prev);
+      return { ok: false, error: "Network error" };
+    }
+  };
+}
+
+export function useDeleteEntry() {
+  const { status, getAccessToken } = useCognitoAuth();
+
+  return async (date: string): Promise<{ ok: boolean; error?: string }> => {
+    const prev = useHealthStore.getState().entries;
+    useHealthStore.setState({
+      entries: prev.filter((e) => e.date !== date),
+    });
+
+    if (!isAwsBackendEnabled()) {
+      return { ok: true };
+    }
+
+    if (status !== "authenticated") {
+      revertEntries(prev);
+      return { ok: false, error: "Please sign in to sync cloud data." };
+    }
+
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      revertEntries(prev);
+      return { ok: false, error: "Session expired. Please sign in again." };
+    }
+
+    try {
+      const result = await deleteEntryApi(date, accessToken);
+      if (!result.ok) {
+        revertEntries(prev);
+        return { ok: false, error: result.error || "Delete failed" };
+      }
+
+      const verify = await getEntries(accessToken);
+      if (verify.ok) {
+        useHealthStore.setState({
+          entries: sortEntriesByDateAsc(verify.data.entries),
+        });
+      }
+
+      return { ok: true };
+    } catch {
+      revertEntries(prev);
       return { ok: false, error: "Network error" };
     }
   };

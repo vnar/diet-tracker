@@ -76,6 +76,16 @@ export async function putEntry(entry: DailyEntry, accessToken?: string) {
   );
 }
 
+export async function deleteEntry(date: string, accessToken?: string) {
+  const encoded = encodeURIComponent(date);
+  return fetchJson<{ ok: true; date: string }>(
+    `/entries?date=${encoded}`,
+    { method: "DELETE" },
+    true,
+    accessToken
+  );
+}
+
 export async function getSettings(accessToken?: string) {
   return fetchJson<{ settings: UserSettings }>(
     "/settings",

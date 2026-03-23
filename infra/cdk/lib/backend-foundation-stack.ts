@@ -45,6 +45,7 @@ export class BackendFoundationStack extends cdk.Stack {
           apigwv2.CorsHttpMethod.GET,
           apigwv2.CorsHttpMethod.POST,
           apigwv2.CorsHttpMethod.PUT,
+          apigwv2.CorsHttpMethod.DELETE,
           apigwv2.CorsHttpMethod.PATCH,
           apigwv2.CorsHttpMethod.OPTIONS,
         ],
@@ -131,6 +132,7 @@ export class BackendFoundationStack extends cdk.Stack {
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         UPLOAD_URL_TTL_SECONDS: "900",
+        DOWNLOAD_URL_TTL_SECONDS: "3600",
       },
     });
 
@@ -156,6 +158,7 @@ export class BackendFoundationStack extends cdk.Stack {
     const securedRoutes: Array<{ routeKey: string; id: string }> = [
       { routeKey: "GET /entries", id: "EntriesGetRoute" },
       { routeKey: "PUT /entries", id: "EntriesPutRoute" },
+      { routeKey: "DELETE /entries", id: "EntriesDeleteRoute" },
       { routeKey: "GET /settings", id: "SettingsGetRoute" },
       { routeKey: "PATCH /settings", id: "SettingsPatchRoute" },
       { routeKey: "GET /stats", id: "StatsGetRoute" },

@@ -15,7 +15,7 @@ import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
-import { useSaveEntry } from "@/hooks/useHealthActions";
+import { useDeleteEntry, useSaveEntry } from "@/hooks/useHealthActions";
 import { displayWeight } from "@/lib/units";
 import { isAwsBackendEnabled, uploadPhotoFile } from "@/lib/frontend-api-client";
 
@@ -75,6 +75,7 @@ export function PastDayGrid() {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
+  const deleteEntry = useDeleteEntry();
   const today = useClientTodayKey();
 
   const [calendarOpen, setCalendarOpen] = usePersistentBool(
@@ -507,14 +508,31 @@ export function PastDayGrid() {
               <p className="mt-4 text-sm text-rose-400">{saveError}</p>
             ) : null}
             <div className="mt-6">
-              <button
-                type="button"
-                disabled={!canSave}
-                onClick={handleSave}
-                className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white shadow-lg shadow-sky-900/30 transition-all duration-200 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-              >
-                Save this day
-              </button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  disabled={!canSave}
+                  onClick={handleSave}
+                  className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white shadow-lg shadow-sky-900/30 transition-all duration-200 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                >
+                  Save this day
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedEntry}
+                  onClick={() => {
+                    if (!selectedEntry) return;
+                    if (!window.confirm(`Delete entry for ${formatLong(selected)}?`)) return;
+                    setSaveError(null);
+                    void deleteEntry(selectedEntry.date).then((r) => {
+                      if (!r.ok) setSaveError(r.error ?? "Could not delete entry.");
+                    });
+                  }}
+                  className="w-full rounded-xl border border-rose-700/60 bg-rose-950/40 px-4 py-3 font-semibold text-rose-200 transition-all duration-200 hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                >
+                  Delete this day
+                </button>
+              </div>
             </div>
           </div>
             ) : null}

@@ -1,12 +1,13 @@
 import {
   DynamoDBClient,
+  DeleteItemCommand,
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
   ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const ddb = new DynamoDBClient({});
@@ -16,6 +17,7 @@ const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
+const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
 
 type Claims = {
@@ -238,7 +240,9 @@ async function getEntries(userId: string, query: Record<string, string | undefin
     new QueryCommand({
       TableName: tableName,
       KeyConditionExpression: keyCondition,
-      ExpressionAttributeNames: { "#date": "date" },
+      ...(keyCondition.includes("#date")
+        ? { ExpressionAttributeNames: { "#date": "date" } }
+        : {}),
       ExpressionAttributeValues: expressionValues,
       ScanIndexForward: true,
       ConsistentRead: true,
@@ -265,7 +269,30 @@ async function getEntries(userId: string, query: Record<string, string | undefin
     }),
   );
 
-  return json(200, { entries });
+  const entriesWithSignedPhotoUrls: StoredEntry[] = await Promise.all(
+    entries.map(async (entry) => {
+      const photo = entry.photoUrl;
+      if (!photo || !photo.startsWith("s3://")) return entry;
+      try {
+        const withoutScheme = photo.slice("s3://".length);
+        const firstSlash = withoutScheme.indexOf("/");
+        if (firstSlash <= 0) return entry;
+        const bucket = withoutScheme.slice(0, firstSlash);
+        const key = withoutScheme.slice(firstSlash + 1);
+        if (!key) return entry;
+        const signedPhotoUrl = await getSignedUrl(
+          s3,
+          new GetObjectCommand({ Bucket: bucket, Key: key }),
+          { expiresIn: downloadUrlTtlSeconds },
+        );
+        return { ...entry, photoUrl: signedPhotoUrl };
+      } catch {
+        return entry;
+      }
+    }),
+  );
+
+  return json(200, { entries: entriesWithSignedPhotoUrls });
 }
 
 async function upsertEntry(userId: string, event: HttpEvent): Promise<HttpResult> {
@@ -305,6 +332,24 @@ async function upsertEntry(userId: string, event: HttpEvent): Promise<HttpResult
   );
 
   return json(200, { entry: { ...data, id } });
+}
+
+async function deleteEntry(userId: string, query: Record<string, string | undefined> | null | undefined): Promise<HttpResult> {
+  const tableName = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
+  const date = query?.date;
+  if (!isDateString(date)) return json(400, { error: "Invalid date" });
+
+  await ddb.send(
+    new DeleteItemCommand({
+      TableName: tableName,
+      Key: {
+        userId: { S: userId },
+        date: { S: date },
+      },
+    }),
+  );
+
+  return json(200, { ok: true, date });
 }
 
 async function getSettings(userId: string): Promise<HttpResult> {
@@ -469,6 +514,9 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       }
       if (method === "PUT") {
         return upsertEntry(userId, event);
+      }
+      if (method === "DELETE") {
+        return deleteEntry(userId, event.queryStringParameters);
       }
     }
 
