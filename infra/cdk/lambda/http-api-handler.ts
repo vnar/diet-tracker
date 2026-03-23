@@ -241,6 +241,7 @@ async function getEntries(userId: string, query: Record<string, string | undefin
       ExpressionAttributeNames: { "#date": "date" },
       ExpressionAttributeValues: expressionValues,
       ScanIndexForward: true,
+      ConsistentRead: true,
     }),
   );
 
