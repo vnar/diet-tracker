@@ -1,22 +1,26 @@
 # HealthOS (diet-tracker)
 
-Daily weight dashboard with email/password auth and optional Postgres for production.
+Daily weight dashboard with static frontend export and optional AWS backend sync.
 
 ## Run locally (no Docker required)
 
 ```bash
 npm install
-npm run db:migrate
 npm run dev
 ```
 
-By default the app uses **SQLite** at `prisma/dev.db` (created on first migrate). Sign up at `/login` works without Postgres.
+By default the app runs in local mode (browser storage only).
 
-## Optional: Postgres (e.g. production)
+## Optional: AWS backend sync
 
-Set `DATABASE_URL` to a PostgreSQL URL and change `provider` in `prisma/schema.prisma` to `postgresql`, then run migrations for that provider.
+Set:
 
-## Docker Postgres (optional, local)
+- `NEXT_PUBLIC_USE_AWS_BACKEND=true`
+- `NEXT_PUBLIC_AWS_API_URL=<your-api-gateway-url>`
+
+The frontend then uses AWS API endpoints for entries/settings/photos.
+
+## Docker Postgres (legacy, optional)
 
 ```bash
 docker compose up -d
@@ -27,3 +31,22 @@ docker compose up -d
 ## Product spec
 
 See [`PROMPT.md`](PROMPT.md).
+
+## Stage 6 cutover helper
+
+Run the staged AWS deploy + env update + smoke checks:
+
+```bash
+AWS_REGION=us-east-1 \
+AMPLIFY_APP_ID=<app-id> \
+AMPLIFY_BRANCH=<branch> \
+SMOKE_TEST_EMAIL=<email> \
+SMOKE_TEST_PASSWORD=<password> \
+npm run stage6:cutover
+```
+
+Notes:
+
+- Requires working AWS CLI credentials.
+- If `AMPLIFY_APP_ID` or `AMPLIFY_BRANCH` is missing, Amplify env update is skipped.
+- If smoke test credentials are missing, API/data smoke tests are skipped.

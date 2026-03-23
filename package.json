@@ -8,22 +8,20 @@
     "export": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
-    "db:migrate": "DATABASE_URL=file:./dev.db prisma migrate deploy",
-    "db:push": "prisma db push",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "deploy:guard": "node scripts/verify-persistent-db.mjs",
-    "amplify:prebuild": "npm run deploy:guard && npm run db:migrate:deploy"
+    "infra:cdk:install": "npm --prefix infra/cdk install",
+    "infra:cdk:build": "npm --prefix infra/cdk run build",
+    "infra:cdk:synth": "npm --prefix infra/cdk run synth",
+    "infra:cdk:bootstrap": "npm --prefix infra/cdk run bootstrap",
+    "infra:cdk:deploy": "npm --prefix infra/cdk run deploy",
+    "stage6:cutover": "node scripts/stage6-validate-cutover.mjs"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
-    "bcryptjs": "^3.0.3",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1014.0",
+    "aws-jwt-verify": "^5.1.1",
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.460.0",
     "nanoid": "^5.0.8",
     "next": "^16.2.1",
-    "next-auth": "^5.0.0-beta.30",
-    "prisma": "5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",
@@ -31,7 +29,6 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.17.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

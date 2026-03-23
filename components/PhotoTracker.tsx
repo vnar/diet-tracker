@@ -8,6 +8,11 @@ import {
   getEntryForDate,
   sortEntriesByDateAsc,
 } from "@/lib/calculations";
+import {
+  isAwsBackendEnabled,
+  uploadPhotoFile,
+} from "@/lib/frontend-api-client";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
@@ -22,6 +27,7 @@ function formatDateLabel(dateStr: string): string {
 }
 
 export function PhotoTracker() {
+  const { status, getAccessToken } = useCognitoAuth();
   const entries = useHealthStore((s) => s.entries);
   const saveEntry = useSaveEntry();
   const today = useClientTodayKey();
@@ -39,13 +45,30 @@ export function PhotoTracker() {
   function onPick(f: File) {
     if (!today) return;
     const dateKey = today;
+    const latest = useHealthStore.getState().entries;
+    const existing = getEntryForDate(latest, dateKey);
+    if (!existing) return;
+
+    if (isAwsBackendEnabled()) {
+      if (status !== "authenticated") return;
+      const accessToken = getAccessToken();
+      if (!accessToken) return;
+      void (async () => {
+        const upload = await uploadPhotoFile(f, accessToken);
+        if (!upload.ok || !upload.photoUrl) return;
+        await saveEntry({
+          ...existing,
+          id: existing.id,
+          photoUrl: upload.photoUrl,
+        });
+      })();
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") return;
-      const latest = useHealthStore.getState().entries;
-      const existing = getEntryForDate(latest, dateKey);
-      if (!existing) return;
       void saveEntry({
         ...existing,
         id: existing.id,

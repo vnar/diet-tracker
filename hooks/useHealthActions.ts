@@ -1,7 +1,12 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
+import {
+  isAwsBackendEnabled,
+  patchSettings,
+  putEntry,
+} from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry, UserSettings } from "@/lib/types";
 
@@ -14,36 +19,39 @@ function revertSettings(prev: UserSettings) {
 }
 
 export function useSaveEntry() {
-  const { status } = useSession();
+  const { status, getAccessToken } = useCognitoAuth();
   const addEntry = useHealthStore((s) => s.addEntry);
 
   return async (entry: DailyEntry): Promise<{ ok: boolean; error?: string }> => {
     const prev = useHealthStore.getState().entries;
     addEntry(entry);
 
-    if (status !== "authenticated") {
+    if (!isAwsBackendEnabled()) {
       return { ok: true };
     }
 
-    try {
-      const res = await fetch("/api/entries", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
-      });
+    if (status !== "authenticated") {
+      revertEntries(prev);
+      return { ok: false, error: "Please sign in to sync cloud data." };
+    }
 
-      if (!res.ok) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      revertEntries(prev);
+      return { ok: false, error: "Session expired. Please sign in again." };
+    }
+
+    try {
+      const result = await putEntry(entry, accessToken);
+      if (!result.ok) {
         revertEntries(prev);
-        const err = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
         return {
           ok: false,
-          error: typeof err.error === "string" ? err.error : "Save failed",
+          error: result.error || "Save failed",
         };
       }
 
-      const data = (await res.json()) as { entry: DailyEntry };
+      const data = result.data as { entry: DailyEntry };
       useHealthStore.setState((s) => ({
         entries: sortEntriesByDateAsc([
           ...s.entries.filter((e) => e.date !== data.entry.date),
@@ -59,7 +67,7 @@ export function useSaveEntry() {
 }
 
 export function usePatchSettings() {
-  const { status } = useSession();
+  const { status, getAccessToken } = useCognitoAuth();
   const updateSettings = useHealthStore((s) => s.updateSettings);
 
   return async (
@@ -71,29 +79,32 @@ export function usePatchSettings() {
 
     updateSettings(partial);
 
-    if (status !== "authenticated") {
+    if (!isAwsBackendEnabled()) {
       return { ok: true };
     }
 
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
+    if (status !== "authenticated") {
+      revertSettings(prev);
+      return { ok: false, error: "Please sign in to sync cloud data." };
+    }
 
-      if (!res.ok) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      revertSettings(prev);
+      return { ok: false, error: "Session expired. Please sign in again." };
+    }
+
+    try {
+      const result = await patchSettings(next, accessToken);
+      if (!result.ok) {
         revertSettings(prev);
-        const err = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
         return {
           ok: false,
-          error: typeof err.error === "string" ? err.error : "Update failed",
+          error: result.error || "Update failed",
         };
       }
 
-      const data = (await res.json()) as { settings: UserSettings };
+      const data = result.data as { settings: UserSettings };
       useHealthStore.setState({ settings: data.settings });
       return { ok: true };
     } catch {

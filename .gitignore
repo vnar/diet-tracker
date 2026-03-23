@@ -9,3 +9,5 @@ prisma/dev.db
 prisma/dev.db-journal
 prisma/prisma/
 *.tsbuildinfo
+infra/cdk/cdk.out
+infra/cdk/node_modules

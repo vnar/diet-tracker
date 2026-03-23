@@ -1,0 +1,26 @@
+{
+  "name": "@healthos/infra-cdk",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -w -p tsconfig.json",
+    "synth": "npm run build && cdk synth",
+    "bootstrap": "cdk bootstrap",
+    "deploy": "npm run build && cdk deploy",
+    "diff": "npm run build && cdk diff"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.190.0",
+    "constructs": "^10.4.2",
+    "@aws-sdk/client-dynamodb": "^3.901.0",
+    "@aws-sdk/client-s3": "^3.901.0",
+    "@aws-sdk/s3-request-presigner": "^3.901.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "aws-cdk": "^2.1026.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}

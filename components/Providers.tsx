@@ -1,12 +1,12 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { CognitoAuthProvider } from "@/components/CognitoAuthProvider";
 import { HealthBootstrap } from "@/components/HealthBootstrap";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <CognitoAuthProvider>
       <HealthBootstrap>{children}</HealthBootstrap>
-    </SessionProvider>
+    </CognitoAuthProvider>
   );
 }

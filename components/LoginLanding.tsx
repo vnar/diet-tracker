@@ -14,7 +14,8 @@ export function LoginLanding() {
           HealthOS
         </h1>
         <p className="mt-3 text-[13px] font-medium leading-relaxed tracking-wide text-zinc-500 dark:text-slate-400">
-          Sign in or create an account to track weight and photos.
+          Static mode runs locally by default. Enable AWS backend variables for
+          cloud sync.
         </p>
       </div>
       <LoginForm />

@@ -1,37 +1,48 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
+import {
+  getEntries,
+  getSettings,
+  isAwsBackendEnabled,
+} from "@/lib/frontend-api-client";
 import { setHealthStorageMode, useHealthStore } from "@/lib/store";
-import type { DailyEntry, UserSettings } from "@/lib/types";
 
 export function HealthBootstrap({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
-  const prev = useRef(status);
+  const { status, getAccessToken } = useCognitoAuth();
 
   useEffect(() => {
-    if (status === "authenticated") {
-      setHealthStorageMode(true);
-      void (async () => {
-        const [eRes, sRes] = await Promise.all([
-          fetch("/api/entries"),
-          fetch("/api/settings"),
-        ]);
-        if (!eRes.ok || !sRes.ok) return;
-        const eJson = (await eRes.json()) as { entries: DailyEntry[] };
-        const sJson = (await sRes.json()) as { settings: UserSettings };
-        useHealthStore.getState().replaceEntriesAndSettings(
-          sortEntriesByDateAsc(eJson.entries),
-          sJson.settings
-        );
-      })();
-    } else if (prev.current === "authenticated" && status === "unauthenticated") {
+    if (!isAwsBackendEnabled()) {
       setHealthStorageMode(false);
-      void useHealthStore.persist.rehydrate();
+      return;
     }
-    prev.current = status;
-  }, [status]);
+
+    if (status !== "authenticated") {
+      setHealthStorageMode(false);
+      return;
+    }
+
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      setHealthStorageMode(false);
+      return;
+    }
+
+    setHealthStorageMode(true);
+    void (async () => {
+      const [entriesResult, settingsResult] = await Promise.all([
+        getEntries(accessToken),
+        getSettings(accessToken),
+      ]);
+      if (!entriesResult.ok || !settingsResult.ok) return;
+      useHealthStore.getState().replaceEntriesAndSettings(
+        sortEntriesByDateAsc(entriesResult.data.entries),
+        settingsResult.data.settings
+      );
+    })();
+  }, [getAccessToken, status]);
 
   return <>{children}</>;
 }

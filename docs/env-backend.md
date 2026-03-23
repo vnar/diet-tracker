@@ -2,8 +2,7 @@
 
 | Variable | Notes |
 |----------|--------|
-| `DATABASE_URL` | Optional in dev: defaults to **`file:./prisma/dev.db`** (SQLite). |
-| `AUTH_SECRET` | Required for production sessions; dev has a fallback in `auth.ts`. |
-| `AUTH_URL` | Public site URL in production. |
+| `NEXT_PUBLIC_USE_AWS_BACKEND` | Set to `true` to enable AWS API sync from the static frontend. |
+| `NEXT_PUBLIC_AWS_API_URL` | Base URL for the deployed API Gateway HTTP API. Required when AWS backend is enabled. |
 
-Prisma CLI loads `.env` from the project root. For `migrate`, either rely on the same default or set `DATABASE_URL` explicitly.
+When the AWS backend toggle is not enabled, the app runs fully client-side using local browser storage.

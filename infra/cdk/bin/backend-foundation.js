@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const cdk = require("aws-cdk-lib");
+const backend_foundation_stack_1 = require("../lib/backend-foundation-stack");
+const app = new cdk.App();
+new backend_foundation_stack_1.BackendFoundationStack(app, "DietTrackerBackendFoundation", {
+    description: "Diet Tracker backend resources (Cognito, API, DynamoDB, S3, Lambda).",
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION,
+    },
+});
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYmFja2VuZC1mb3VuZGF0aW9uLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiYmFja2VuZC1mb3VuZGF0aW9uLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUNBLG1DQUFtQztBQUNuQyw4RUFBeUU7QUFFekUsTUFBTSxHQUFHLEdBQUcsSUFBSSxHQUFHLENBQUMsR0FBRyxFQUFFLENBQUM7QUFFMUIsSUFBSSxpREFBc0IsQ0FBQyxHQUFHLEVBQUUsOEJBQThCLEVBQUU7SUFDOUQsV0FBVyxFQUNULHNFQUFzRTtJQUN4RSxHQUFHLEVBQUU7UUFDSCxPQUFPLEVBQUUsT0FBTyxDQUFDLEdBQUcsQ0FBQyxtQkFBbUI7UUFDeEMsTUFBTSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsa0JBQWtCO0tBQ3ZDO0NBQ0YsQ0FBQyxDQUFDIiwic291cmNlc0NvbnRlbnQiOlsiIyEvdXNyL2Jpbi9lbnYgbm9kZVxuaW1wb3J0ICogYXMgY2RrIGZyb20gXCJhd3MtY2RrLWxpYlwiO1xuaW1wb3J0IHsgQmFja2VuZEZvdW5kYXRpb25TdGFjayB9IGZyb20gXCIuLi9saWIvYmFja2VuZC1mb3VuZGF0aW9uLXN0YWNrXCI7XG5cbmNvbnN0IGFwcCA9IG5ldyBjZGsuQXBwKCk7XG5cbm5ldyBCYWNrZW5kRm91bmRhdGlvblN0YWNrKGFwcCwgXCJEaWV0VHJhY2tlckJhY2tlbmRGb3VuZGF0aW9uXCIsIHtcbiAgZGVzY3JpcHRpb246XG4gICAgXCJEaWV0IFRyYWNrZXIgYmFja2VuZCByZXNvdXJjZXMgKENvZ25pdG8sIEFQSSwgRHluYW1vREIsIFMzLCBMYW1iZGEpLlwiLFxuICBlbnY6IHtcbiAgICBhY2NvdW50OiBwcm9jZXNzLmVudi5DREtfREVGQVVMVF9BQ0NPVU5ULFxuICAgIHJlZ2lvbjogcHJvY2Vzcy5lbnYuQ0RLX0RFRkFVTFRfUkVHSU9OLFxuICB9LFxufSk7XG4iXX0=
