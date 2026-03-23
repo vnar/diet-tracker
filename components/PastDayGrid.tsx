@@ -91,6 +91,7 @@ export function PastDayGrid() {
   const [protein, setProtein] = useState("");
   const [steps, setSteps] = useState("");
   const [sleep, setSleep] = useState("");
+  const [notes, setNotes] = useState("");
   const [lateSnack, setLateSnack] = useState(false);
   const [highSodium, setHighSodium] = useState(false);
   const [workout, setWorkout] = useState(false);
@@ -119,6 +120,7 @@ export function PastDayGrid() {
       setProtein(e.protein !== undefined ? String(e.protein) : "");
       setSteps(e.steps !== undefined ? String(e.steps) : "");
       setSleep(e.sleep !== undefined ? String(e.sleep) : "");
+      setNotes(e.notes ?? "");
       setLateSnack(e.lateSnack);
       setHighSodium(e.highSodium);
       setWorkout(e.workout ?? false);
@@ -130,6 +132,7 @@ export function PastDayGrid() {
       setProtein("");
       setSteps("");
       setSleep("");
+      setNotes("");
       setLateSnack(false);
       setHighSodium(false);
       setWorkout(false);
@@ -163,6 +166,7 @@ export function PastDayGrid() {
         protein.trim() === "" ? undefined : Math.round(parseFloat(protein)),
       steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
       sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
+      notes: notes.trim() === "" ? undefined : notes.trim(),
       lateSnack,
       highSodium,
       workout,
@@ -370,6 +374,22 @@ export function PastDayGrid() {
                 value={sleep}
                 onChange={(e) => setSleep(e.target.value)}
                 placeholder=""
+              />
+            </div>
+            <div className="mt-5">
+              <label
+                htmlFor="pastNotes"
+                className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+              >
+                Notes
+              </label>
+              <textarea
+                id="pastNotes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional context for this day..."
+                rows={3}
+                className="w-full rounded-xl border border-slate-600 bg-slate-900/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
               />
             </div>
             <div className="mt-6 grid gap-3.5 sm:grid-cols-2">

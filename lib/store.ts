@@ -33,6 +33,7 @@ function normalizeEntry(e: DailyEntry): DailyEntry {
     ...e,
     nightWeight: e.nightWeight == null ? undefined : e.nightWeight,
     photoUrl: e.photoUrl == null ? undefined : e.photoUrl,
+    notes: e.notes == null ? undefined : e.notes,
   };
 }
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const photoLimit = 600_000;
+const notesLimit = 2_000;
 
 export const dailyEntryUpsertSchema = z.object({
   id: z.string().optional(),
@@ -16,6 +17,7 @@ export const dailyEntryUpsertSchema = z.object({
   workout: z.boolean(),
   alcohol: z.boolean(),
   photoUrl: z.string().max(photoLimit).nullable().optional(),
+  notes: z.string().max(notesLimit).nullable().optional(),
 });
 
 export const settingsPatchSchema = z.object({

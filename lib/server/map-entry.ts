@@ -18,6 +18,7 @@ export function mapDbEntry(row: DbDailyEntry): DailyEntry {
     workout: row.workout,
     alcohol: row.alcohol,
     photoUrl: row.photoUrl ?? undefined,
+    notes: row.notes ?? undefined,
   };
 }
 

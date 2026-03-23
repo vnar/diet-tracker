@@ -43,6 +43,7 @@ model DailyEntry {
   workout         Boolean @default(false)
   alcohol         Boolean @default(false)
   photoUrl        String?
+  notes           String?
 
   @@unique([userId, date])
   @@index([userId, date])

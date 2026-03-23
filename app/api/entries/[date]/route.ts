@@ -59,6 +59,7 @@ export async function PUT(
       workout: data.workout,
       alcohol: data.alcohol,
       photoUrl: data.photoUrl == null ? undefined : data.photoUrl,
+      notes: data.notes == null ? undefined : data.notes,
     },
     update: {
       morningWeight: data.morningWeight,
@@ -77,6 +78,7 @@ export async function PUT(
       workout: data.workout,
       alcohol: data.alcohol,
       photoUrl: data.photoUrl === null ? null : data.photoUrl,
+      notes: data.notes === null ? null : data.notes,
     },
   });
 

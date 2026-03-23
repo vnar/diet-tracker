@@ -14,6 +14,8 @@ export interface DailyEntry {
   alcohol: boolean;
   /** `null` when clearing via API; treat like undefined in UI state. */
   photoUrl?: string | null;
+  /** `null` when clearing via API; treat like undefined in UI state. */
+  notes?: string | null;
 }
 
 export interface UserSettings {
