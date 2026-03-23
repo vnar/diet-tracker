@@ -44,20 +44,34 @@ export function HealthDashboard() {
     setTargetDate(settings.targetDate);
   }, [settings]);
 
-  async function refreshSettingsFromCloud(): Promise<void> {
-    if (!isAwsBackendEnabled() || status !== "authenticated") return;
+  async function refreshSettingsFromCloud(options?: {
+    applyToForm?: boolean;
+  }): Promise<{
+    ok: boolean;
+    settings?: {
+      goalWeight: number;
+      startWeight: number;
+      targetDate: string;
+      unit: "kg" | "lbs";
+    };
+    error?: string;
+  }> {
+    if (!isAwsBackendEnabled() || status !== "authenticated") return { ok: false };
     const accessToken = getAccessToken();
-    if (!accessToken) return;
+    if (!accessToken) return { ok: false, error: "Session expired. Please sign in again." };
 
     setLoadingSettings(true);
     const result = await getSettings(accessToken);
     setLoadingSettings(false);
-    if (!result.ok) return;
+    if (!result.ok) return { ok: false, error: result.error };
 
     useHealthStore.setState({ settings: result.data.settings });
-    setStartWeight(String(result.data.settings.startWeight));
-    setGoalWeight(String(result.data.settings.goalWeight));
-    setTargetDate(result.data.settings.targetDate);
+    if (options?.applyToForm !== false) {
+      setStartWeight(String(result.data.settings.startWeight));
+      setGoalWeight(String(result.data.settings.goalWeight));
+      setTargetDate(result.data.settings.targetDate);
+    }
+    return { ok: true, settings: result.data.settings };
   }
 
   async function handleSaveSettings() {
@@ -89,7 +103,26 @@ export function HealthDashboard() {
       setSettingsError(result.error ?? "Could not update settings.");
       return;
     }
-    await refreshSettingsFromCloud();
+    const refreshed = await refreshSettingsFromCloud({ applyToForm: false });
+    if (!refreshed.ok || !refreshed.settings) {
+      setSettingsError(
+        refreshed.error ?? "Saved, but could not verify cloud state. Refresh and retry."
+      );
+      return;
+    }
+
+    const matchesCloud =
+      refreshed.settings.startWeight === start &&
+      refreshed.settings.goalWeight === goal &&
+      refreshed.settings.targetDate === targetDate;
+
+    if (!matchesCloud) {
+      setSettingsError(
+        "Cloud settings did not match your latest save. Please try once more."
+      );
+      return;
+    }
+
     setSettingsOpen(false);
   }
 
@@ -279,6 +312,7 @@ export function HealthDashboard() {
                     type="number"
                     step="0.1"
                     inputMode="decimal"
+                  disabled={loadingSettings || savingSettings}
                     value={startWeight}
                     onChange={(e) => setStartWeight(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
@@ -293,6 +327,7 @@ export function HealthDashboard() {
                     type="number"
                     step="0.1"
                     inputMode="decimal"
+                  disabled={loadingSettings || savingSettings}
                     value={goalWeight}
                     onChange={(e) => setGoalWeight(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
@@ -304,6 +339,7 @@ export function HealthDashboard() {
                 <span className="mb-1 block text-[11px] text-zinc-400">Target date</span>
                 <input
                   type="date"
+                  disabled={loadingSettings || savingSettings}
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
@@ -330,7 +366,7 @@ export function HealthDashboard() {
               <button
                 type="button"
                 onClick={() => void handleSaveSettings()}
-                disabled={savingSettings}
+                disabled={savingSettings || loadingSettings}
                 className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {savingSettings ? "Saving..." : "Save settings"}
