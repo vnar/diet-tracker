@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AppFooter } from "@/components/AppFooter";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { StoreHydration } from "@/components/StoreHydration";
 import { Providers } from "@/components/Providers";
 
@@ -38,10 +40,14 @@ export default function RootLayout({
       className={`dark ${fontSans.variable} ${fontMono.variable}`}
       suppressHydrationWarning
     >
-      <body className={`${fontSans.className} min-h-screen antialiased`}>
+      <body className={`${fontSans.className} flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased`}>
         <Providers>
           <StoreHydration />
-          {children}
+          <div className="flex min-h-screen flex-col">
+            <div className="flex-1">{children}</div>
+            <AppFooter />
+          </div>
+          <FeedbackButton />
         </Providers>
       </body>
     </html>
