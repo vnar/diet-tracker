@@ -2,6 +2,9 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
+/** Required for `output: 'export'` — handlers are not executed at static build time. */
+export const dynamic = "force-static";
+
 const signupSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(8).max(128),

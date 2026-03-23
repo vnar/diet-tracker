@@ -4,6 +4,9 @@ import { settingsPatchSchema } from "@/lib/server/entry-schema";
 import { mapDbSettings } from "@/lib/server/map-entry";
 import { defaultSettingsCreate } from "@/lib/server/default-settings";
 
+/** Required for `output: 'export'` — handlers are not executed at static build time. */
+export const dynamic = "force-static";
+
 export async function GET() {
   const session = await auth();
   const userId = session?.user?.id;

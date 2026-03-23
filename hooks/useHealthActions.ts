@@ -26,14 +26,11 @@ export function useSaveEntry() {
     }
 
     try {
-      const res = await fetch(
-        `/api/entries/${encodeURIComponent(entry.date)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry),
-        }
-      );
+      const res = await fetch("/api/entries", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      });
 
       if (!res.ok) {
         revertEntries(prev);

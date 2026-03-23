@@ -1,14 +1,22 @@
-import { auth } from "@/auth";
+"use client";
+
+import { useSession } from "next-auth/react";
 import { LoginLanding } from "@/components/LoginLanding";
 import { HealthDashboard } from "@/components/HealthDashboard";
 
-/** Server decides first paint: login vs dashboard (no client session loading flash). */
-export const dynamic = "force-dynamic";
+/** Client session gate — static export cannot use `await auth()` on the server. */
+export default function Home() {
+  const { status } = useSession();
 
-export default async function Home() {
-  const session = await auth();
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-zinc-500 dark:text-slate-400">
+        Loading…
+      </div>
+    );
+  }
 
-  if (!session?.user?.id) {
+  if (status === "unauthenticated") {
     return <LoginLanding />;
   }
 
