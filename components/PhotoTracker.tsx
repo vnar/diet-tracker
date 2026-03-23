@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Trash2, Upload } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import type { DailyEntry } from "@/lib/types";
 import {
   getEntryForDate,
   sortEntriesByDateAsc,
@@ -29,7 +30,10 @@ export function PhotoTracker() {
   const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
   const withPhotos = sortEntriesByDateAsc(entries)
-    .filter((e) => e.photoUrl)
+    .filter(
+      (e): e is DailyEntry & { photoUrl: string } =>
+        typeof e.photoUrl === "string" && e.photoUrl.length > 0
+    )
     .reverse();
 
   function onPick(f: File) {
@@ -49,6 +53,16 @@ export function PhotoTracker() {
       });
     };
     reader.readAsDataURL(f);
+  }
+
+  async function onDeletePhoto(entryId: string) {
+    const latest = useHealthStore.getState().entries;
+    const existing = latest.find((entry) => entry.id === entryId);
+    if (!existing) return;
+    await saveEntry({
+      ...existing,
+      photoUrl: null,
+    });
   }
 
   if (today === null) {
@@ -112,6 +126,15 @@ export function PhotoTracker() {
               key={e.id}
               className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border border-slate-600 bg-slate-950/30"
             >
+              <button
+                type="button"
+                onClick={() => void onDeletePhoto(e.id)}
+                className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-black/60 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-red-600/90 group-hover:opacity-100 focus-visible:opacity-100"
+                aria-label={`Delete photo from ${formatDateLabel(e.date)}`}
+                title="Delete photo"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </button>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={e.photoUrl}

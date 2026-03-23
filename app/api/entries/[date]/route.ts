@@ -58,7 +58,7 @@ export async function PUT(
       highSodium: data.highSodium,
       workout: data.workout,
       alcohol: data.alcohol,
-      photoUrl: data.photoUrl,
+      photoUrl: data.photoUrl == null ? undefined : data.photoUrl,
     },
     update: {
       morningWeight: data.morningWeight,
@@ -76,7 +76,7 @@ export async function PUT(
       highSodium: data.highSodium,
       workout: data.workout,
       alcohol: data.alcohol,
-      photoUrl: data.photoUrl,
+      photoUrl: data.photoUrl === null ? null : data.photoUrl,
     },
   });
 

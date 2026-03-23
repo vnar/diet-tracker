@@ -12,7 +12,8 @@ export interface DailyEntry {
   highSodium: boolean;
   workout: boolean;
   alcohol: boolean;
-  photoUrl?: string;
+  /** `null` when clearing via API; treat like undefined in UI state. */
+  photoUrl?: string | null;
 }
 
 export interface UserSettings {

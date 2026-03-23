@@ -15,7 +15,7 @@ export const dailyEntryUpsertSchema = z.object({
   highSodium: z.boolean(),
   workout: z.boolean(),
   alcohol: z.boolean(),
-  photoUrl: z.string().max(photoLimit).optional(),
+  photoUrl: z.string().max(photoLimit).nullable().optional(),
 });
 
 export const settingsPatchSchema = z.object({
