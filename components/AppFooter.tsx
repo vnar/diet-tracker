@@ -5,6 +5,7 @@ import { ChevronUp, FileText } from "lucide-react";
 import { AWS_SERVICES, CHANGELOG, type AWSService } from "@/lib/aws-services";
 import { getFooterStats, isAwsBackendEnabled, trackPageView } from "@/lib/frontend-api-client";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
+import { AboutButton } from "@/components/AboutButton";
 
 function ServicePill({ service }: { service: AWSService }) {
   const [showTip, setShowTip] = useState(false);
@@ -102,6 +103,8 @@ export function AppFooter() {
           >
             Cost
           </a>
+          <div className="h-3 w-px bg-zinc-800" />
+          <AboutButton />
           <div className="h-3 w-px bg-zinc-800" />
           <button
             onClick={() => setChangelogOpen(!changelogOpen)}
