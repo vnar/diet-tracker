@@ -36,11 +36,33 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
         getEntries(accessToken),
         getSettings(accessToken),
       ]);
-      if (!entriesResult.ok || !settingsResult.ok) return;
-      useHealthStore.getState().replaceEntriesAndSettings(
-        sortEntriesByDateAsc(entriesResult.data.entries),
-        settingsResult.data.settings
-      );
+
+      if (entriesResult.ok) {
+        useHealthStore.setState({
+          entries: sortEntriesByDateAsc(entriesResult.data.entries),
+        });
+      } else {
+        // One quick retry helps with transient network/preflight blips.
+        const retry = await getEntries(accessToken);
+        if (retry.ok) {
+          useHealthStore.setState({
+            entries: sortEntriesByDateAsc(retry.data.entries),
+          });
+        }
+      }
+
+      if (settingsResult.ok) {
+        useHealthStore.setState({
+          settings: settingsResult.data.settings,
+        });
+      } else {
+        const retry = await getSettings(accessToken);
+        if (retry.ok) {
+          useHealthStore.setState({
+            settings: retry.data.settings,
+          });
+        }
+      }
     })();
   }, [getAccessToken, status]);
 
