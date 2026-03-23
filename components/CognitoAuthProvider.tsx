@@ -1,7 +1,16 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { sessionFromAuthResult, signInWithCognito, signUpWithCognito, userFromIdToken, type CognitoSessionTokens, type CognitoUserProfile } from "@/lib/cognito-client";
+import {
+  confirmSignUpWithCognito,
+  resendConfirmationWithCognito,
+  sessionFromAuthResult,
+  signInWithCognito,
+  signUpWithCognito,
+  userFromIdToken,
+  type CognitoSessionTokens,
+  type CognitoUserProfile,
+} from "@/lib/cognito-client";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -13,11 +22,17 @@ type SignInResult =
   | { ok: true }
   | { ok: false; error: string };
 
+type ConfirmSignUpResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 type AuthContextValue = {
   status: AuthStatus;
   user: CognitoUserProfile | null;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (args: { email: string; password: string; name?: string }) => Promise<SignUpResult>;
+  confirmSignUp: (args: { email: string; code: string }) => Promise<ConfirmSignUpResult>;
+  resendConfirmation: (email: string) => Promise<ConfirmSignUpResult>;
   signOut: () => void;
   getAccessToken: () => string | null;
 };
@@ -52,6 +67,12 @@ function mapAuthError(error: unknown) {
       return "That email is already registered. Sign in instead.";
     case "InvalidPasswordException":
       return "Password does not meet Cognito policy requirements.";
+    case "CodeMismatchException":
+      return "Invalid verification code.";
+    case "ExpiredCodeException":
+      return "Verification code expired. Request a new code.";
+    case "LimitExceededException":
+      return "Too many attempts. Please wait and try again.";
     default:
       return "Authentication failed.";
   }
@@ -112,6 +133,22 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
             ok: true,
             needsConfirmation: response.UserConfirmed === false,
           };
+        } catch (error) {
+          return { ok: false, error: mapAuthError(error) };
+        }
+      },
+      async confirmSignUp(args) {
+        try {
+          await confirmSignUpWithCognito(args);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error: mapAuthError(error) };
+        }
+      },
+      async resendConfirmation(email) {
+        try {
+          await resendConfirmationWithCognito(email);
+          return { ok: true };
         } catch (error) {
           return { ok: false, error: mapAuthError(error) };
         }

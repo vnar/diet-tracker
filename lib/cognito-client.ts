@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  ConfirmSignUpCommand,
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
+  ResendConfirmationCodeCommand,
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { getClientCognitoConfig } from "@/lib/cognito-config";
@@ -114,6 +116,30 @@ export async function signUpWithCognito(args: {
     ],
   });
 
+  const response = await client.send(command);
+  return response;
+}
+
+export async function confirmSignUpWithCognito(args: {
+  email: string;
+  code: string;
+}) {
+  const { client, config } = getClient();
+  const command = new ConfirmSignUpCommand({
+    ClientId: config.userPoolClientId,
+    Username: args.email.trim().toLowerCase(),
+    ConfirmationCode: args.code.trim(),
+  });
+  const response = await client.send(command);
+  return response;
+}
+
+export async function resendConfirmationWithCognito(email: string) {
+  const { client, config } = getClient();
+  const command = new ResendConfirmationCodeCommand({
+    ClientId: config.userPoolClientId,
+    Username: email.trim().toLowerCase(),
+  });
   const response = await client.send(command);
   return response;
 }
