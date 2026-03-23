@@ -19,6 +19,12 @@ function revertSettings(prev: UserSettings) {
   useHealthStore.setState({ settings: prev });
 }
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export function useSaveEntry() {
   const { status, getAccessToken } = useCognitoAuth();
   const addEntry = useHealthStore((s) => s.addEntry);
@@ -53,27 +59,37 @@ export function useSaveEntry() {
       }
 
       const data = result.data as { entry: DailyEntry };
-      const verify = await getEntries(accessToken);
-      if (!verify.ok) {
-        revertEntries(prev);
-        return {
-          ok: false,
-          error: "Saved request sent, but cloud verification failed.",
-        };
+      const maxVerifyAttempts = 4;
+      let verifiedEntries: DailyEntry[] | undefined;
+
+      for (let attempt = 0; attempt < maxVerifyAttempts; attempt += 1) {
+        const verify = await getEntries(accessToken);
+        if (verify.ok) {
+          const persistedEntry = verify.data.entries.find((e) => e.date === data.entry.date);
+          if (persistedEntry) {
+            verifiedEntries = verify.data.entries;
+            break;
+          }
+        }
+        // Back off briefly to absorb transient network and read-after-write timing.
+        await delay(150 + attempt * 200);
       }
 
-      const persistedEntry = verify.data.entries.find((e) => e.date === data.entry.date);
-      if (!persistedEntry) {
-        revertEntries(prev);
-        return {
-          ok: false,
-          error: "Cloud did not return your saved entry yet. Please retry.",
-        };
+      if (verifiedEntries) {
+        useHealthStore.setState({
+          entries: sortEntriesByDateAsc(verifiedEntries),
+        });
+      } else {
+        // PUT already succeeded; keep optimistic state and refresh in background.
+        void getEntries(accessToken).then((latest) => {
+          if (latest.ok) {
+            useHealthStore.setState({
+              entries: sortEntriesByDateAsc(latest.data.entries),
+            });
+          }
+        });
       }
 
-      useHealthStore.setState({
-        entries: sortEntriesByDateAsc(verify.data.entries),
-      });
       return { ok: true };
     } catch {
       revertEntries(prev);
