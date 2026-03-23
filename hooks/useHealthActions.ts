@@ -3,6 +3,7 @@
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
 import {
+  getEntries,
   isAwsBackendEnabled,
   patchSettings,
   putEntry,
@@ -52,12 +53,27 @@ export function useSaveEntry() {
       }
 
       const data = result.data as { entry: DailyEntry };
-      useHealthStore.setState((s) => ({
-        entries: sortEntriesByDateAsc([
-          ...s.entries.filter((e) => e.date !== data.entry.date),
-          data.entry,
-        ]),
-      }));
+      const verify = await getEntries(accessToken);
+      if (!verify.ok) {
+        revertEntries(prev);
+        return {
+          ok: false,
+          error: "Saved request sent, but cloud verification failed.",
+        };
+      }
+
+      const persistedEntry = verify.data.entries.find((e) => e.date === data.entry.date);
+      if (!persistedEntry) {
+        revertEntries(prev);
+        return {
+          ok: false,
+          error: "Cloud did not return your saved entry yet. Please retry.",
+        };
+      }
+
+      useHealthStore.setState({
+        entries: sortEntriesByDateAsc(verify.data.entries),
+      });
       return { ok: true };
     } catch {
       revertEntries(prev);
