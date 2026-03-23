@@ -222,7 +222,11 @@ export function DailyInput() {
             placeholder={ph?.sleep !== undefined ? String(ph.sleep) : ""}
           />
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 border-t border-zinc-800 pt-3 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5 lg:grid-cols-4">
+        <div className="mt-3 border-t border-zinc-800 pt-3">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+            Daily habits
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5">
           <Toggle
             id="workout"
             label="Workout"
@@ -247,6 +251,7 @@ export function DailyInput() {
             checked={highSodium}
             onChange={setHighSodium}
           />
+          </div>
         </div>
         {saveError ? (
           <p className="mt-4 text-sm text-rose-400">{saveError}</p>
