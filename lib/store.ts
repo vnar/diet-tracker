@@ -52,17 +52,14 @@ export function setHealthStorageMode(cloud: boolean) {
 const healthPersistStorage: StateStorage = {
   getItem: (name) => {
     if (typeof window === "undefined") return null;
-    if (cloudMode) return null;
     return localStorage.getItem(name);
   },
   setItem: (name, value) => {
     if (typeof window === "undefined") return;
-    if (cloudMode) return;
     localStorage.setItem(name, value);
   },
   removeItem: (name) => {
     if (typeof window === "undefined") return;
-    if (cloudMode) return;
     localStorage.removeItem(name);
   },
 };

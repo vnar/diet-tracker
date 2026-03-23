@@ -32,22 +32,30 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
 
     setHealthStorageMode(true);
     void (async () => {
+      const localEntriesBeforeCloud = useHealthStore.getState().entries;
       const [entriesResult, settingsResult] = await Promise.all([
         getEntries(accessToken),
         getSettings(accessToken),
       ]);
 
       if (entriesResult.ok) {
-        useHealthStore.setState({
-          entries: sortEntriesByDateAsc(entriesResult.data.entries),
-        });
+        const remoteEntries = sortEntriesByDateAsc(entriesResult.data.entries);
+        // Protect against accidental empty-cloud wipes on transient auth/network edge cases.
+        if (!(remoteEntries.length === 0 && localEntriesBeforeCloud.length > 0)) {
+          useHealthStore.setState({
+            entries: remoteEntries,
+          });
+        }
       } else {
         // One quick retry helps with transient network/preflight blips.
         const retry = await getEntries(accessToken);
         if (retry.ok) {
-          useHealthStore.setState({
-            entries: sortEntriesByDateAsc(retry.data.entries),
-          });
+          const remoteEntries = sortEntriesByDateAsc(retry.data.entries);
+          if (!(remoteEntries.length === 0 && localEntriesBeforeCloud.length > 0)) {
+            useHealthStore.setState({
+              entries: remoteEntries,
+            });
+          }
         }
       }
 
