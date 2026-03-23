@@ -111,6 +111,7 @@ export function PastDayGrid() {
       : undefined;
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
 
   useEffect(() => {
     if (!selected) return;
@@ -489,12 +490,24 @@ export function PastDayGrid() {
               </div>
               {selectedEntry?.photoUrl ? (
                 <div className="mt-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selectedEntry.photoUrl}
-                    alt={`Photo for ${selected}`}
-                    className="h-24 w-24 rounded-lg border border-zinc-700 object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhoto({
+                        url: selectedEntry.photoUrl as string,
+                        date: selected,
+                      })
+                    }
+                    className="group overflow-hidden rounded-lg border border-zinc-700"
+                    title="Click to enlarge"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedEntry.photoUrl}
+                      alt={`Photo for ${selected}`}
+                      className="h-24 w-24 cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                  </button>
                 </div>
               ) : selectedEntry ? (
                 <p className="mt-2 text-xs text-zinc-600">No photo saved for this day yet.</p>
@@ -536,6 +549,34 @@ export function PastDayGrid() {
             </div>
           </div>
             ) : null}
+          {previewPhoto ? (
+            <div
+              className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+              onClick={() => setPreviewPhoto(null)}
+            >
+              <div
+                className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewPhoto.url}
+                  alt={`Photo for ${previewPhoto.date}`}
+                  className="max-h-[80vh] w-full object-contain"
+                />
+                <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
+                  <p className="text-xs text-zinc-300">{formatLong(previewPhoto.date)}</p>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto(null)}
+                    className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           </div>
       </Card>
     </motion.div>

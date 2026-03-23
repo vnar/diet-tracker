@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Camera, Trash2, Upload } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import type { DailyEntry } from "@/lib/types";
@@ -32,6 +32,7 @@ export function PhotoTracker() {
   const saveEntry = useSaveEntry();
   const today = useClientTodayKey();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
 
   const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
@@ -162,7 +163,8 @@ export function PhotoTracker() {
               <img
                 src={e.photoUrl}
                 alt={`Progress ${e.date}`}
-                className="w-full object-cover"
+                onClick={() => setPreviewPhoto({ url: e.photoUrl, date: e.date })}
+                className="w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
               />
               <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <span className="p-3 text-xs font-medium text-white">
@@ -173,6 +175,34 @@ export function PhotoTracker() {
           ))}
         </div>
       )}
+      {previewPhoto ? (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewPhoto.url}
+              alt={`Progress ${previewPhoto.date}`}
+              className="max-h-[80vh] w-full object-contain"
+            />
+            <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
+              <p className="text-xs text-zinc-300">{formatDateLabel(previewPhoto.date)}</p>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </Card>
   );
 }
