@@ -222,7 +222,7 @@ export function DailyInput() {
             placeholder={ph?.sleep !== undefined ? String(ph.sleep) : ""}
           />
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 border-t border-zinc-800 pt-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 border-t border-zinc-800 pt-3 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5 lg:grid-cols-4">
           <Toggle
             id="workout"
             label="Workout"

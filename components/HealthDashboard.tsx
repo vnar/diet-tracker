@@ -252,9 +252,9 @@ export function HealthDashboard() {
 
       {settingsOpen ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold tracking-wide text-zinc-100">
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl sm:p-6">
+            <div className="mb-4 flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h2 className="text-base font-semibold tracking-tight text-zinc-100">
                 Personal settings
               </h2>
               <button
@@ -270,33 +270,35 @@ export function HealthDashboard() {
               {loadingSettings ? (
                 <p className="text-[11px] text-zinc-500">Loading latest saved settings...</p>
               ) : null}
-              <label className="block">
-                <span className="mb-1 block text-[11px] text-zinc-400">
-                  Starting weight ({unit})
-                </span>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={startWeight}
-                  onChange={(e) => setStartWeight(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
-                />
-              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] text-zinc-400">
+                    Starting weight ({unit})
+                  </span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={startWeight}
+                    onChange={(e) => setStartWeight(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                  />
+                </label>
 
-              <label className="block">
-                <span className="mb-1 block text-[11px] text-zinc-400">
-                  Target weight ({unit})
-                </span>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={goalWeight}
-                  onChange={(e) => setGoalWeight(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] text-zinc-400">
+                    Target weight ({unit})
+                  </span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalWeight}
+                    onChange={(e) => setGoalWeight(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                  />
+                </label>
+              </div>
 
               <label className="block">
                 <span className="mb-1 block text-[11px] text-zinc-400">Target date</span>
@@ -317,14 +319,23 @@ export function HealthDashboard() {
               </p>
             )}
 
-            <button
-              type="button"
-              onClick={() => void handleSaveSettings()}
-              disabled={savingSettings}
-              className="mt-4 w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {savingSettings ? "Saving..." : "Save settings"}
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSaveSettings()}
+                disabled={savingSettings}
+                className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingSettings ? "Saving..." : "Save settings"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
