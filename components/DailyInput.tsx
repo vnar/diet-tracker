@@ -159,7 +159,14 @@ export function DailyInput() {
           />
           <InputField
             id="nightWeight"
-            label="Night weight (optional)"
+            label={
+              <>
+                Night weight{" "}
+                <span className="text-[9px] normal-case tracking-normal text-zinc-500">
+                  (optional)
+                </span>
+              </>
+            }
             unit={u}
             tone="dark"
             inputMode="decimal"

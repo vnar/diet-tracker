@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DailyInput } from "@/components/DailyInput";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
@@ -21,14 +22,59 @@ const fadeInUp = {
 };
 
 export function HealthDashboard() {
-  const unit = useHealthStore((s) => s.settings.unit);
+  const settings = useHealthStore((s) => s.settings);
+  const unit = settings.unit;
   const entryCount = useHealthStore((s) => s.entries.length);
   const patchSettings = usePatchSettings();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [startWeight, setStartWeight] = useState("");
+  const [goalWeight, setGoalWeight] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  useEffect(() => {
+    setStartWeight(String(settings.startWeight));
+    setGoalWeight(String(settings.goalWeight));
+    setTargetDate(settings.targetDate);
+  }, [settings]);
+
+  async function handleSaveSettings() {
+    const start = Number.parseFloat(startWeight);
+    const goal = Number.parseFloat(goalWeight);
+    if (!Number.isFinite(start) || start <= 0) {
+      setSettingsError("Starting weight must be a positive number.");
+      return;
+    }
+    if (!Number.isFinite(goal) || goal <= 0) {
+      setSettingsError("Target weight must be a positive number.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      setSettingsError("Target date is required.");
+      return;
+    }
+
+    setSettingsError(null);
+    setSavingSettings(true);
+    const result = await patchSettings({
+      startWeight: start,
+      goalWeight: goal,
+      targetDate,
+    });
+    setSavingSettings(false);
+
+    if (!result.ok) {
+      setSettingsError(result.error ?? "Could not update settings.");
+      return;
+    }
+    setSettingsOpen(false);
+  }
 
   return (
     <main className="min-h-screen bg-zinc-950">
       <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-5">
+        <div className="mx-auto grid h-12 max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-3 px-5">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500">
               <svg
@@ -48,8 +94,26 @@ export function HealthDashboard() {
               HealthOS
             </span>
           </div>
+          <p className="truncate text-center text-[11px] text-zinc-500">
+            By{" "}
+            <a
+              href="https://www.linkedin.com/in/viharnar/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+            >
+              Vihar Nar
+            </a>
+          </p>
           <div className="flex flex-shrink-0 items-center gap-2">
             <AuthBar />
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+            >
+              Settings
+            </button>
             <button
               type="button"
               onClick={() =>
@@ -99,6 +163,80 @@ export function HealthDashboard() {
           ) : null}
         </div>
       </div>
+
+      {settingsOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-wide text-zinc-100">
+                Personal settings
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="rounded-md px-2 py-1 text-xs text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-[11px] text-zinc-400">
+                  Starting weight ({unit})
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={startWeight}
+                  onChange={(e) => setStartWeight(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-[11px] text-zinc-400">
+                  Target weight ({unit})
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={goalWeight}
+                  onChange={(e) => setGoalWeight(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-[11px] text-zinc-400">Target date</span>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </label>
+            </div>
+
+            {settingsError ? (
+              <p className="mt-3 text-xs text-rose-400">{settingsError}</p>
+            ) : (
+              <p className="mt-3 text-xs text-zinc-500">
+                Settings are saved to your account and are unique per user.
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void handleSaveSettings()}
+              disabled={savingSettings}
+              className="mt-4 w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {savingSettings ? "Saving..." : "Save settings"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

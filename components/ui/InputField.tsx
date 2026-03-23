@@ -1,8 +1,8 @@
 import { forwardRef } from "react";
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
 export interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+  label: ReactNode;
   unit?: string;
   id: string;
   /** Dark inputs for dashboard cards. */
