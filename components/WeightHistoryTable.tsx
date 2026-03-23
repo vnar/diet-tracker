@@ -22,9 +22,11 @@ function formatDisplayDate(iso: string): string {
 function HistoryRow({
   entry,
   unit,
+  onPreviewPhoto,
 }: {
   entry: DailyEntry;
   unit: "kg" | "lbs";
+  onPreviewPhoto: (photoUrl: string, date: string) => void;
 }) {
   const saveEntry = useSaveEntry();
   const [morning, setMorning] = useState("");
@@ -113,12 +115,19 @@ function HistoryRow({
       </td>
       <td className="py-2 pr-3">
         {entry.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={entry.photoUrl}
-            alt=""
-            className="h-8 w-8 rounded-lg object-cover"
-          />
+          <button
+            type="button"
+            onClick={() => onPreviewPhoto(entry.photoUrl as string, entry.date)}
+            className="group overflow-hidden rounded-lg border border-zinc-700"
+            title="Click to enlarge"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={entry.photoUrl}
+              alt={`History photo for ${entry.date}`}
+              className="h-8 w-8 cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-125"
+            />
+          </button>
         ) : (
           <div className="h-8 w-8 rounded-lg border border-zinc-800 bg-zinc-800" />
         )}
@@ -144,6 +153,7 @@ export function WeightHistoryTable() {
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
   const [open, setOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
 
   const rows = [...sortEntriesByDateAsc(entries)].reverse();
 
@@ -200,7 +210,14 @@ export function WeightHistoryTable() {
               </thead>
               <tbody>
                 {rows.map((e) => (
-                  <HistoryRow key={e.id} entry={e} unit={unit} />
+                  <HistoryRow
+                    key={e.id}
+                    entry={e}
+                    unit={unit}
+                    onPreviewPhoto={(photoUrl, date) =>
+                      setPreviewPhoto({ url: photoUrl, date })
+                    }
+                  />
                 ))}
               </tbody>
             </table>
@@ -209,6 +226,34 @@ export function WeightHistoryTable() {
             Newest first. Edit weights inline, then Save. Clear night field and save
             to remove night weight.
           </p>
+          {previewPhoto ? (
+            <div
+              className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+              onClick={() => setPreviewPhoto(null)}
+            >
+              <div
+                className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewPhoto.url}
+                  alt={`History photo for ${previewPhoto.date}`}
+                  className="max-h-[80vh] w-full object-contain"
+                />
+                <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
+                  <p className="text-xs text-zinc-300">{formatDisplayDate(previewPhoto.date)}</p>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto(null)}
+                    className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : null}
     </Card>
