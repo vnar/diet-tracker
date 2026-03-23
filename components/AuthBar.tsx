@@ -4,7 +4,7 @@ import { Cloud, LogOut } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { isAwsBackendEnabled } from "@/lib/frontend-api-client";
 
-export function AuthBar() {
+export function AuthBar({ compact = false }: { compact?: boolean }) {
   const usingAws = isAwsBackendEnabled();
   const { status, user, signOut } = useCognitoAuth();
 
@@ -16,7 +16,9 @@ export function AuthBar() {
     <div className="flex items-center gap-2">
       <span className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-2 py-1 text-[11px] text-zinc-400">
         <Cloud className="h-3.5 w-3.5 shrink-0" />
-        {usingAws ? "AWS mode" : "Local mode"}
+        <span className={compact ? "hidden" : "inline"}>
+          {usingAws ? "AWS mode" : "Local mode"}
+        </span>
       </span>
       {usingAws && user ? (
         <>
@@ -30,7 +32,7 @@ export function AuthBar() {
           >
             <span className="inline-flex items-center gap-1.5">
               <LogOut className="h-3.5 w-3.5 shrink-0" />
-              Sign out
+              <span className={compact ? "hidden" : "inline"}>Sign out</span>
             </span>
           </button>
         </>

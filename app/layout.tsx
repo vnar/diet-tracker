@@ -37,10 +37,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${fontSans.variable} ${fontMono.variable}`}
+      className={`${fontSans.variable} ${fontMono.variable}`}
       suppressHydrationWarning
     >
-      <body className={`${fontSans.className} flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased`}>
+      <body className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased`}>
         <Providers>
           <StoreHydration />
           <div className="flex min-h-screen flex-col">

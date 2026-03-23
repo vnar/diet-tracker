@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthBar } from "@/components/AuthBar";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
+import { Settings } from "lucide-react";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -96,20 +97,22 @@ export function HealthDashboard() {
               </span>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-              <AuthBar />
+              <AuthBar compact />
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
-                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                aria-label="Open settings"
+                title="Settings"
               >
-                Settings
+                <Settings className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() =>
                   void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
                 }
-                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                className="h-7 min-w-10 rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
               >
                 {unit}
               </button>
