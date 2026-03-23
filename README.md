@@ -1,4 +1,4 @@
-# HealthOS (diet-tracker)
+# Ojas-Helath (diet-tracker)
 
 Daily weight dashboard with static frontend export and optional AWS backend sync.
 

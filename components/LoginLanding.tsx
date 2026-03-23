@@ -18,7 +18,7 @@ export function LoginLanding() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 shadow-lg shadow-emerald-500/20">
                 <Activity size={16} className="text-white" strokeWidth={2.5} />
               </div>
-              <span className="text-xl font-bold tracking-tight text-zinc-100">HealthOS</span>
+              <span className="text-xl font-bold tracking-tight text-zinc-100">Ojas-Helath</span>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">

@@ -147,7 +147,7 @@ export function HealthDashboard() {
                 </svg>
               </div>
               <span className="text-sm font-semibold tracking-tight text-zinc-100">
-                HealthOS
+                Ojas-Helath
               </span>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
@@ -206,7 +206,7 @@ export function HealthDashboard() {
                 </svg>
               </div>
               <span className="text-sm font-semibold tracking-tight text-zinc-100">
-                HealthOS
+                Ojas-Helath
               </span>
             </div>
             <p className="truncate text-center text-[11px] text-zinc-500">

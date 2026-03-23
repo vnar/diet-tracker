@@ -21,7 +21,7 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HealthOS",
+  title: "Ojas-Helath",
   description: "Daily awareness dashboard for weight and habits",
 };
 

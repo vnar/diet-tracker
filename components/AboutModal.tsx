@@ -93,7 +93,7 @@ function ProblemTab() {
           A +0.8 kg morning reading triggers panic, but that number is almost never fat.
         </p>
         <p className="mt-2 leading-relaxed text-zinc-400 sm:text-sm">
-          Without context, daily scale changes can be misleading. HealthOS frames the data so
+          Without context, daily scale changes can be misleading. Ojas-Helath frames the data so
           trend and behavior are clearer than short-term fluctuation.
         </p>
       </Section>
@@ -294,7 +294,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
                 <Activity size={13} className="text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-sm font-semibold tracking-tight text-zinc-100">About HealthOS</h2>
+                <h2 className="text-sm font-semibold tracking-tight text-zinc-100">About Ojas-Helath</h2>
                 <p className="text-[10px] text-zinc-500">Daily Awareness Dashboard · v1.0.0</p>
               </div>
             </div>
