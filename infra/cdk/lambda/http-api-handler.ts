@@ -218,6 +218,14 @@ function defaultTargetDate(): string {
 function normalizePhotoReference(photoUrl: string | null | undefined): string | undefined {
   if (!photoUrl || typeof photoUrl !== "string") return undefined;
   if (photoUrl.startsWith("s3://")) return photoUrl;
+  if (!photoUrl.includes("://")) {
+    const keyOnly = photoUrl.replace(/^\/+/, "");
+    if (!keyOnly) return undefined;
+    if (photoBucketName) {
+      return `s3://${photoBucketName}/${keyOnly}`;
+    }
+    return undefined;
+  }
   try {
     const parsed = new URL(photoUrl);
     const host = parsed.hostname.toLowerCase();
