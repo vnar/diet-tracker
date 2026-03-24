@@ -7,7 +7,7 @@ import { sortEntriesByDateAsc } from "@/lib/calculations";
 import { displayWeight, inputToKg, kgToInput } from "@/lib/units";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
-import { useSaveEntry } from "@/hooks/useHealthActions";
+import { useRefreshEntries, useSaveEntry } from "@/hooks/useHealthActions";
 
 function formatDisplayDate(iso: string): string {
   const d = new Date(iso + "T12:00:00");
@@ -23,10 +23,12 @@ function HistoryRow({
   entry,
   unit,
   onPreviewPhoto,
+  onPhotoLoadError,
 }: {
   entry: DailyEntry;
   unit: "kg" | "lbs";
   onPreviewPhoto: (photoUrl: string, date: string) => void;
+  onPhotoLoadError: () => void;
 }) {
   const saveEntry = useSaveEntry();
   const [morning, setMorning] = useState("");
@@ -125,6 +127,7 @@ function HistoryRow({
             <img
               src={entry.photoUrl}
               alt={`History photo for ${entry.date}`}
+              onError={onPhotoLoadError}
               className="h-8 w-8 cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-125"
             />
           </button>
@@ -152,8 +155,10 @@ function HistoryRow({
 export function WeightHistoryTable() {
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
+  const refreshEntries = useRefreshEntries();
   const [open, setOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
+  const [refreshingBrokenImages, setRefreshingBrokenImages] = useState(false);
 
   const rows = [...sortEntriesByDateAsc(entries)].reverse();
 
@@ -217,6 +222,11 @@ export function WeightHistoryTable() {
                     onPreviewPhoto={(photoUrl, date) =>
                       setPreviewPhoto({ url: photoUrl, date })
                     }
+                    onPhotoLoadError={() => {
+                      if (refreshingBrokenImages) return;
+                      setRefreshingBrokenImages(true);
+                      void refreshEntries().finally(() => setRefreshingBrokenImages(false));
+                    }}
                   />
                 ))}
               </tbody>

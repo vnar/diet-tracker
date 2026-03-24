@@ -192,3 +192,28 @@ export function useDeleteEntry() {
     }
   };
 }
+
+export function useRefreshEntries() {
+  const { status, getAccessToken } = useCognitoAuth();
+
+  return async (): Promise<{ ok: boolean; error?: string }> => {
+    if (!isAwsBackendEnabled()) return { ok: true };
+    if (status !== "authenticated") {
+      return { ok: false, error: "Please sign in to sync cloud data." };
+    }
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      return { ok: false, error: "Session expired. Please sign in again." };
+    }
+
+    const latest = await getEntries(accessToken);
+    if (!latest.ok) {
+      return { ok: false, error: latest.error || "Could not refresh entries." };
+    }
+
+    useHealthStore.setState({
+      entries: sortEntriesByDateAsc(latest.data.entries),
+    });
+    return { ok: true };
+  };
+}

@@ -15,7 +15,7 @@ import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
-import { useDeleteEntry, useSaveEntry } from "@/hooks/useHealthActions";
+import { useDeleteEntry, useRefreshEntries, useSaveEntry } from "@/hooks/useHealthActions";
 import { displayWeight } from "@/lib/units";
 import { isAwsBackendEnabled, uploadPhotoFile } from "@/lib/frontend-api-client";
 
@@ -76,6 +76,7 @@ export function PastDayGrid() {
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
   const deleteEntry = useDeleteEntry();
+  const refreshEntries = useRefreshEntries();
   const today = useClientTodayKey();
 
   const [calendarOpen, setCalendarOpen] = usePersistentBool(
@@ -112,6 +113,7 @@ export function PastDayGrid() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
+  const [refreshingBrokenImages, setRefreshingBrokenImages] = useState(false);
 
   useEffect(() => {
     if (!selected) return;
@@ -505,6 +507,11 @@ export function PastDayGrid() {
                     <img
                       src={selectedEntry.photoUrl}
                       alt={`Photo for ${selected}`}
+                      onError={() => {
+                        if (refreshingBrokenImages) return;
+                        setRefreshingBrokenImages(true);
+                        void refreshEntries().finally(() => setRefreshingBrokenImages(false));
+                      }}
                       className="h-24 w-24 cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
                     />
                   </button>

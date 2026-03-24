@@ -15,7 +15,7 @@ import {
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
-import { useSaveEntry } from "@/hooks/useHealthActions";
+import { useRefreshEntries, useSaveEntry } from "@/hooks/useHealthActions";
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -30,9 +30,11 @@ export function PhotoTracker() {
   const { status, getAccessToken } = useCognitoAuth();
   const entries = useHealthStore((s) => s.entries);
   const saveEntry = useSaveEntry();
+  const refreshEntries = useRefreshEntries();
   const today = useClientTodayKey();
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
+  const [refreshingBrokenImages, setRefreshingBrokenImages] = useState(false);
 
   const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
@@ -164,6 +166,11 @@ export function PhotoTracker() {
                 src={e.photoUrl}
                 alt={`Progress ${e.date}`}
                 onClick={() => setPreviewPhoto({ url: e.photoUrl, date: e.date })}
+                onError={() => {
+                  if (refreshingBrokenImages) return;
+                  setRefreshingBrokenImages(true);
+                  void refreshEntries().finally(() => setRefreshingBrokenImages(false));
+                }}
                 className="w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
               />
               <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">

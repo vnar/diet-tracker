@@ -132,7 +132,7 @@ export class BackendFoundationStack extends cdk.Stack {
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         UPLOAD_URL_TTL_SECONDS: "900",
-        DOWNLOAD_URL_TTL_SECONDS: "3600",
+        DOWNLOAD_URL_TTL_SECONDS: "604800",
       },
     });
 
