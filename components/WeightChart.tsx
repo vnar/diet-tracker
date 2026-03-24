@@ -24,6 +24,7 @@ interface Row {
   label: string;
   weight: number | null;
   avg: number | null;
+  targetPath: number | null;
 }
 
 function formatTick(dateStr: string): string {
@@ -36,6 +37,8 @@ export function WeightChart() {
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
   const settingsStartWeight = useHealthStore((s) => s.settings.startWeight);
+  const goalWeight = useHealthStore((s) => s.settings.goalWeight);
+  const targetDate = useHealthStore((s) => s.settings.targetDate);
 
   const sorted = sortEntriesByDateAsc(entries);
   const startWeight = sorted[0]?.morningWeight ?? settingsStartWeight;
@@ -47,9 +50,55 @@ export function WeightChart() {
     label: formatTick(e.date),
     weight: e.morningWeight,
     avg: maByDate.get(e.date) ?? null,
+    targetPath: null,
   }));
 
-  const weights = sorted.map((e) => e.morningWeight);
+  const lastLoggedWeight = sorted[sorted.length - 1]?.morningWeight;
+  const lastLoggedDate = sorted[sorted.length - 1]?.date;
+  if (lastLoggedWeight !== undefined && lastLoggedDate) {
+    const rowByDate = new Map(rows.map((r) => [r.date, r]));
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    const goal = new Date(`${targetDate}T12:00:00`);
+
+    if (!Number.isNaN(goal.getTime()) && goal.getTime() > today.getTime()) {
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const totalDays = Math.max(1, Math.round((goal.getTime() - today.getTime()) / msPerDay));
+
+      const setProjectionPoint = (d: Date) => {
+        const daysFromToday = Math.max(0, Math.round((d.getTime() - today.getTime()) / msPerDay));
+        const t = Math.min(1, daysFromToday / totalDays);
+        const expected = lastLoggedWeight + (goalWeight - lastLoggedWeight) * t;
+        const dateKey = d.toISOString().slice(0, 10);
+        const existing = rowByDate.get(dateKey);
+        if (existing) {
+          existing.targetPath = expected;
+          return;
+        }
+        const futureRow: Row = {
+          date: dateKey,
+          label: formatTick(dateKey),
+          weight: null,
+          avg: null,
+          targetPath: expected,
+        };
+        rows.push(futureRow);
+        rowByDate.set(dateKey, futureRow);
+      };
+
+      setProjectionPoint(today);
+      for (let d = new Date(today.getTime() + 7 * msPerDay); d < goal; d = new Date(d.getTime() + 7 * msPerDay)) {
+        setProjectionPoint(d);
+      }
+      setProjectionPoint(goal);
+
+      rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    }
+  }
+
+  const weights = rows
+    .flatMap((r) => [r.weight, r.avg, r.targetPath])
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   const minW = weights.length ? Math.min(...weights) : 0;
   const maxW = weights.length ? Math.max(...weights) : 1;
   const pad = 1;
@@ -122,12 +171,19 @@ export function WeightChart() {
                   return (
                     <div className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm shadow-xl">
                       <p className="font-medium text-slate-100">{p.label}</p>
-                      <p className="font-mono text-slate-300">
-                        Daily: {displayWeight(p.weight ?? 0, unit)} {unit}
-                      </p>
+                      {p.weight !== null ? (
+                        <p className="font-mono text-slate-300">
+                          Daily: {displayWeight(p.weight, unit)} {unit}
+                        </p>
+                      ) : null}
                       {p.avg !== null ? (
                         <p className="font-mono text-emerald-400">
                           7-point avg: {displayWeight(p.avg, unit)} {unit}
+                        </p>
+                      ) : null}
+                      {p.targetPath !== null ? (
+                        <p className="font-mono text-orange-400">
+                          Weekly target: {displayWeight(p.targetPath, unit)} {unit}
                         </p>
                       ) : null}
                     </div>
@@ -153,6 +209,16 @@ export function WeightChart() {
                 dot={false}
                 name="7-day avg"
               />
+              <Line
+                type="monotone"
+                dataKey="targetPath"
+                stroke="#f97316"
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                name="Goal path"
+              />
             </ComposedChart>
           </ResponsiveContainer>
         )}
@@ -169,6 +235,13 @@ export function WeightChart() {
               aria-hidden
             />
             Rolling average (last 7 logs)
+          </span>
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-400">
+            <span
+              className="h-0.5 w-5 border-t-2 border-dashed border-orange-400"
+              aria-hidden
+            />
+            Weekly target path to goal
           </span>
         </div>
       ) : null}
