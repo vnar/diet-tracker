@@ -215,6 +215,42 @@ function defaultTargetDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function normalizePhotoReference(photoUrl: string | null | undefined): string | undefined {
+  if (!photoUrl || typeof photoUrl !== "string") return undefined;
+  if (photoUrl.startsWith("s3://")) return photoUrl;
+  try {
+    const parsed = new URL(photoUrl);
+    const host = parsed.hostname.toLowerCase();
+    const path = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+    if (!path) return undefined;
+
+    // Virtual-hosted-style URL: bucket.s3.<region>.amazonaws.com/key
+    const virtualHosted = host.match(/^(.+)\.s3[.-][a-z0-9-]+\.amazonaws\.com$/);
+    if (virtualHosted?.[1]) {
+      return `s3://${virtualHosted[1]}/${path}`;
+    }
+
+    // Legacy global endpoint: bucket.s3.amazonaws.com/key
+    const globalHosted = host.match(/^(.+)\.s3\.amazonaws\.com$/);
+    if (globalHosted?.[1]) {
+      return `s3://${globalHosted[1]}/${path}`;
+    }
+
+    // Path-style URL: s3.<region>.amazonaws.com/bucket/key
+    if (/^s3[.-][a-z0-9-]+\.amazonaws\.com$/.test(host) || host === "s3.amazonaws.com") {
+      const slash = path.indexOf("/");
+      if (slash <= 0) return undefined;
+      const bucket = path.slice(0, slash);
+      const key = path.slice(slash + 1);
+      if (!bucket || !key) return undefined;
+      return `s3://${bucket}/${key}`;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 async function getEntries(userId: string, query: Record<string, string | undefined> | null | undefined): Promise<HttpResult> {
   const tableName = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
   const from = query?.from;
@@ -271,8 +307,8 @@ async function getEntries(userId: string, query: Record<string, string | undefin
 
   const entriesWithSignedPhotoUrls: StoredEntry[] = await Promise.all(
     entries.map(async (entry) => {
-      const photo = entry.photoUrl;
-      if (!photo || !photo.startsWith("s3://")) return entry;
+      const photo = normalizePhotoReference(entry.photoUrl);
+      if (!photo) return entry;
       try {
         const withoutScheme = photo.slice("s3://".length);
         const firstSlash = withoutScheme.indexOf("/");
@@ -321,7 +357,8 @@ async function upsertEntry(userId: string, event: HttpEvent): Promise<HttpResult
   if (data.protein !== undefined) item.protein = { N: String(data.protein) };
   if (data.steps !== undefined) item.steps = { N: String(data.steps) };
   if (data.sleep !== undefined) item.sleep = { N: String(data.sleep) };
-  if (typeof data.photoUrl === "string") item.photoUrl = { S: data.photoUrl };
+  const normalizedPhotoReference = normalizePhotoReference(data.photoUrl);
+  if (normalizedPhotoReference) item.photoUrl = { S: normalizedPhotoReference };
   if (typeof data.notes === "string") item.notes = { S: data.notes };
 
   await ddb.send(
