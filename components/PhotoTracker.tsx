@@ -35,6 +35,7 @@ export function PhotoTracker() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
   const [refreshingBrokenImages, setRefreshingBrokenImages] = useState(false);
+  const [brokenPhotoUrls, setBrokenPhotoUrls] = useState<Set<string>>(new Set());
 
   const todayEntry = today ? getEntryForDate(entries, today) : undefined;
 
@@ -146,11 +147,11 @@ export function PhotoTracker() {
           </p>
         </button>
       ) : (
-        <div className="columns-2 gap-3 md:columns-3">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
           {withPhotos.map((e) => (
             <div
               key={e.id}
-              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border border-slate-600 bg-slate-950/30"
+              className="group relative h-44 w-40 shrink-0 snap-start overflow-hidden rounded-xl border border-slate-600 bg-slate-950/30 sm:h-48 sm:w-44"
             >
               <button
                 type="button"
@@ -161,18 +162,35 @@ export function PhotoTracker() {
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
               </button>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={e.photoUrl}
-                alt={`Progress ${e.date}`}
-                onClick={() => setPreviewPhoto({ url: e.photoUrl, date: e.date })}
-                onError={() => {
-                  if (refreshingBrokenImages) return;
-                  setRefreshingBrokenImages(true);
-                  void refreshEntries().finally(() => setRefreshingBrokenImages(false));
-                }}
-                className="w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
-              />
+              {brokenPhotoUrls.has(e.photoUrl) ? (
+                <div className="flex h-full w-full items-center justify-center bg-slate-900/80 p-3 text-center text-xs text-slate-300">
+                  Refreshing photo...
+                </div>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={e.photoUrl}
+                    alt={`Progress ${e.date}`}
+                    onClick={() => setPreviewPhoto({ url: e.photoUrl, date: e.date })}
+                    onLoad={() => {
+                      setBrokenPhotoUrls((prev) => {
+                        if (!prev.has(e.photoUrl)) return prev;
+                        const next = new Set(prev);
+                        next.delete(e.photoUrl);
+                        return next;
+                      });
+                    }}
+                    onError={() => {
+                      setBrokenPhotoUrls((prev) => new Set(prev).add(e.photoUrl));
+                      if (refreshingBrokenImages) return;
+                      setRefreshingBrokenImages(true);
+                      void refreshEntries().finally(() => setRefreshingBrokenImages(false));
+                    }}
+                    className="h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                </>
+              )}
               <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <span className="p-3 text-xs font-medium text-white">
                   {formatDateLabel(e.date)}

@@ -226,31 +226,35 @@ export function DailyInput() {
           <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
             Daily habits
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5">
-          <Toggle
-            id="workout"
-            label="Workout"
-            checked={workout}
-            onChange={setWorkout}
-          />
-          <Toggle
-            id="alcohol"
-            label="Alcohol"
-            checked={alcohol}
-            onChange={setAlcohol}
-          />
-          <Toggle
-            id="lateSnack"
-            label="Late snack"
-            checked={lateSnack}
-            onChange={setLateSnack}
-          />
-          <Toggle
-            id="highSodium"
-            label="High sodium"
-            checked={highSodium}
-            onChange={setHighSodium}
-          />
+          <div className="grid grid-cols-2 gap-2 sm:gap-x-3 sm:gap-y-2.5">
+            <Toggle
+              id="workout"
+              label="Workout"
+              checked={workout}
+              onChange={setWorkout}
+              className="min-w-0"
+            />
+            <Toggle
+              id="alcohol"
+              label="Alcohol"
+              checked={alcohol}
+              onChange={setAlcohol}
+              className="min-w-0"
+            />
+            <Toggle
+              id="lateSnack"
+              label="Late snack"
+              checked={lateSnack}
+              onChange={setLateSnack}
+              className="min-w-0"
+            />
+            <Toggle
+              id="highSodium"
+              label="High sodium"
+              checked={highSodium}
+              onChange={setHighSodium}
+              className="min-w-0"
+            />
           </div>
         </div>
         {saveError ? (

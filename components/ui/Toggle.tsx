@@ -1,38 +1,43 @@
 "use client";
 
+import { Check } from "lucide-react";
+
 export interface ToggleProps {
   id: string;
   label: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  className?: string;
 }
 
-export function Toggle({ id, label, checked, onChange }: ToggleProps) {
+export function Toggle({ id, label, checked, onChange, className }: ToggleProps) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-2">
-      <label
-        htmlFor={id}
-        className="min-w-0 truncate text-[11px] text-zinc-300 sm:text-xs"
-      >
-        {label}
-      </label>
+    <div
+      className={`rounded-lg ${className ?? ""}`}
+    >
       <button
         id={id}
         type="button"
-        role="switch"
+        role="checkbox"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 ${
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
           checked
-            ? "bg-emerald-500"
-            : "bg-zinc-700"
+            ? "border-emerald-400/50 bg-emerald-500/15"
+            : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
         }`}
       >
+        <span className="min-w-0 text-[13px] font-medium text-zinc-100">{label}</span>
         <span
-          className={`pointer-events-none absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-[18px]" : "translate-x-0.5"
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+            checked
+              ? "border-emerald-400 bg-emerald-500 text-white"
+              : "border-zinc-600 bg-zinc-800 text-zinc-500"
           }`}
-        />
+          aria-hidden
+        >
+          <Check className="h-3 w-3" />
+        </span>
       </button>
     </div>
   );
