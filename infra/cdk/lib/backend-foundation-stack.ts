@@ -5,6 +5,7 @@ import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from "node:path";
 
@@ -119,20 +120,36 @@ export class BackendFoundationStack extends cdk.Stack {
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
-    const apiLambda = new lambda.Function(this, "BackendApiLambda", {
+    backendLambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["cognito-idp:ListUsers"],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+
+    const adminEmailsDeploy = process.env.ADMIN_EMAILS ?? "";
+    const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "http-api-handler.handler",
-      code: lambda.Code.fromAsset(path.join(__dirname, "..", "lambda")),
+      entry: path.join(__dirname, "..", "lambda", "http-api-handler.ts"),
+      handler: "handler",
       role: backendLambdaRole,
-      timeout: cdk.Duration.seconds(15),
+      timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
+        USER_POOL_ID: userPool.userPoolId,
+        ADMIN_EMAILS: adminEmailsDeploy,
         UPLOAD_URL_TTL_SECONDS: "900",
         DOWNLOAD_URL_TTL_SECONDS: "604800",
+      },
+      bundling: {
+        minify: true,
+        sourceMap: false,
+        target: "node20",
+        forceDockerBundling: false,
       },
     });
 
@@ -164,6 +181,7 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "GET /stats", id: "StatsGetRoute" },
       { routeKey: "POST /metrics/page-view", id: "PageViewPostRoute" },
       { routeKey: "POST /photos/upload-url", id: "PhotoUploadUrlRoute" },
+      { routeKey: "GET /admin/users", id: "AdminUsersGetRoute" },
     ];
 
     for (const route of securedRoutes) {

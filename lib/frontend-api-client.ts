@@ -112,6 +112,23 @@ export async function getFooterStats(accessToken?: string) {
   return fetchJson<{ users: number; pageViews: number }>("/stats", undefined, true, accessToken);
 }
 
+export type AdminUserRow = {
+  sub: string;
+  email?: string;
+  firstName?: string;
+  fullName?: string;
+  status?: string;
+};
+
+export async function getAdminUsers(accessToken?: string) {
+  return fetchJson<{ count: number; users: AdminUserRow[] }>(
+    "/admin/users",
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
 export async function trackPageView(accessToken?: string) {
   return fetchJson<{ pageViews: number }>(
     "/metrics/page-view",

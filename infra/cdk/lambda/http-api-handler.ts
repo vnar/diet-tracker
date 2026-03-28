@@ -1,4 +1,8 @@
 import {
+  CognitoIdentityProviderClient,
+  ListUsersCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+import {
   DynamoDBClient,
   DeleteItemCommand,
   GetItemCommand,
@@ -12,6 +16,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
+const cognitoIdp = new CognitoIdentityProviderClient({});
 
 const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
@@ -19,6 +24,8 @@ const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
+const userPoolIdEnv = process.env.USER_POOL_ID;
+const adminEmailsEnv = process.env.ADMIN_EMAILS ?? "";
 
 type Claims = {
   sub: string;
@@ -207,6 +214,28 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
 
 function getUserId(event: HttpEvent): string | undefined {
   return event.requestContext?.authorizer?.jwt?.claims?.sub;
+}
+
+function getCallerEmail(event: HttpEvent): string | undefined {
+  const claims = event.requestContext?.authorizer?.jwt?.claims as Record<string, unknown> | undefined;
+  if (!claims) return undefined;
+  const email = typeof claims.email === "string" ? claims.email.trim().toLowerCase() : undefined;
+  const username =
+    typeof claims.username === "string" ? claims.username.trim().toLowerCase() : undefined;
+  const cognitoUsername =
+    typeof claims["cognito:username"] === "string"
+      ? (claims["cognito:username"] as string).trim().toLowerCase()
+      : undefined;
+  return email ?? username ?? cognitoUsername;
+}
+
+function isAdminEmail(email: string | undefined): boolean {
+  if (!email) return false;
+  const allow = adminEmailsEnv
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allow.length > 0 && allow.includes(email);
 }
 
 function defaultTargetDate(): string {
@@ -525,6 +554,48 @@ async function getStats(): Promise<HttpResult> {
   });
 }
 
+async function listCognitoUsersForAdmin(): Promise<HttpResult> {
+  const poolId = getRequiredEnv("USER_POOL_ID", userPoolIdEnv);
+  const users: Array<{
+    sub: string;
+    email?: string;
+    firstName?: string;
+    fullName?: string;
+    status?: string;
+  }> = [];
+
+  let paginationToken: string | undefined;
+  do {
+    const out = await cognitoIdp.send(
+      new ListUsersCommand({
+        UserPoolId: poolId,
+        Limit: 60,
+        PaginationToken: paginationToken,
+      }),
+    );
+    for (const u of out.Users ?? []) {
+      const attrs: Record<string, string> = {};
+      for (const a of u.Attributes ?? []) {
+        if (a.Name && a.Value) attrs[a.Name] = a.Value;
+      }
+      const fullName = attrs.name;
+      const given = attrs.given_name;
+      const firstName =
+        given ?? (fullName ? fullName.trim().split(/\s+/)[0] : undefined);
+      users.push({
+        sub: attrs.sub ?? u.Username ?? "",
+        email: attrs.email,
+        firstName,
+        fullName,
+        status: u.UserStatus,
+      });
+    }
+    paginationToken = out.PaginationToken;
+  } while (paginationToken);
+
+  return json(200, { count: users.length, users });
+}
+
 async function incrementPageView(): Promise<HttpResult> {
   const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
   const out = await ddb.send(
@@ -584,6 +655,14 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
 
     if (event.rawPath === "/photos/upload-url" && method === "POST") {
       return createUploadUrl(userId, event);
+    }
+
+    if (event.rawPath === "/admin/users" && method === "GET") {
+      const callerEmail = getCallerEmail(event);
+      if (!isAdminEmail(callerEmail)) {
+        return json(403, { error: "Forbidden" });
+      }
+      return listCognitoUsersForAdmin();
     }
 
     return json(404, { error: "Not Found" });

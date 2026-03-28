@@ -16,7 +16,9 @@ import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { getSettings, isAwsBackendEnabled } from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
-import { Settings } from "lucide-react";
+import { Settings, Users } from "lucide-react";
+import { AdminUsersPanel } from "@/components/AdminUsersPanel";
+import { isAppAdminViewer } from "@/lib/admin";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -36,7 +38,9 @@ export function HealthDashboard() {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const { status, getAccessToken } = useCognitoAuth();
+  const { status, getAccessToken, user } = useCognitoAuth();
+  const [adminUsersOpen, setAdminUsersOpen] = useState(false);
+  const showAdminUsers = isAppAdminViewer(user?.email);
 
   useEffect(() => {
     setStartWeight(String(settings.startWeight));
@@ -152,6 +156,17 @@ export function HealthDashboard() {
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
               <AuthBar compact />
+              {showAdminUsers ? (
+                <button
+                  type="button"
+                  onClick={() => setAdminUsersOpen(true)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                  aria-label="View registered users"
+                  title="Users (admin)"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -222,6 +237,15 @@ export function HealthDashboard() {
             </p>
             <div className="flex flex-shrink-0 items-center gap-2">
               <AuthBar />
+              {showAdminUsers ? (
+                <button
+                  type="button"
+                  onClick={() => setAdminUsersOpen(true)}
+                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                >
+                  Users
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -282,6 +306,8 @@ export function HealthDashboard() {
           ) : null}
         </div>
       </div>
+
+      <AdminUsersPanel open={adminUsersOpen} onClose={() => setAdminUsersOpen(false)} />
 
       {settingsOpen ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4">
