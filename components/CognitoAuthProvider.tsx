@@ -7,6 +7,7 @@ import {
   sessionFromAuthResult,
   signInWithCognito,
   signUpWithCognito,
+  enrichProfileWithAccessToken,
   userFromIdToken,
   type CognitoSessionTokens,
   type CognitoUserProfile,
@@ -89,12 +90,13 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
       setStatus("unauthenticated");
       return;
     }
-    const profile = userFromIdToken(stored.idToken);
-    if (!profile) {
+    const base = userFromIdToken(stored.idToken);
+    if (!base) {
       window.localStorage.removeItem(STORAGE_KEY);
       setStatus("unauthenticated");
       return;
     }
+    const profile = enrichProfileWithAccessToken(base, stored.accessToken);
     setSession(stored);
     setUser(profile);
     setStatus("authenticated");
@@ -112,10 +114,11 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
             return { ok: false, error: "Sign in challenge not supported in this client." };
           }
 
-          const profile = userFromIdToken(next.idToken);
-          if (!profile) {
+          const base = userFromIdToken(next.idToken);
+          if (!base) {
             return { ok: false, error: "Could not parse user profile from token." };
           }
+          const profile = enrichProfileWithAccessToken(base, next.accessToken);
 
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
           setSession(next);

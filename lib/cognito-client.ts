@@ -21,6 +21,8 @@ type JwtPayload = {
   email?: string;
   name?: string;
   exp?: number;
+  username?: string;
+  "cognito:username"?: string;
 };
 
 export type CognitoUserProfile = {
@@ -75,14 +77,41 @@ export function userFromIdToken(idToken: string): CognitoUserProfile | null {
   try {
     const payload = decodeJwtPayload(idToken);
     if (!payload.sub) return null;
+    const emailRaw = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : undefined;
+    const cognitoUsername =
+      typeof payload["cognito:username"] === "string"
+        ? payload["cognito:username"].trim().toLowerCase()
+        : undefined;
+    const email =
+      emailRaw ||
+      (cognitoUsername && cognitoUsername.includes("@") ? cognitoUsername : undefined);
     return {
       id: payload.sub,
-      email: payload.email,
-      name: payload.name,
+      email,
+      name: typeof payload.name === "string" ? payload.name : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/** Access tokens often include `username` when `email` is absent on the ID token. */
+export function enrichProfileWithAccessToken(
+  profile: CognitoUserProfile,
+  accessToken: string,
+): CognitoUserProfile {
+  if (profile.email && profile.email.includes("@")) return profile;
+  try {
+    const payload = decodeJwtPayload(accessToken);
+    const username =
+      typeof payload.username === "string" ? payload.username.trim().toLowerCase() : undefined;
+    if (username && username.includes("@")) {
+      return { ...profile, email: username };
+    }
+  } catch {
+    /* ignore */
+  }
+  return profile;
 }
 
 export async function signInWithCognito(email: string, password: string) {
