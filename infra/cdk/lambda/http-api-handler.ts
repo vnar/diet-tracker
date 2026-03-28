@@ -1,5 +1,6 @@
 import {
   CognitoIdentityProviderClient,
+  GetUserCommand,
   ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import {
@@ -25,7 +26,6 @@ const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
 const userPoolIdEnv = process.env.USER_POOL_ID;
-const adminEmailsEnv = process.env.ADMIN_EMAILS ?? "";
 
 type Claims = {
   sub: string;
@@ -34,6 +34,7 @@ type Claims = {
 
 type HttpEvent = {
   rawPath: string;
+  headers?: Record<string, string | undefined>;
   requestContext?: {
     authorizer?: {
       jwt?: {
@@ -216,27 +217,88 @@ function getUserId(event: HttpEvent): string | undefined {
   return event.requestContext?.authorizer?.jwt?.claims?.sub;
 }
 
-function getCallerEmail(event: HttpEvent): string | undefined {
-  const raw = event.requestContext?.authorizer?.jwt?.claims;
-  if (!raw || typeof raw !== "object") return undefined;
-  const claims = raw as Record<string, unknown>;
-  const str = (k: string) =>
-    typeof claims[k] === "string" ? (claims[k] as string).trim().toLowerCase() : undefined;
-  // Access token: usually `username` (email when email is the Cognito username). ID token: often `email`.
-  const email = str("email");
-  const username = str("username");
-  const cognitoUsername = str("cognito:username");
-  const preferred = str("preferred_username");
-  return email ?? username ?? cognitoUsername ?? preferred;
+/** Gmail treats dots and +labels as aliases; normalize so admin list matches real sign-in identities. */
+function normalizeEmailForAdminMatch(email: string): string {
+  const lower = email.trim().toLowerCase();
+  const at = lower.lastIndexOf("@");
+  if (at <= 0) return lower;
+  const local = lower.slice(0, at);
+  const domain = lower.slice(at + 1);
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    const baseLocal = (local.split("+")[0] ?? local).replace(/\./g, "");
+    return `${baseLocal}@${domain}`;
+  }
+  return lower;
 }
 
-function isAdminEmail(email: string | undefined): boolean {
-  if (!email) return false;
-  const allow = adminEmailsEnv
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return allow.length > 0 && allow.includes(email);
+function getAdminAllowListNormalized(): Set<string> {
+  const raw = process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => normalizeEmailForAdminMatch(s.trim()))
+      .filter(Boolean),
+  );
+}
+
+function collectEmailLikeClaims(claims: Record<string, unknown>): string[] {
+  const found: string[] = [];
+  const emailish = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  for (const v of Object.values(claims)) {
+    if (typeof v === "string" && emailish.test(v.trim())) {
+      found.push(v.trim().toLowerCase());
+    }
+  }
+  return [...new Set(found)];
+}
+
+/** True if JWT claims include an email identity that matches the configured admin allow list. */
+function isAdminCaller(event: HttpEvent): boolean {
+  const raw = event.requestContext?.authorizer?.jwt?.claims;
+  if (!raw || typeof raw !== "object") return false;
+  const claims = raw as Record<string, unknown>;
+  const allow = getAdminAllowListNormalized();
+  if (allow.size === 0) return false;
+  const candidates = collectEmailLikeClaims(claims);
+  for (const c of candidates) {
+    if (allow.has(normalizeEmailForAdminMatch(c))) return true;
+  }
+  return false;
+}
+
+function bearerAccessToken(event: HttpEvent): string | undefined {
+  const h = event.headers;
+  if (!h) return undefined;
+  const raw = h.authorization ?? h.Authorization;
+  if (!raw) return undefined;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim();
+}
+
+/** When API Gateway omits email-ish claims, verify admin via Cognito GetUser(accessToken). */
+async function isAdminViaGetUser(event: HttpEvent): Promise<boolean> {
+  const token = bearerAccessToken(event);
+  if (!token) return false;
+  const allow = getAdminAllowListNormalized();
+  if (allow.size === 0) return false;
+  try {
+    const out = await cognitoIdp.send(new GetUserCommand({ AccessToken: token }));
+    const attrs = out.UserAttributes ?? [];
+    const email =
+      attrs.find((a) => a.Name === "email")?.Value ??
+      attrs.find((a) => a.Name === "preferred_username")?.Value;
+    const fromUsername = out.Username?.includes("@") ? out.Username : undefined;
+    const candidate = (email ?? fromUsername ?? "").trim().toLowerCase();
+    if (!candidate) return false;
+    return allow.has(normalizeEmailForAdminMatch(candidate));
+  } catch {
+    return false;
+  }
+}
+
+async function isAdminAllowed(event: HttpEvent): Promise<boolean> {
+  if (isAdminCaller(event)) return true;
+  return isAdminViaGetUser(event);
 }
 
 function defaultTargetDate(): string {
@@ -659,8 +721,7 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
     }
 
     if (event.rawPath === "/admin/users" && method === "GET") {
-      const callerEmail = getCallerEmail(event);
-      if (!isAdminEmail(callerEmail)) {
+      if (!(await isAdminAllowed(event))) {
         return json(403, { error: "Forbidden" });
       }
       return listCognitoUsersForAdmin();

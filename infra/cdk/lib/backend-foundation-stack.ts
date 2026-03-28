@@ -122,7 +122,7 @@ export class BackendFoundationStack extends cdk.Stack {
 
     backendLambdaRole.addToPolicy(
       new iam.PolicyStatement({
-        actions: ["cognito-idp:ListUsers"],
+        actions: ["cognito-idp:ListUsers", "cognito-idp:GetUser"],
         resources: [userPool.userPoolArn],
       }),
     );
