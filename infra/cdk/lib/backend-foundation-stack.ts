@@ -127,7 +127,9 @@ export class BackendFoundationStack extends cdk.Stack {
       }),
     );
 
-    const adminEmailsDeploy = process.env.ADMIN_EMAILS ?? "";
+    // Default matches app owner; override with ADMIN_EMAILS=... at deploy time if needed.
+    const adminEmailsDeploy =
+      process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,

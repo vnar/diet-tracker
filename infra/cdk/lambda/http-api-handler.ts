@@ -217,16 +217,17 @@ function getUserId(event: HttpEvent): string | undefined {
 }
 
 function getCallerEmail(event: HttpEvent): string | undefined {
-  const claims = event.requestContext?.authorizer?.jwt?.claims as Record<string, unknown> | undefined;
-  if (!claims) return undefined;
-  const email = typeof claims.email === "string" ? claims.email.trim().toLowerCase() : undefined;
-  const username =
-    typeof claims.username === "string" ? claims.username.trim().toLowerCase() : undefined;
-  const cognitoUsername =
-    typeof claims["cognito:username"] === "string"
-      ? (claims["cognito:username"] as string).trim().toLowerCase()
-      : undefined;
-  return email ?? username ?? cognitoUsername;
+  const raw = event.requestContext?.authorizer?.jwt?.claims;
+  if (!raw || typeof raw !== "object") return undefined;
+  const claims = raw as Record<string, unknown>;
+  const str = (k: string) =>
+    typeof claims[k] === "string" ? (claims[k] as string).trim().toLowerCase() : undefined;
+  // Access token: usually `username` (email when email is the Cognito username). ID token: often `email`.
+  const email = str("email");
+  const username = str("username");
+  const cognitoUsername = str("cognito:username");
+  const preferred = str("preferred_username");
+  return email ?? username ?? cognitoUsername ?? preferred;
 }
 
 function isAdminEmail(email: string | undefined): boolean {
