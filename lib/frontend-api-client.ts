@@ -44,6 +44,8 @@ async function fetchJson<T>(
   const headers = new Headers(init?.headers);
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
+    // HTTP API JWT authorizers do not forward Authorization to Lambda; backend reads this for Cognito GetUser.
+    headers.set("x-cognito-access-token", accessToken);
   }
   const res = await fetch(url, { ...init, headers });
   const payload = await readJsonSafe<JsonRecord>(res);

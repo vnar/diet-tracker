@@ -213,8 +213,29 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
   };
 }
 
+function getJwtClaims(event: HttpEvent): Record<string, unknown> | undefined {
+  const raw = event.requestContext?.authorizer?.jwt?.claims;
+  if (raw == null) return undefined;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return undefined;
+}
+
 function getUserId(event: HttpEvent): string | undefined {
-  return event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const sub = getJwtClaims(event)?.sub;
+  return typeof sub === "string" ? sub : undefined;
 }
 
 /** Gmail treats dots and +labels as aliases; normalize so admin list matches real sign-in identities. */
@@ -233,17 +254,28 @@ function normalizeEmailForAdminMatch(email: string): string {
 
 function getAdminAllowListNormalized(): Set<string> {
   const raw = process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => normalizeEmailForAdminMatch(s.trim()))
-      .filter(Boolean),
-  );
+  const parts = raw
+    .split(",")
+    .map((s) => normalizeEmailForAdminMatch(s.trim()))
+    .filter(Boolean);
+  const set = new Set(parts);
+  if (set.size === 0) {
+    set.add(normalizeEmailForAdminMatch("viharnar@gmail.com"));
+  }
+  return set;
 }
 
-function collectEmailLikeClaims(claims: Record<string, unknown>): string[] {
+const ADMIN_CLAIM_KEYS = ["username", "cognito:username", "email", "preferred_username"] as const;
+
+function collectAdminIdentityCandidates(claims: Record<string, unknown>): string[] {
   const found: string[] = [];
   const emailish = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  for (const key of ADMIN_CLAIM_KEYS) {
+    const v = claims[key];
+    if (typeof v === "string" && emailish.test(v.trim())) {
+      found.push(v.trim().toLowerCase());
+    }
+  }
   for (const v of Object.values(claims)) {
     if (typeof v === "string" && emailish.test(v.trim())) {
       found.push(v.trim().toLowerCase());
@@ -254,36 +286,58 @@ function collectEmailLikeClaims(claims: Record<string, unknown>): string[] {
 
 /** True if JWT claims include an email identity that matches the configured admin allow list. */
 function isAdminCaller(event: HttpEvent): boolean {
-  const raw = event.requestContext?.authorizer?.jwt?.claims;
-  if (!raw || typeof raw !== "object") return false;
-  const claims = raw as Record<string, unknown>;
+  const claims = getJwtClaims(event);
+  if (!claims) return false;
   const allow = getAdminAllowListNormalized();
   if (allow.size === 0) return false;
-  const candidates = collectEmailLikeClaims(claims);
+  const candidates = collectAdminIdentityCandidates(claims);
   for (const c of candidates) {
     if (allow.has(normalizeEmailForAdminMatch(c))) return true;
   }
   return false;
 }
 
+function headerValue(
+  headers: Record<string, string | undefined> | undefined,
+  name: string,
+): string | undefined {
+  if (!headers) return undefined;
+  const want = name.toLowerCase();
+  for (const [k, v] of Object.entries(headers)) {
+    if (k.toLowerCase() === want && typeof v === "string" && v.length > 0) {
+      return v;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * JWT HTTP API authorizers validate Authorization but typically do not forward that header to Lambda.
+ * Clients also send x-cognito-access-token (see frontend-api-client) so we can call cognito-idp:GetUser.
+ */
 function bearerAccessToken(event: HttpEvent): string | undefined {
   const h = event.headers;
-  if (!h) return undefined;
-  const raw = h.authorization ?? h.Authorization;
+  const custom = headerValue(h, "x-cognito-access-token");
+  if (custom?.trim()) return custom.trim();
+  const raw = headerValue(h, "authorization");
   if (!raw) return undefined;
   const m = raw.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim();
 }
 
-/** When API Gateway omits email-ish claims, verify admin via Cognito GetUser(accessToken). */
+/** When claims lack a resolvable email, verify admin via GetUser; token sub must match JWT sub. */
 async function isAdminViaGetUser(event: HttpEvent): Promise<boolean> {
   const token = bearerAccessToken(event);
   if (!token) return false;
+  const jwtSub = getUserId(event);
+  if (!jwtSub) return false;
   const allow = getAdminAllowListNormalized();
   if (allow.size === 0) return false;
   try {
     const out = await cognitoIdp.send(new GetUserCommand({ AccessToken: token }));
     const attrs = out.UserAttributes ?? [];
+    const tokenSub = attrs.find((a) => a.Name === "sub")?.Value;
+    if (tokenSub !== jwtSub) return false;
     const email =
       attrs.find((a) => a.Name === "email")?.Value ??
       attrs.find((a) => a.Name === "preferred_username")?.Value;

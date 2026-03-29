@@ -41,7 +41,7 @@ export class BackendFoundationStack extends cdk.Stack {
     const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
       apiName: `${this.stackName}-http-api`,
       corsPreflight: {
-        allowHeaders: ["Authorization", "Content-Type"],
+        allowHeaders: ["Authorization", "Content-Type", "x-cognito-access-token"],
         allowMethods: [
           apigwv2.CorsHttpMethod.GET,
           apigwv2.CorsHttpMethod.POST,
