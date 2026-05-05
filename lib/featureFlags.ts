@@ -50,12 +50,13 @@ export function isInsightsV2Enabled(userId?: string): boolean {
   if (legacyExplicit !== undefined) return legacyExplicit;
   const explicit = readEnvFlag("INSIGHTS_V2");
   if (explicit !== undefined) return isEnabled("INSIGHTS_V2", userId);
-  if (process.env.NODE_ENV === "development") return true;
-  return isEnabled("INSIGHTS_V2", userId);
+  return true;
 }
 
 export function isInsightsLlmRefineEnabled(userId?: string): boolean {
   const legacyExplicit = parseBoolean(process.env.NEXT_PUBLIC_INSIGHTS_LLM_REFINE);
   if (legacyExplicit !== undefined) return legacyExplicit;
-  return isEnabled("INSIGHTS_LLM_REFINE", userId);
+  const explicit = readEnvFlag("INSIGHTS_LLM_REFINE");
+  if (explicit !== undefined) return isEnabled("INSIGHTS_LLM_REFINE", userId);
+  return true;
 }

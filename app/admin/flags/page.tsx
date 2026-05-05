@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import {
   getAdminFlagOverrides,
+  getAdminUsers,
   isAwsBackendEnabled,
   putAdminFlagOverride,
 } from "@/lib/frontend-api-client";
@@ -25,6 +26,7 @@ export default function AdminFlagsPage() {
   const [rows, setRows] = useState<FlagOverrideRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   const isAdmin = useMemo(
     () => user?.email?.toLowerCase() === HARDCODED_ADMIN_EMAIL,
     [user?.email],
@@ -86,6 +88,54 @@ export default function AdminFlagsPage() {
     }
   }
 
+  async function enableInsightsForAllUsers() {
+    const token = getAccessToken();
+    if (!token) {
+      setError("Session expired. Please sign in again.");
+      return;
+    }
+    setBulkSaving(true);
+    try {
+      const usersResult = await getAdminUsers(token);
+      if (!usersResult.ok) {
+        setError(usersResult.error);
+        return;
+      }
+      const userIds = usersResult.data.users
+        .map((userRow) => userRow.sub)
+        .filter((value) => typeof value === "string" && value.trim().length > 0);
+      if (userIds.length === 0) {
+        setError("No user IDs found in Cognito.");
+        return;
+      }
+      for (const userId of userIds) {
+        const v2 = await putAdminFlagOverride(
+          { userId, flag: "FF_INSIGHTS_V2", enabled: true },
+          token,
+        );
+        if (!v2.ok) {
+          setError(`Failed setting FF_INSIGHTS_V2 for ${userId}: ${v2.error}`);
+          return;
+        }
+        const llm = await putAdminFlagOverride(
+          { userId, flag: "FF_INSIGHTS_LLM_REFINE", enabled: true },
+          token,
+        );
+        if (!llm.ok) {
+          setError(`Failed setting FF_INSIGHTS_LLM_REFINE for ${userId}: ${llm.error}`);
+          return;
+        }
+      }
+      setError(null);
+      setRows([]);
+      setTargetUserId(userIds[0] ?? "");
+    } catch {
+      setError("Failed to enable insights flags for all users.");
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   if (!isAwsBackendEnabled()) {
     return (
       <main className="mx-auto max-w-2xl p-6 text-sm text-zinc-300">
@@ -115,6 +165,14 @@ export default function AdminFlagsPage() {
       <h1 className="text-xl font-semibold">Admin Feature Flags</h1>
 
       <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
+        <button
+          type="button"
+          disabled={bulkSaving}
+          onClick={() => void enableInsightsForAllUsers()}
+          className="mb-4 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400 disabled:opacity-60"
+        >
+          {bulkSaving ? "Applying to all users..." : "Enable Insights + LLM for all users"}
+        </button>
         <label className="mb-2 block text-xs text-zinc-400">Target userId</label>
         <input
           value={targetUserId}
