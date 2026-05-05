@@ -1,4 +1,4 @@
-import { handlers } from "@/auth";
+import { NextResponse } from "next/server";
 
 /** Required for `output: 'export'` — handlers are not executed at static build time. */
 export const dynamic = "force-static";
@@ -20,4 +20,16 @@ export function generateStaticParams() {
   ];
 }
 
-export const { GET, POST } = handlers;
+export async function GET() {
+  return NextResponse.json(
+    { error: "Auth API is not enabled in static export builds." },
+    { status: 501 },
+  );
+}
+
+export async function POST() {
+  return NextResponse.json(
+    { error: "Auth API is not enabled in static export builds." },
+    { status: 501 },
+  );
+}
