@@ -46,7 +46,23 @@ export async function generateInsights(
   for (const insight of ranked) {
     refined.push(await maybeRefineInsight(insight, userPrefs));
   }
-  return refined;
+  if (refined.length > 0) return refined;
+  const latestDate = scoped[scoped.length - 1]?.date ?? new Date().toISOString().slice(0, 10);
+  return [
+    {
+      id: `baseline-insight-${latestDate}`,
+      ruleId: "baseline",
+      priority: 10,
+      headline: "Great consistency so far - keep logging daily for sharper insights.",
+      detail: "We need a bit more signal to detect strong personal patterns, but your data flow is active.",
+      why: [
+        `${scoped.length} logs analyzed from the last 90 days`,
+        "No rule crossed confidence thresholds yet",
+      ],
+      action: "Keep tracking daily habits and weight to unlock stronger personalized insights.",
+      category: "streak",
+    },
+  ];
 }
 
 export type { Insight, InsightLog, UserPrefs } from "@/lib/insights/types";

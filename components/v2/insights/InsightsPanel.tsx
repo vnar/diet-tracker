@@ -12,6 +12,7 @@ import type { Insight, InsightVote } from "@/lib/insights/types";
 export function InsightsPanel({ accessToken }: { accessToken: string }) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [voted, setVoted] = useState<Record<string, InsightVote>>({});
 
@@ -20,6 +21,11 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
     async function run() {
       const result = await getInsightsV2(accessToken);
       if (cancelled) return;
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+      }
       const next = result.ok ? result.data.insights : [];
       setInsights(next);
       setLoading(false);
@@ -45,9 +51,16 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
 
   if (insights.length === 0) {
     return (
-      <p className="text-[15px] font-medium leading-relaxed text-slate-400">
-        No nudges right now — keep logging.
-      </p>
+      <div className="space-y-2">
+        <p className="text-[15px] font-medium leading-relaxed text-slate-400">
+          No nudges right now — keep logging.
+        </p>
+        {error ? (
+          <p className="text-xs text-rose-300">
+            Insights unavailable: {error}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
