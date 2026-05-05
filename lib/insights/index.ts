@@ -7,7 +7,7 @@ import { sodiumBumpRule } from "@/lib/insights/rules/sodiumBumpRule";
 import { streakRule } from "@/lib/insights/rules/streakRule";
 import { trajectoryRule } from "@/lib/insights/rules/trajectoryRule";
 import { workoutRule } from "@/lib/insights/rules/workoutRule";
-import type { InsightCard, InsightLog, InsightRule } from "@/lib/insights/types";
+import type { Insight, InsightLog, InsightRule, UserPrefs } from "@/lib/insights/types";
 
 const ALL_RULES: InsightRule[] = [
   sodiumBumpRule,
@@ -19,31 +19,34 @@ const ALL_RULES: InsightRule[] = [
   trajectoryRule,
 ];
 
-export async function generateInsights(logs: InsightLog[]): Promise<InsightCard[]> {
+export async function generateInsights(
+  logs: InsightLog[],
+  userPrefs: UserPrefs = {},
+): Promise<Insight[]> {
   const scoped = limitToLast90Days(sortLogsAsc(logs));
   if (scoped.length === 0) return [];
 
-  const candidates = ALL_RULES.map((rule) => rule(scoped)).filter(
-    (insight): insight is InsightCard => insight !== null,
+  const candidates = ALL_RULES.map((rule) => rule(scoped, userPrefs)).filter(
+    (insight): insight is Insight => insight !== null,
   );
 
-  const dedupedByRule = new Map<string, InsightCard>();
+  const dedupedByCategory = new Map<string, Insight>();
   for (const insight of candidates) {
-    const current = dedupedByRule.get(insight.ruleId);
+    const current = dedupedByCategory.get(insight.category);
     if (!current || insight.priority > current.priority) {
-      dedupedByRule.set(insight.ruleId, insight);
+      dedupedByCategory.set(insight.category, insight);
     }
   }
 
-  const ranked = [...dedupedByRule.values()]
+  const ranked = [...dedupedByCategory.values()]
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 3);
 
-  const refined: InsightCard[] = [];
+  const refined: Insight[] = [];
   for (const insight of ranked) {
-    refined.push(await maybeRefineInsight(insight));
+    refined.push(await maybeRefineInsight(insight, userPrefs));
   }
   return refined;
 }
 
-export type { InsightCard, InsightLog } from "@/lib/insights/types";
+export type { Insight, InsightLog, UserPrefs } from "@/lib/insights/types";

@@ -22,5 +22,7 @@ export const sodiumBumpRule: InsightRule = (logs) => {
       `Average next-morning change on high-sodium days: +${roundTo(flaggedAvg, 2)} kg`,
       `Baseline next-morning change: +${roundTo(baselineAvg, 2)} kg`,
     ],
+    action: "Try one lower-sodium dinner swap tonight.",
+    category: "sodium",
   };
 };

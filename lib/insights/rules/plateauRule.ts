@@ -30,5 +30,7 @@ export const plateauRule: InsightRule = (logs) => {
       `7-day average from 14 days ago: ${roundTo(priorAvg, 2)} kg`,
       `Total movement over 14 days: ${roundTo(movement, 2)} kg (< 0.2 kg threshold)`,
     ],
+    action: "Adjust one habit this week: calories or activity.",
+    category: "plateau",
   };
 };

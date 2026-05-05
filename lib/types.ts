@@ -23,6 +23,7 @@ export interface UserSettings {
   startWeight: number;
   targetDate: string;
   unit: "kg" | "lbs";
+  tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
 }
 
 export type InsightSeverity = "warning" | "success" | "info" | "neutral";

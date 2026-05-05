@@ -38,5 +38,7 @@ export const trajectoryRule: InsightRule = (logs) => {
       `Difference vs expected: ${roundTo(drift, 2)} kg`,
       `Days remaining to target: ${remainingDays}`,
     ],
+    action: "Apply the calorie adjustment for 7 days, then reassess.",
+    category: "trajectory",
   };
 };

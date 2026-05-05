@@ -22,6 +22,7 @@
     "stage6:cutover": "node scripts/stage6-validate-cutover.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.93.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.1014.0",
     "@aws-sdk/client-dynamodb": "^3.1042.0",
     "@sentry/nextjs": "^10.51.0",

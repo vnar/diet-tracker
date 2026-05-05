@@ -22,5 +22,7 @@ export const alcoholRule: InsightRule = (logs) => {
       `Average next-morning change after alcohol: +${roundTo(flaggedAvg, 2)} kg`,
       `Baseline next-morning change: +${roundTo(baselineAvg, 2)} kg`,
     ],
+    action: "Plan alcohol-free weekdays for steadier trend lines.",
+    category: "alcohol",
   };
 };

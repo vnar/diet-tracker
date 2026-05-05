@@ -31,5 +31,7 @@ export const streakRule: InsightRule = (logs) => {
       `Current consecutive-day logging streak: ${streak} days`,
       `Milestone reached: ${milestone} days`,
     ],
+    action: "Lock in tomorrow’s weigh-in to keep streak momentum.",
+    category: "streak",
   };
 };

@@ -75,6 +75,7 @@ type SettingsPatch = {
   startWeight: number;
   targetDate: string;
   unit: "kg" | "lbs";
+  tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
 };
 
 type StoredEntry = DailyEntryUpsert & {
@@ -213,6 +214,15 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
   if (!isPositiveNumber(body.startWeight)) return { ok: false, error: "Invalid startWeight" };
   if (!isDateString(body.targetDate)) return { ok: false, error: "Invalid targetDate" };
   if (body.unit !== "kg" && body.unit !== "lbs") return { ok: false, error: "Invalid unit" };
+  if (
+    body.tone !== undefined &&
+    body.tone !== "friendly" &&
+    body.tone !== "clinical" &&
+    body.tone !== "tough-love" &&
+    body.tone !== "ayurvedic"
+  ) {
+    return { ok: false, error: "Invalid tone" };
+  }
   return {
     ok: true,
     data: {
@@ -220,6 +230,7 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
       startWeight: body.startWeight,
       targetDate: body.targetDate,
       unit: body.unit,
+      tone: body.tone as SettingsPatch["tone"],
     },
   };
 }
@@ -762,6 +773,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
       startWeight: 85,
       targetDate: defaultTargetDate(),
       unit: "kg",
+      tone: "friendly",
     };
     await ddb.send(
       new PutItemCommand({
@@ -772,6 +784,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
           startWeight: { N: String(settings.startWeight) },
           targetDate: { S: settings.targetDate },
           unit: { S: settings.unit },
+          tone: { S: settings.tone ?? "friendly" },
         },
       }),
     );
@@ -781,6 +794,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
         startWeight: settings.startWeight,
         targetDate: settings.targetDate,
         unit: settings.unit,
+        tone: settings.tone,
       },
     });
   }
@@ -791,6 +805,12 @@ async function getSettings(userId: string): Promise<HttpResult> {
       startWeight: Number(out.Item.startWeight?.N ?? 85),
       targetDate: out.Item.targetDate?.S ?? defaultTargetDate(),
       unit: out.Item.unit?.S === "lbs" ? "lbs" : "kg",
+      tone:
+        out.Item.tone?.S === "clinical" ||
+        out.Item.tone?.S === "tough-love" ||
+        out.Item.tone?.S === "ayurvedic"
+          ? out.Item.tone.S
+          : "friendly",
     },
   });
 }
@@ -811,6 +831,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
         startWeight: { N: String(data.startWeight) },
         targetDate: { S: data.targetDate },
         unit: { S: data.unit },
+        ...(data.tone ? { tone: { S: data.tone } } : {}),
       },
     }),
   );

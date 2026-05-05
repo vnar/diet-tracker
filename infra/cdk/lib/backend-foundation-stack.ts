@@ -79,6 +79,14 @@ export class BackendFoundationStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
+    const insightCacheTable = new dynamodb.Table(this, "InsightCacheTable", {
+      tableName: "InsightCache",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "cacheKey", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     const featureFlagOverridesTable = new dynamodb.Table(this, "FeatureFlagOverridesTable", {
       tableName: "FeatureFlagOverrides",
@@ -152,6 +160,7 @@ export class BackendFoundationStack extends cdk.Stack {
     entriesTable.grantReadWriteData(backendLambdaRole);
     settingsTable.grantReadWriteData(backendLambdaRole);
     insightFeedbackTable.grantReadWriteData(backendLambdaRole);
+    insightCacheTable.grantReadWriteData(backendLambdaRole);
     featureFlagOverridesTable.grantReadWriteData(backendLambdaRole);
     subscriptionsTable.grantReadWriteData(backendLambdaRole);
     billingEventsTable.grantReadWriteData(backendLambdaRole);
@@ -180,6 +189,7 @@ export class BackendFoundationStack extends cdk.Stack {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         INSIGHT_FEEDBACK_TABLE_NAME: insightFeedbackTable.tableName,
+        INSIGHT_CACHE_TABLE_NAME: insightCacheTable.tableName,
         FEATURE_FLAG_OVERRIDES_TABLE_NAME: featureFlagOverridesTable.tableName,
         SUBSCRIPTIONS_TABLE_NAME: subscriptionsTable.tableName,
         BILLING_EVENTS_TABLE_NAME: billingEventsTable.tableName,

@@ -30,8 +30,8 @@ describe("insight rules", () => {
       mk("2026-01-07", 80, { highSodium: true }), mk("2026-01-08", 80.6),
       mk("2026-01-09", 80), mk("2026-01-10", 80.1),
     ];
-    expect(sodiumBumpRule(logs)).not.toBeNull();
-    expect(sodiumBumpRule(logs.slice(0, 7))).toBeNull();
+    expect(sodiumBumpRule(logs, {})).not.toBeNull();
+    expect(sodiumBumpRule(logs.slice(0, 7), {})).toBeNull();
   });
 
   it("alcohol rule triggers and handles small difference", () => {
@@ -42,8 +42,8 @@ describe("insight rules", () => {
       mk("2026-02-07", 80, { alcohol: true }), mk("2026-02-08", 80.5),
       mk("2026-02-09", 80), mk("2026-02-10", 80.1),
     ];
-    expect(alcoholRule(logs)).not.toBeNull();
-    expect(alcoholRule(logs.map((log) => ({ ...log, morningWeight: 80 })))).toBeNull();
+    expect(alcoholRule(logs, {})).not.toBeNull();
+    expect(alcoholRule(logs.map((log) => ({ ...log, morningWeight: 80 })), {})).toBeNull();
   });
 
   it("late snack rule triggers and needs enough flagged samples", () => {
@@ -54,8 +54,8 @@ describe("insight rules", () => {
       mk("2026-03-07", 80, { lateSnack: true }), mk("2026-03-08", 80.5),
       mk("2026-03-09", 80), mk("2026-03-10", 80.1),
     ];
-    expect(lateSnackRule(logs)).not.toBeNull();
-    expect(lateSnackRule(logs.slice(0, 7))).toBeNull();
+    expect(lateSnackRule(logs, {})).not.toBeNull();
+    expect(lateSnackRule(logs.slice(0, 7), {})).toBeNull();
   });
 
   it("workout rule compares high and low workout weeks", () => {
@@ -68,8 +68,8 @@ describe("insight rules", () => {
       const weight = day <= 28 ? 86 - day * 0.15 : 81 + (day - 28) * 0.11;
       logs.push(mk(date, weight, { workout }));
     }
-    expect(workoutRule(logs)).not.toBeNull();
-    expect(workoutRule(logs.slice(0, 10))).toBeNull();
+    expect(workoutRule(logs, {})).not.toBeNull();
+    expect(workoutRule(logs.slice(0, 10), {})).toBeNull();
   });
 
   it("plateau rule triggers with small movement and ignores active trend", () => {
@@ -79,8 +79,8 @@ describe("insight rules", () => {
     const trend = Array.from({ length: 20 }).map((_, idx) =>
       mk(`2026-06-${String(idx + 1).padStart(2, "0")}`, 85 - idx * 0.2),
     );
-    expect(plateauRule(plateau)).not.toBeNull();
-    expect(plateauRule(trend)).toBeNull();
+    expect(plateauRule(plateau, {})).not.toBeNull();
+    expect(plateauRule(trend, {})).toBeNull();
   });
 
   it("streak rule celebrates milestones and ignores short streaks", () => {
@@ -92,8 +92,8 @@ describe("insight rules", () => {
       mk("2026-07-02", 79.9),
       mk("2026-07-03", 79.8),
     ];
-    expect(streakRule(streak14)?.headline).toContain("14-day");
-    expect(streakRule(streak3)).toBeNull();
+    expect(streakRule(streak14, {})?.headline).toContain("14-day");
+    expect(streakRule(streak3, {})).toBeNull();
   });
 
   it("trajectory rule triggers when off pace and skips when near pace", () => {
@@ -105,7 +105,7 @@ describe("insight rules", () => {
       mk("2026-01-01", 90, { startWeight: 90, goalWeight: 80, targetDate: "2026-03-01" }),
       mk("2026-02-01", 84.9, { startWeight: 90, goalWeight: 80, targetDate: "2026-03-01" }),
     ];
-    expect(trajectoryRule(logs)).not.toBeNull();
-    expect(trajectoryRule(nearPace)).toBeNull();
+    expect(trajectoryRule(logs, {})).not.toBeNull();
+    expect(trajectoryRule(nearPace, {})).toBeNull();
   });
 });

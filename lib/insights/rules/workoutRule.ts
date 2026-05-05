@@ -54,5 +54,7 @@ export const workoutRule: InsightRule = (logs) => {
       `Average weekly change (3+ workouts): ${roundTo(highAvg, 2)} kg`,
       `Average weekly change (<3 workouts): ${roundTo(lowAvg, 2)} kg`,
     ],
+    action: "Target at least 3 training sessions this week.",
+    category: "workout",
   };
 };

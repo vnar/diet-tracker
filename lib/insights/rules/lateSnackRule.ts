@@ -22,5 +22,7 @@ export const lateSnackRule: InsightRule = (logs) => {
       `Average next-morning change with late snack: +${roundTo(flaggedAvg, 2)} kg`,
       `Baseline next-morning change: +${roundTo(baselineAvg, 2)} kg`,
     ],
+    action: "Set a 2-hour kitchen close time before bed.",
+    category: "late_snack",
   };
 };
