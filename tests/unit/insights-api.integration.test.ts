@@ -7,6 +7,8 @@ describe("insights v2 API integration", () => {
   });
 
   it("hits v2 insights endpoint and returns parsed payload", async () => {
+    process.env.NEXT_PUBLIC_AWS_API_URL = "https://api.example.com";
+    process.env.NEXT_PUBLIC_USE_AWS_BACKEND = "true";
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -32,7 +34,7 @@ describe("insights v2 API integration", () => {
       expect(result.data.insights[0]?.ruleId).toBe("sodiumBump");
     }
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/v2/insights",
+      "https://api.example.com/v2/insights",
       expect.objectContaining({
         headers: expect.any(Headers),
       }),

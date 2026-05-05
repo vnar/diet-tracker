@@ -153,9 +153,9 @@ export async function trackPageView(accessToken?: string) {
 
 export async function getInsightsV2(accessToken?: string) {
   return fetchJson<{ insights: Insight[] }>(
-    "/api/v2/insights",
+    "/v2/insights",
     undefined,
-    false,
+    true,
     accessToken,
   );
 }
@@ -199,13 +199,13 @@ export async function submitInsightFeedback(
   accessToken?: string,
 ) {
   return fetchJson<{ ok: true }>(
-    "/api/v2/insights/feedback",
+    "/v2/insights/feedback",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     },
-    false,
+    true,
     accessToken,
   );
 }
