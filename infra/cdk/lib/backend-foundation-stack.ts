@@ -71,6 +71,15 @@ export class BackendFoundationStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const insightFeedbackTable = new dynamodb.Table(this, "InsightFeedbackTable", {
+      tableName: "InsightFeedback",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "insightTs", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -117,6 +126,7 @@ export class BackendFoundationStack extends cdk.Stack {
 
     entriesTable.grantReadWriteData(backendLambdaRole);
     settingsTable.grantReadWriteData(backendLambdaRole);
+    insightFeedbackTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -141,6 +151,7 @@ export class BackendFoundationStack extends cdk.Stack {
       environment: {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
         SETTINGS_TABLE_NAME: settingsTable.tableName,
+        INSIGHT_FEEDBACK_TABLE_NAME: insightFeedbackTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
@@ -184,6 +195,8 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "POST /metrics/page-view", id: "PageViewPostRoute" },
       { routeKey: "POST /photos/upload-url", id: "PhotoUploadUrlRoute" },
       { routeKey: "GET /admin/users", id: "AdminUsersGetRoute" },
+      { routeKey: "GET /v2/insights", id: "InsightsV2GetRoute" },
+      { routeKey: "POST /v2/insights/feedback", id: "InsightsV2FeedbackPostRoute" },
     ];
 
     for (const route of securedRoutes) {

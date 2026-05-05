@@ -4,6 +4,7 @@ type Claims = {
 };
 type HttpEvent = {
     rawPath: string;
+    headers?: Record<string, string | undefined>;
     requestContext?: {
         authorizer?: {
             jwt?: {

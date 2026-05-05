@@ -1,6 +1,7 @@
 "use client";
 
 import type { DailyEntry, UserSettings } from "@/lib/types";
+import type { InsightCard, InsightVote } from "@/lib/insights/types";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -137,6 +138,31 @@ export async function trackPageView(accessToken?: string) {
     { method: "POST" },
     true,
     accessToken
+  );
+}
+
+export async function getInsightsV2(accessToken?: string) {
+  return fetchJson<{ insights: InsightCard[] }>(
+    "/v2/insights",
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function submitInsightFeedback(
+  payload: { insightId: string; vote: InsightVote },
+  accessToken?: string,
+) {
+  return fetchJson<{ ok: true }>(
+    "/v2/insights/feedback",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    true,
+    accessToken,
   );
 }
 

@@ -21,6 +21,7 @@ const cognitoIdp = new CognitoIdentityProviderClient({});
 
 const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
+const insightFeedbackTableName = process.env.INSIGHT_FEEDBACK_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
@@ -82,6 +83,15 @@ type StoredEntry = DailyEntryUpsert & {
 
 type StoredSettings = SettingsPatch & {
   userId: string;
+};
+
+type InsightCard = {
+  id: string;
+  ruleId: string;
+  priority: number;
+  headline: string;
+  detail?: string;
+  why: string[];
 };
 
 function json(statusCode: number, payload: unknown): HttpResult {
@@ -403,6 +413,198 @@ function normalizePhotoReference(photoUrl: string | null | undefined): string | 
     return undefined;
   }
   return undefined;
+}
+
+function sortByDateAsc<T extends { date: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function average(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((acc, value) => acc + value, 0) / values.length;
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function nextMorningDeltas(
+  logs: StoredEntry[],
+  predicate: (log: StoredEntry) => boolean,
+): { flagged: number[]; baseline: number[] } {
+  const sorted = sortByDateAsc(logs);
+  const flagged: number[] = [];
+  const baseline: number[] = [];
+  for (let idx = 0; idx < sorted.length - 1; idx += 1) {
+    const delta = sorted[idx + 1].morningWeight - sorted[idx].morningWeight;
+    if (predicate(sorted[idx])) flagged.push(delta);
+    else baseline.push(delta);
+  }
+  return { flagged, baseline };
+}
+
+function sodiumInsight(logs: StoredEntry[]): InsightCard | null {
+  const { flagged, baseline } = nextMorningDeltas(logs, (log) => log.highSodium);
+  if (flagged.length < 4 || baseline.length < 1) return null;
+  const flaggedAvg = average(flagged);
+  const baselineAvg = average(baseline);
+  if (flaggedAvg == null || baselineAvg == null) return null;
+  const excess = flaggedAvg - baselineAvg;
+  if (excess <= 0.3) return null;
+  return {
+    id: `sodium-bump-${logs[logs.length - 1]?.date ?? "unknown"}`,
+    ruleId: "sodiumBump",
+    priority: 95,
+    headline: "High-sodium days are linked to heavier next-morning weigh-ins.",
+    detail: `You average +${round2(excess)} kg vs your non-sodium baseline the next morning.`,
+    why: [
+      `${flagged.length} high-sodium days in the last 90 days`,
+      `Average next-morning change on high-sodium days: +${round2(flaggedAvg)} kg`,
+      `Baseline next-morning change: +${round2(baselineAvg)} kg`,
+    ],
+  };
+}
+
+function alcoholInsight(logs: StoredEntry[]): InsightCard | null {
+  const { flagged, baseline } = nextMorningDeltas(logs, (log) => log.alcohol);
+  if (flagged.length < 4 || baseline.length < 1) return null;
+  const flaggedAvg = average(flagged);
+  const baselineAvg = average(baseline);
+  if (flaggedAvg == null || baselineAvg == null) return null;
+  const excess = flaggedAvg - baselineAvg;
+  if (excess <= 0.3) return null;
+  return {
+    id: `alcohol-bump-${logs[logs.length - 1]?.date ?? "unknown"}`,
+    ruleId: "alcohol",
+    priority: 90,
+    headline: "Alcohol days tend to show a next-day weight bump.",
+    detail: `You average +${round2(excess)} kg versus non-alcohol days the next morning.`,
+    why: [
+      `${flagged.length} alcohol-logged days in the last 90 days`,
+      `Average next-morning change after alcohol: +${round2(flaggedAvg)} kg`,
+      `Baseline next-morning change: +${round2(baselineAvg)} kg`,
+    ],
+  };
+}
+
+function lateSnackInsight(logs: StoredEntry[]): InsightCard | null {
+  const { flagged, baseline } = nextMorningDeltas(logs, (log) => log.lateSnack);
+  if (flagged.length < 4 || baseline.length < 1) return null;
+  const flaggedAvg = average(flagged);
+  const baselineAvg = average(baseline);
+  if (flaggedAvg == null || baselineAvg == null) return null;
+  const excess = flaggedAvg - baselineAvg;
+  if (excess <= 0.3) return null;
+  return {
+    id: `late-snack-bump-${logs[logs.length - 1]?.date ?? "unknown"}`,
+    ruleId: "lateSnack",
+    priority: 88,
+    headline: "Late snacks are correlated with heavier next-morning scale readings.",
+    detail: `Your next-day change is +${round2(excess)} kg higher than your non-late-snack baseline.`,
+    why: [
+      `${flagged.length} late-snack days in the last 90 days`,
+      `Average next-morning change with late snack: +${round2(flaggedAvg)} kg`,
+      `Baseline next-morning change: +${round2(baselineAvg)} kg`,
+    ],
+  };
+}
+
+function plateauInsight(logs: StoredEntry[]): InsightCard | null {
+  const sorted = sortByDateAsc(logs);
+  if (sorted.length < 14) return null;
+  const rollingAvg = (idx: number) => {
+    const start = Math.max(0, idx - 6);
+    const chunk = sorted.slice(start, idx + 1);
+    return chunk.reduce((acc, log) => acc + log.morningWeight, 0) / chunk.length;
+  };
+  const latestIdx = sorted.length - 1;
+  const priorIdx = latestIdx - 13;
+  if (priorIdx < 0) return null;
+  const current = rollingAvg(latestIdx);
+  const prior = rollingAvg(priorIdx);
+  const movement = Math.abs(current - prior);
+  if (movement >= 0.2) return null;
+  return {
+    id: `plateau-${sorted[latestIdx].date}`,
+    ruleId: "plateau",
+    priority: 93,
+    headline: "You may be in a weight plateau right now.",
+    detail:
+      "Your 7-day average has barely moved over the last two weeks. Try a tighter calorie target or add one extra walk/workout block this week.",
+    why: [
+      `Current 7-day average: ${round2(current)} kg`,
+      `7-day average from 14 days ago: ${round2(prior)} kg`,
+      `Total movement over 14 days: ${round2(movement)} kg (< 0.2 kg threshold)`,
+    ],
+  };
+}
+
+async function getInsightsV2(userId: string): Promise<HttpResult> {
+  const tableName = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
+  const to = new Date().toISOString().slice(0, 10);
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - 89);
+  const from = fromDate.toISOString().slice(0, 10);
+  const out = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "userId = :userId AND #date BETWEEN :fromDate AND :toDate",
+      ExpressionAttributeNames: { "#date": "date" },
+      ExpressionAttributeValues: {
+        ":userId": { S: userId },
+        ":fromDate": { S: from },
+        ":toDate": { S: to },
+      },
+      ScanIndexForward: true,
+      ConsistentRead: true,
+    }),
+  );
+  const entries: StoredEntry[] = (out.Items ?? []).map(
+    (item: Record<string, { S?: string; N?: string; BOOL?: boolean }>) => ({
+      id: item.id?.S ?? `${userId}:${item.date?.S ?? ""}`,
+      userId: item.userId?.S ?? userId,
+      date: item.date?.S ?? "",
+      morningWeight: Number(item.morningWeight?.N ?? 0),
+      lateSnack: item.lateSnack?.BOOL ?? false,
+      highSodium: item.highSodium?.BOOL ?? false,
+      workout: item.workout?.BOOL ?? false,
+      alcohol: item.alcohol?.BOOL ?? false,
+    }),
+  );
+  const candidates = [
+    sodiumInsight(entries),
+    alcoholInsight(entries),
+    lateSnackInsight(entries),
+    plateauInsight(entries),
+  ].filter((ins): ins is InsightCard => ins !== null);
+  const top = [...new Map(candidates.map((item) => [item.ruleId, item])).values()]
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 3);
+  return json(200, { insights: top });
+}
+
+async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<HttpResult> {
+  const tableName = getRequiredEnv("INSIGHT_FEEDBACK_TABLE_NAME", insightFeedbackTableName);
+  const payload = parseJsonBody(event);
+  if (!payload || typeof payload !== "object") return json(400, { error: "Body must be an object" });
+  const body = payload as Record<string, unknown>;
+  const insightId = typeof body.insightId === "string" ? body.insightId.trim() : "";
+  const vote = body.vote === "up" || body.vote === "down" ? body.vote : null;
+  if (!insightId || !vote) return json(400, { error: "Invalid insight feedback payload" });
+  const ts = new Date().toISOString();
+  await ddb.send(
+    new PutItemCommand({
+      TableName: tableName,
+      Item: {
+        userId: { S: userId },
+        insightTs: { S: `${ts}#${insightId}` },
+        insightId: { S: insightId },
+        vote: { S: vote },
+        ts: { S: ts },
+      },
+    }),
+  );
+  return json(200, { ok: true });
 }
 
 async function getEntries(userId: string, query: Record<string, string | undefined> | null | undefined): Promise<HttpResult> {
@@ -772,6 +974,14 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
 
     if (event.rawPath === "/photos/upload-url" && method === "POST") {
       return createUploadUrl(userId, event);
+    }
+
+    if (event.rawPath === "/v2/insights" && method === "GET") {
+      return getInsightsV2(userId);
+    }
+
+    if (event.rawPath === "/v2/insights/feedback" && method === "POST") {
+      return saveInsightFeedback(userId, event);
     }
 
     if (event.rawPath === "/admin/users" && method === "GET") {
