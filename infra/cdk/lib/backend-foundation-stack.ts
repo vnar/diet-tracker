@@ -80,6 +80,15 @@ export class BackendFoundationStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const featureFlagOverridesTable = new dynamodb.Table(this, "FeatureFlagOverridesTable", {
+      tableName: "FeatureFlagOverrides",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "flag", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -127,6 +136,7 @@ export class BackendFoundationStack extends cdk.Stack {
     entriesTable.grantReadWriteData(backendLambdaRole);
     settingsTable.grantReadWriteData(backendLambdaRole);
     insightFeedbackTable.grantReadWriteData(backendLambdaRole);
+    featureFlagOverridesTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -152,6 +162,7 @@ export class BackendFoundationStack extends cdk.Stack {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         INSIGHT_FEEDBACK_TABLE_NAME: insightFeedbackTable.tableName,
+        FEATURE_FLAG_OVERRIDES_TABLE_NAME: featureFlagOverridesTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
@@ -197,6 +208,9 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "GET /admin/users", id: "AdminUsersGetRoute" },
       { routeKey: "GET /v2/insights", id: "InsightsV2GetRoute" },
       { routeKey: "POST /v2/insights/feedback", id: "InsightsV2FeedbackPostRoute" },
+      { routeKey: "GET /feature-flags", id: "FeatureFlagsGetRoute" },
+      { routeKey: "GET /admin/flags", id: "AdminFlagsGetRoute" },
+      { routeKey: "PUT /admin/flags", id: "AdminFlagsPutRoute" },
     ];
 
     for (const route of securedRoutes) {

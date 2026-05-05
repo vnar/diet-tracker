@@ -22,6 +22,7 @@ const cognitoIdp = new CognitoIdentityProviderClient({});
 const entriesTableName = process.env.ENTRIES_TABLE_NAME;
 const settingsTableName = process.env.SETTINGS_TABLE_NAME;
 const insightFeedbackTableName = process.env.INSIGHT_FEEDBACK_TABLE_NAME;
+const featureFlagOverridesTableName = process.env.FEATURE_FLAG_OVERRIDES_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
@@ -935,6 +936,77 @@ async function incrementPageView(): Promise<HttpResult> {
   });
 }
 
+async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
+  const tableName = getRequiredEnv("FEATURE_FLAG_OVERRIDES_TABLE_NAME", featureFlagOverridesTableName);
+  const out = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "userId = :userId",
+      ExpressionAttributeValues: { ":userId": { S: userId } },
+      ConsistentRead: true,
+    }),
+  );
+  const overrides = (out.Items ?? []).reduce<Record<string, boolean>>((acc, item) => {
+    const flag = item.flag?.S;
+    const enabledRaw = item.enabled?.BOOL;
+    if (typeof flag === "string" && typeof enabledRaw === "boolean") {
+      acc[flag] = enabledRaw;
+    }
+    return acc;
+  }, {});
+  return json(200, { userId, overrides });
+}
+
+async function listFeatureFlagOverrides(event: HttpEvent): Promise<HttpResult> {
+  const tableName = getRequiredEnv("FEATURE_FLAG_OVERRIDES_TABLE_NAME", featureFlagOverridesTableName);
+  const targetUserId = event.queryStringParameters?.userId;
+  if (!targetUserId) {
+    return json(400, { error: "Missing userId query parameter" });
+  }
+  const out = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "userId = :userId",
+      ExpressionAttributeValues: { ":userId": { S: targetUserId } },
+      ConsistentRead: true,
+    }),
+  );
+  const overrides = (out.Items ?? []).map((item) => ({
+    userId: item.userId?.S ?? targetUserId,
+    flag: item.flag?.S ?? "",
+    enabled: item.enabled?.BOOL ?? false,
+    ts: item.ts?.S ?? "",
+  }));
+  return json(200, { overrides });
+}
+
+async function upsertFeatureFlagOverride(event: HttpEvent): Promise<HttpResult> {
+  const tableName = getRequiredEnv("FEATURE_FLAG_OVERRIDES_TABLE_NAME", featureFlagOverridesTableName);
+  const payload = parseJsonBody(event);
+  if (!payload || typeof payload !== "object") return json(400, { error: "Body must be an object" });
+  const body = payload as Record<string, unknown>;
+  const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+  const rawFlag = typeof body.flag === "string" ? body.flag.trim() : "";
+  const enabled = typeof body.enabled === "boolean" ? body.enabled : null;
+  if (!userId || !rawFlag || enabled === null) {
+    return json(400, { error: "Invalid payload. Expected userId, flag, enabled." });
+  }
+  const normalizedFlag = rawFlag.startsWith("FF_") ? rawFlag : `FF_${rawFlag}`;
+  const ts = new Date().toISOString();
+  await ddb.send(
+    new PutItemCommand({
+      TableName: tableName,
+      Item: {
+        userId: { S: userId },
+        flag: { S: normalizedFlag },
+        enabled: { BOOL: enabled },
+        ts: { S: ts },
+      },
+    }),
+  );
+  return json(200, { ok: true, override: { userId, flag: normalizedFlag, enabled, ts } });
+}
+
 export async function handler(event: HttpEvent): Promise<HttpResult> {
   try {
     const userId = getUserId(event);
@@ -989,6 +1061,20 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
         return json(403, { error: "Forbidden" });
       }
       return listCognitoUsersForAdmin();
+    }
+
+    if (event.rawPath === "/feature-flags" && method === "GET") {
+      return getFeatureFlagsForUser(userId);
+    }
+
+    if (event.rawPath === "/admin/flags" && method === "GET") {
+      if (!(await isAdminAllowed(event))) return json(403, { error: "Forbidden" });
+      return listFeatureFlagOverrides(event);
+    }
+
+    if (event.rawPath === "/admin/flags" && method === "PUT") {
+      if (!(await isAdminAllowed(event))) return json(403, { error: "Forbidden" });
+      return upsertFeatureFlagOverride(event);
     }
 
     return json(404, { error: "Not Found" });

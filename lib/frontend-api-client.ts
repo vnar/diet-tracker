@@ -150,6 +150,40 @@ export async function getInsightsV2(accessToken?: string) {
   );
 }
 
+export async function getFeatureFlagOverrides(accessToken?: string) {
+  return fetchJson<{ userId: string; overrides: Record<string, boolean> }>(
+    "/feature-flags",
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function getAdminFlagOverrides(userId: string, accessToken?: string) {
+  return fetchJson<{ overrides: Array<{ userId: string; flag: string; enabled: boolean; ts: string }> }>(
+    `/admin/flags?userId=${encodeURIComponent(userId)}`,
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function putAdminFlagOverride(
+  payload: { userId: string; flag: string; enabled: boolean },
+  accessToken?: string,
+) {
+  return fetchJson<{ ok: true; override: { userId: string; flag: string; enabled: boolean; ts: string } }>(
+    "/admin/flags",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    true,
+    accessToken,
+  );
+}
+
 export async function submitInsightFeedback(
   payload: { insightId: string; vote: InsightVote },
   accessToken?: string,

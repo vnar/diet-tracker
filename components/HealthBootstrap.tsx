@@ -4,14 +4,16 @@ import { useEffect } from "react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
 import {
+  getFeatureFlagOverrides,
   getEntries,
   getSettings,
   isAwsBackendEnabled,
 } from "@/lib/frontend-api-client";
+import { clearUserFlagOverrides, setUserFlagOverrides } from "@/lib/featureFlags";
 import { setHealthStorageMode, useHealthStore } from "@/lib/store";
 
 export function HealthBootstrap({ children }: { children: React.ReactNode }) {
-  const { status, getAccessToken } = useCognitoAuth();
+  const { status, getAccessToken, user } = useCognitoAuth();
 
   useEffect(() => {
     if (!isAwsBackendEnabled()) {
@@ -21,6 +23,7 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
 
     if (status !== "authenticated") {
       setHealthStorageMode(false);
+      if (user?.id) clearUserFlagOverrides(user.id);
       return;
     }
 
@@ -37,6 +40,7 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
         getEntries(accessToken),
         getSettings(accessToken),
       ]);
+      const flagResult = await getFeatureFlagOverrides(accessToken);
 
       if (entriesResult.ok) {
         const remoteEntries = sortEntriesByDateAsc(entriesResult.data.entries);
@@ -71,8 +75,12 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
           });
         }
       }
+
+      if (flagResult.ok && user?.id) {
+        setUserFlagOverrides(user.id, flagResult.data.overrides);
+      }
     })();
-  }, [getAccessToken, status]);
+  }, [getAccessToken, status, user?.id]);
 
   return <>{children}</>;
 }

@@ -17,8 +17,8 @@ export function AIInsights() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [voted, setVoted] = useState<Record<string, InsightVote>>({});
-  const { status, getAccessToken } = useCognitoAuth();
-  const v2Enabled = useMemo(() => isInsightsV2Enabled(), []);
+  const { status, getAccessToken, user } = useCognitoAuth();
+  const v2Enabled = useMemo(() => isInsightsV2Enabled(user?.id), [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
