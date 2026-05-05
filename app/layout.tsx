@@ -5,6 +5,8 @@ import { AppFooter } from "@/components/AppFooter";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { StoreHydration } from "@/components/StoreHydration";
 import { Providers } from "@/components/Providers";
+import { ErrorBoundary } from "@/components/v2/ErrorBoundary";
+import { AnalyticsBridge } from "@/components/v2/AnalyticsBridge";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -42,12 +44,15 @@ export default function RootLayout({
     >
       <body className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased`}>
         <Providers>
-          <StoreHydration />
-          <div className="flex min-h-screen flex-col">
-            <div className="flex-1">{children}</div>
-            <AppFooter />
-          </div>
-          <FeedbackButton />
+          <ErrorBoundary>
+            <StoreHydration />
+            <AnalyticsBridge />
+            <div className="flex min-h-screen flex-col">
+              <div className="flex-1">{children}</div>
+              <AppFooter />
+            </div>
+            <FeedbackButton />
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>

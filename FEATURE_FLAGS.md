@@ -19,3 +19,9 @@
 - **Default:** `false`.
 - **Scope:** no-op now; future copy refinement adapter for insights.
 - **Env keys supported:** `FF_INSIGHTS_LLM_REFINE`, `NEXT_PUBLIC_FF_INSIGHTS_LLM_REFINE`.
+
+### `FF_BILLING_ENABLED`
+
+- **Default:** `false`.
+- **Scope:** billing surface enablement for future paywall and checkout flows.
+- **Env keys supported:** `FF_BILLING_ENABLED`, `NEXT_PUBLIC_FF_BILLING_ENABLED`.

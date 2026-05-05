@@ -89,6 +89,22 @@ export class BackendFoundationStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const subscriptionsTable = new dynamodb.Table(this, "SubscriptionsTable", {
+      tableName: "Subscriptions",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const billingEventsTable = new dynamodb.Table(this, "BillingEventsTable", {
+      tableName: "BillingEvents",
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -137,6 +153,8 @@ export class BackendFoundationStack extends cdk.Stack {
     settingsTable.grantReadWriteData(backendLambdaRole);
     insightFeedbackTable.grantReadWriteData(backendLambdaRole);
     featureFlagOverridesTable.grantReadWriteData(backendLambdaRole);
+    subscriptionsTable.grantReadWriteData(backendLambdaRole);
+    billingEventsTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -163,6 +181,8 @@ export class BackendFoundationStack extends cdk.Stack {
         SETTINGS_TABLE_NAME: settingsTable.tableName,
         INSIGHT_FEEDBACK_TABLE_NAME: insightFeedbackTable.tableName,
         FEATURE_FLAG_OVERRIDES_TABLE_NAME: featureFlagOverridesTable.tableName,
+        SUBSCRIPTIONS_TABLE_NAME: subscriptionsTable.tableName,
+        BILLING_EVENTS_TABLE_NAME: billingEventsTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
