@@ -177,6 +177,8 @@ export class BackendFoundationStack extends cdk.Stack {
     // Default matches app owner; override with ADMIN_EMAILS=... at deploy time if needed.
     const adminEmailsDeploy =
       process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
+    /** Set to "false" on deploy machine to ship Lambda with LLM refine disabled. Key must be set on the function in AWS (not here) so it never appears in CloudFormation. */
+    const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -198,6 +200,7 @@ export class BackendFoundationStack extends cdk.Stack {
         ADMIN_EMAILS: adminEmailsDeploy,
         UPLOAD_URL_TTL_SECONDS: "900",
         DOWNLOAD_URL_TTL_SECONDS: "604800",
+        INSIGHTS_LLM_REFINE: insightsLlmRefineEnv,
       },
       bundling: {
         minify: true,

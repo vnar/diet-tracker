@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { maybeRefineInsightCards } from "./insights-llm-refine";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -81,6 +82,7 @@ type SettingsPatch = {
 type StoredEntry = DailyEntryUpsert & {
   id: string;
   userId: string;
+  notes?: string;
 };
 
 type StoredSettings = SettingsPatch & {
@@ -94,6 +96,8 @@ type InsightCard = {
   headline: string;
   detail?: string;
   why: string[];
+  action: string;
+  category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
 };
 
 function json(statusCode: number, payload: unknown): HttpResult {
@@ -258,6 +262,32 @@ function getJwtClaims(event: HttpEvent): Record<string, unknown> | undefined {
 function getUserId(event: HttpEvent): string | undefined {
   const sub = getJwtClaims(event)?.sub;
   return typeof sub === "string" ? sub : undefined;
+}
+
+function firstNameFromJwtClaims(claims: Record<string, unknown> | undefined): string | undefined {
+  if (!claims) return undefined;
+  const given = claims.given_name;
+  if (typeof given === "string" && given.trim()) return given.trim();
+  const name = claims.name;
+  if (typeof name === "string" && name.trim()) {
+    const first = name.trim().split(/\s+/)[0];
+    return first || undefined;
+  }
+  return undefined;
+}
+
+async function fetchToneForUser(userId: string): Promise<string> {
+  const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const out = await ddb.send(
+    new GetItemCommand({
+      TableName: tableName,
+      Key: { userId: { S: userId } },
+      ConsistentRead: true,
+    }),
+  );
+  const t = out.Item?.tone?.S;
+  if (t === "friendly" || t === "clinical" || t === "tough-love" || t === "ayurvedic") return t;
+  return "friendly";
 }
 
 /** Gmail treats dots and +labels as aliases; normalize so admin list matches real sign-in identities. */
@@ -474,6 +504,8 @@ function sodiumInsight(logs: StoredEntry[]): InsightCard | null {
       `Average next-morning change on high-sodium days: +${round2(flaggedAvg)} kg`,
       `Baseline next-morning change: +${round2(baselineAvg)} kg`,
     ],
+    action: "Try one lower-sodium dinner swap tonight.",
+    category: "sodium",
   };
 }
 
@@ -496,6 +528,8 @@ function alcoholInsight(logs: StoredEntry[]): InsightCard | null {
       `Average next-morning change after alcohol: +${round2(flaggedAvg)} kg`,
       `Baseline next-morning change: +${round2(baselineAvg)} kg`,
     ],
+    action: "Plan alcohol-free weekdays for steadier trend lines.",
+    category: "alcohol",
   };
 }
 
@@ -518,6 +552,8 @@ function lateSnackInsight(logs: StoredEntry[]): InsightCard | null {
       `Average next-morning change with late snack: +${round2(flaggedAvg)} kg`,
       `Baseline next-morning change: +${round2(baselineAvg)} kg`,
     ],
+    action: "Set a 2-hour kitchen close time before bed.",
+    category: "late_snack",
   };
 }
 
@@ -548,10 +584,42 @@ function plateauInsight(logs: StoredEntry[]): InsightCard | null {
       `7-day average from 14 days ago: ${round2(prior)} kg`,
       `Total movement over 14 days: ${round2(movement)} kg (< 0.2 kg threshold)`,
     ],
+    action: "Adjust one habit this week: calories or activity.",
+    category: "plateau",
   };
 }
 
-async function getInsightsV2(userId: string): Promise<HttpResult> {
+function baselineInsightWithLogs(entryCount: number, latestDate: string): InsightCard {
+  return {
+    id: `baseline-insight-${latestDate}`,
+    ruleId: "baseline",
+    priority: 10,
+    headline: "Great consistency so far — keep logging daily for sharper insights.",
+    detail:
+      "We need a bit more signal to detect strong personal patterns, but your data flow is active.",
+    why: [
+      `${entryCount} logs analyzed from the last 90 days`,
+      "No rule crossed confidence thresholds yet",
+    ],
+    action: "Keep tracking daily habits and weight to unlock stronger personalized insights.",
+    category: "streak",
+  };
+}
+
+function baselineInsightNoLogs(asOfDate: string): InsightCard {
+  return {
+    id: `baseline-insight-${asOfDate}`,
+    ruleId: "baseline",
+    priority: 10,
+    headline: "Start logging weight and habits to unlock personalized insights.",
+    detail: "Once you have a few weeks of entries, we will highlight patterns that match your data.",
+    why: ["No entries found in the last 90 days"],
+    action: "Add today's weight on the left to begin.",
+    category: "streak",
+  };
+}
+
+async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResult> {
   const tableName = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
   const to = new Date().toISOString().slice(0, 10);
   const fromDate = new Date();
@@ -581,6 +649,7 @@ async function getInsightsV2(userId: string): Promise<HttpResult> {
       highSodium: item.highSodium?.BOOL ?? false,
       workout: item.workout?.BOOL ?? false,
       alcohol: item.alcohol?.BOOL ?? false,
+      notes: item.notes?.S ?? undefined,
     }),
   );
   const candidates = [
@@ -592,7 +661,27 @@ async function getInsightsV2(userId: string): Promise<HttpResult> {
   const top = [...new Map(candidates.map((item) => [item.ruleId, item])).values()]
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 3);
-  return json(200, { insights: top });
+  const sortedEntries = sortByDateAsc(entries);
+  const latestDate = sortedEntries[sortedEntries.length - 1]?.date ?? to;
+  const fallback: InsightCard =
+    entries.length === 0
+      ? baselineInsightNoLogs(to)
+      : baselineInsightWithLogs(entries.length, latestDate);
+  const insights: InsightCard[] = top.length > 0 ? top : [fallback];
+  const tone = await fetchToneForUser(userId);
+  const firstName = firstNameFromJwtClaims(getJwtClaims(event)) ?? "there";
+  const recentNotes = entries
+    .map((e) => (typeof e.notes === "string" ? e.notes : undefined))
+    .filter((n): n is string => Boolean(n))
+    .slice(-5);
+  const refined = await maybeRefineInsightCards(ddb, {
+    userId,
+    insights,
+    tone,
+    firstName,
+    recentNotes,
+  });
+  return json(200, { insights: refined });
 }
 
 async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<HttpResult> {
@@ -1070,7 +1159,7 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
     }
 
     if (event.rawPath === "/v2/insights" && method === "GET") {
-      return getInsightsV2(userId);
+      return getInsightsV2(userId, event);
     }
 
     if (event.rawPath === "/v2/insights/feedback" && method === "POST") {
