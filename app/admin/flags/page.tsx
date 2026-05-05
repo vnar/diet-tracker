@@ -40,13 +40,17 @@ export default function AdminFlagsPage() {
       setError("Session expired. Please sign in again.");
       return;
     }
-    const result = await getAdminFlagOverrides(targetUserId.trim(), token);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await getAdminFlagOverrides(targetUserId.trim(), token);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setRows(result.data.overrides);
+    } catch {
+      setError("Failed to load overrides. Please retry.");
     }
-    setError(null);
-    setRows(result.data.overrides);
   }
 
   async function saveOverride() {
@@ -64,17 +68,22 @@ export default function AdminFlagsPage() {
       return;
     }
     setSaving(true);
-    const result = await putAdminFlagOverride(
-      { userId: targetUserId.trim(), flag: flagName.trim(), enabled },
-      token,
-    );
-    setSaving(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await putAdminFlagOverride(
+        { userId: targetUserId.trim(), flag: flagName.trim(), enabled },
+        token,
+      );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      await loadOverrides();
+    } catch {
+      setError("Failed to save override. Please retry.");
+    } finally {
+      setSaving(false);
     }
-    setError(null);
-    await loadOverrides();
   }
 
   if (!isAwsBackendEnabled()) {

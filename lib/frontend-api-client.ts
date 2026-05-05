@@ -41,25 +41,35 @@ async function fetchJson<T>(
   useAws = false,
   accessToken?: string
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
-  const url = useAws ? buildAwsUrl(path) : path;
-  const headers = new Headers(init?.headers);
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-    // HTTP API JWT authorizers do not forward Authorization to Lambda; backend reads this for Cognito GetUser.
-    headers.set("x-cognito-access-token", accessToken);
+  try {
+    const url = useAws ? buildAwsUrl(path) : path;
+    const headers = new Headers(init?.headers);
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+      // HTTP API JWT authorizers do not forward Authorization to Lambda; backend reads this for Cognito GetUser.
+      headers.set("x-cognito-access-token", accessToken);
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(url, { ...init, headers, signal: controller.signal });
+    clearTimeout(timeout);
+    const payload = await readJsonSafe<JsonRecord>(res);
+    if (!res.ok) {
+      return {
+        ok: false,
+        error:
+          typeof payload?.error === "string"
+            ? payload.error
+            : `Request failed (${res.status})`,
+      };
+    }
+    return { ok: true, data: payload as T };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return { ok: false, error: "Request timed out. Please try again." };
+    }
+    return { ok: false, error: "Network error. Please try again." };
   }
-  const res = await fetch(url, { ...init, headers });
-  const payload = await readJsonSafe<JsonRecord>(res);
-  if (!res.ok) {
-    return {
-      ok: false,
-      error:
-        typeof payload?.error === "string"
-          ? payload.error
-          : `Request failed (${res.status})`,
-    };
-  }
-  return { ok: true, data: payload as T };
 }
 
 export async function getEntries(accessToken?: string) {
