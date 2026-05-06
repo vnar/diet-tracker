@@ -113,6 +113,15 @@ export class BackendFoundationStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const foodLogEntriesTable = new dynamodb.Table(this, "FoodLogEntriesTable", {
+      tableName: "FoodLogEntries",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "foodLogId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -164,6 +173,7 @@ export class BackendFoundationStack extends cdk.Stack {
     featureFlagOverridesTable.grantReadWriteData(backendLambdaRole);
     subscriptionsTable.grantReadWriteData(backendLambdaRole);
     billingEventsTable.grantReadWriteData(backendLambdaRole);
+    foodLogEntriesTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -179,13 +189,14 @@ export class BackendFoundationStack extends cdk.Stack {
       process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
     /** Set to "false" on deploy machine to ship Lambda with LLM refine disabled. Key must be set on the function in AWS (not here) so it never appears in CloudFormation. */
     const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
+    const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "true" ? "true" : "false";
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: path.join(__dirname, "..", "lambda", "http-api-handler.ts"),
       handler: "handler",
       role: backendLambdaRole,
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60),
       memorySize: 512,
       environment: {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
@@ -195,12 +206,14 @@ export class BackendFoundationStack extends cdk.Stack {
         FEATURE_FLAG_OVERRIDES_TABLE_NAME: featureFlagOverridesTable.tableName,
         SUBSCRIPTIONS_TABLE_NAME: subscriptionsTable.tableName,
         BILLING_EVENTS_TABLE_NAME: billingEventsTable.tableName,
+        FOOD_LOG_ENTRIES_TABLE_NAME: foodLogEntriesTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
         UPLOAD_URL_TTL_SECONDS: "900",
         DOWNLOAD_URL_TTL_SECONDS: "604800",
         INSIGHTS_LLM_REFINE: insightsLlmRefineEnv,
+        FF_PHOTO_FOOD_LOG: photoFoodLogEnv,
       },
       bundling: {
         minify: true,
@@ -241,6 +254,8 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "GET /admin/users", id: "AdminUsersGetRoute" },
       { routeKey: "GET /v2/insights", id: "InsightsV2GetRoute" },
       { routeKey: "POST /v2/insights/feedback", id: "InsightsV2FeedbackPostRoute" },
+      { routeKey: "POST /v2/food/estimate", id: "FoodEstimatePostRoute" },
+      { routeKey: "POST /v2/food/log-confirm", id: "FoodLogConfirmPostRoute" },
       { routeKey: "GET /feature-flags", id: "FeatureFlagsGetRoute" },
       { routeKey: "GET /admin/flags", id: "AdminFlagsGetRoute" },
       { routeKey: "PUT /admin/flags", id: "AdminFlagsPutRoute" },

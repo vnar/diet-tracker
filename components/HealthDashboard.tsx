@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DailyInput } from "@/components/DailyInput";
+import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCaloriesAccessory";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
 import { WeightChart } from "@/components/WeightChart";
 import { AIInsights } from "@/components/AIInsights";
@@ -19,6 +20,7 @@ import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings, Users } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
+import { isPhotoFoodLogEnabled } from "@/lib/featureFlags";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -284,7 +286,21 @@ export function HealthDashboard() {
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
             <motion.section {...fadeInUp} className="min-w-0">
-              <DailyInput />
+              <DailyInput
+                renderCaloriesAccessory={
+                  status === "authenticated" &&
+                  isAwsBackendEnabled() &&
+                  user?.id &&
+                  isPhotoFoodLogEnabled(user.id)
+                    ? (ctx) => (
+                        <FoodPhotoCaloriesAccessory
+                          {...ctx}
+                          getAccessToken={getAccessToken}
+                        />
+                      )
+                    : undefined
+                }
+              />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-w-0 flex-col gap-3">
               <TodayActivityCard />

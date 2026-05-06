@@ -2,6 +2,7 @@
 
 import type { DailyEntry, UserSettings } from "@/lib/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
+import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -39,7 +40,8 @@ async function fetchJson<T>(
   path: string,
   init?: RequestInit,
   useAws = false,
-  accessToken?: string
+  accessToken?: string,
+  timeoutMs = 15000
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
     const url = useAws ? buildAwsUrl(path) : path;
@@ -50,7 +52,7 @@ async function fetchJson<T>(
       headers.set("x-cognito-access-token", accessToken);
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(url, { ...init, headers, signal: controller.signal });
     clearTimeout(timeout);
     const payload = await readJsonSafe<JsonRecord>(res);
@@ -210,9 +212,40 @@ export async function submitInsightFeedback(
   );
 }
 
+export async function postFoodVisionEstimate(
+  body: { photoUrl: string; day: string },
+  accessToken: string,
+) {
+  return fetchJson<FoodEstimateResponse>(
+    "/v2/food/estimate",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+    60000,
+  );
+}
+
+export async function postFoodLogConfirm(body: FoodLogConfirmBody, accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    "/v2/food/log-confirm",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
 export async function uploadPhotoFile(
   file: File,
-  accessToken?: string
+  accessToken?: string,
+  options?: { day?: string; kind?: "food" },
 ): Promise<{
   ok: boolean;
   photoUrl?: string;
@@ -234,6 +267,8 @@ export async function uploadPhotoFile(
       body: JSON.stringify({
         fileName: file.name,
         contentType: file.type || "application/octet-stream",
+        ...(options?.day ? { date: options.day } : {}),
+        ...(options?.kind ? { kind: options.kind } : {}),
       }),
     },
     true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
@@ -16,7 +16,19 @@ import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
 
-export function DailyInput() {
+export type DailyInputCaloriesAccessoryContext = {
+  todayKey: string;
+  calories: string;
+  protein: string;
+  setCalories: (value: string) => void;
+  setProtein: (value: string) => void;
+};
+
+export function DailyInput({
+  renderCaloriesAccessory,
+}: {
+  renderCaloriesAccessory?: (ctx: DailyInputCaloriesAccessoryContext) => ReactNode;
+} = {}) {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
@@ -188,6 +200,17 @@ export function DailyInput() {
             onChange={(e) => setCalories(e.target.value)}
             placeholder={
               ph?.calories !== undefined ? String(ph.calories) : ""
+            }
+            trailingAccessory={
+              renderCaloriesAccessory && today
+                ? renderCaloriesAccessory({
+                    todayKey: today,
+                    calories,
+                    protein,
+                    setCalories,
+                    setProtein,
+                  })
+                : undefined
             }
           />
           <InputField

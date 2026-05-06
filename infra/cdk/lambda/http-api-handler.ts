@@ -15,6 +15,7 @@ import {
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { maybeRefineInsightCards } from "./insights-llm-refine";
+import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -25,6 +26,7 @@ const settingsTableName = process.env.SETTINGS_TABLE_NAME;
 const insightFeedbackTableName = process.env.INSIGHT_FEEDBACK_TABLE_NAME;
 const featureFlagOverridesTableName = process.env.FEATURE_FLAG_OVERRIDES_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
+const foodLogEntriesTableName = process.env.FOOD_LOG_ENTRIES_TABLE_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
@@ -945,7 +947,11 @@ async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpRe
       ? body.extension.toLowerCase()
       : "jpg";
   const date = isDateString(body.date) ? body.date : new Date().toISOString().slice(0, 10);
-  const key = `${userId}/${date}/${Date.now()}.${extension}`;
+  const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "";
+  const key =
+    kind === "food"
+      ? `${userId}/food/${date}/${Date.now()}.${extension}`
+      : `${userId}/${date}/${Date.now()}.${extension}`;
 
   const command = new PutObjectCommand({
     Bucket: bucket,
@@ -1168,6 +1174,24 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
 
     if (event.rawPath === "/v2/insights/feedback" && method === "POST") {
       return saveInsightFeedback(userId, event);
+    }
+
+    if (event.rawPath === "/v2/food/estimate" && method === "POST") {
+      const table = foodLogEntriesTableName;
+      const bucket = getRequiredEnv("PHOTO_BUCKET_NAME", photoBucketName);
+      if (!table) return json(500, { error: "Food log storage is not configured." });
+      return handleV2FoodEstimate(userId, event, {
+        ddb,
+        s3,
+        foodLogTableName: table,
+        photoBucketName: bucket,
+      });
+    }
+
+    if (event.rawPath === "/v2/food/log-confirm" && method === "POST") {
+      const table = foodLogEntriesTableName;
+      if (!table) return json(500, { error: "Food log storage is not configured." });
+      return handleV2FoodLogConfirm(userId, event, { ddb, foodLogTableName: table });
     }
 
     if (event.rawPath === "/admin/users" && method === "GET") {

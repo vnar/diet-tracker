@@ -69,3 +69,8 @@ export function isInsightsSourceLabelEnabled(userId?: string): boolean {
   if (explicit !== undefined) return isEnabled("INSIGHTS_SOURCE_LABEL", userId);
   return true;
 }
+
+/** P1.3 multimodal food logging (camera → vision estimate → calories/protein). Default OFF. */
+export function isPhotoFoodLogEnabled(userId?: string): boolean {
+  return isEnabled("PHOTO_FOOD_LOG", userId);
+}
