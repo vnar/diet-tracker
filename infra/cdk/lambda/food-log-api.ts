@@ -149,7 +149,7 @@ export async function handleV2FoodEstimate(
     ts: { S: ts },
   };
   if (estimate.suggestedName) item.suggestedName = { S: estimate.suggestedName };
-  if (estimate.suggestedMealType != null && estimate.suggestedMealType !== "") {
+  if (estimate.suggestedMealType != null) {
     item.suggestedMealType = { S: String(estimate.suggestedMealType) };
   }
   if (estimate.carbsGRange) {
