@@ -1,4 +1,4 @@
-/** Shared API contract for POST /v2/food/estimate and POST /api/v2/food/estimate */
+/** Shared API contract for POST /v2/food/estimate (AWS HTTP API + JWT). */
 export type FoodVisionEstimate = {
     mealLabel: string;
     kcalLow: number;
