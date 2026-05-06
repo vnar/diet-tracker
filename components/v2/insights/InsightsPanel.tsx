@@ -77,7 +77,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
 
   return (
     <ul className="flex flex-col gap-2.5">
-      {insights.map((ins) => (
+      {insights.map((ins) => {
+        const generationSource = ins.generationSource ?? "rules";
+        return (
         <li
           key={ins.id}
           className="rounded-xl border border-slate-600/80 border-l-4 border-l-sky-500 bg-slate-900/60 p-3.5"
@@ -85,16 +87,18 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
           <p className="text-[15px] font-medium leading-relaxed tracking-wide text-slate-200">
             {ins.headline}
           </p>
-          {showSourceLabel && ins.generationSource ? (
+          {showSourceLabel ? (
             <p
               className="mt-1 max-w-prose text-[11px] font-medium leading-snug text-slate-500"
               title={
-                ins.generationSource === "llm"
+                generationSource === "llm"
                   ? "Headline and detail were rewritten by a language model; supporting facts still come from your logs and rules."
-                  : "Headline and detail come directly from deterministic rules applied to your entries (no generative rewrite)."
+                  : ins.generationSource === undefined
+                    ? "Older API responses may omit the source field. Redeploy the latest Lambda so this label reflects AI vs rules accurately."
+                    : "Headline and detail come directly from deterministic rules applied to your entries (no generative rewrite)."
               }
             >
-              {ins.generationSource === "llm"
+              {generationSource === "llm"
                 ? "AI-generated copy"
                 : "Rule-based (deterministic)"}
             </p>
@@ -155,7 +159,8 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
             </ul>
           ) : null}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
