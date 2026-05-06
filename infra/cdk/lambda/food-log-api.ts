@@ -103,7 +103,15 @@ export async function handleV2FoodEstimate(
   try {
     estimate = await runFoodVisionModel({ apiKey, base64, mediaType });
   } catch (e) {
-    console.error(JSON.stringify({ msg: "food_vision_anthropic_failed", err: String(e) }));
+    const err = e as { status?: number; message?: string; error?: { message?: string } };
+    console.error(
+      JSON.stringify({
+        msg: "food_vision_anthropic_failed",
+        status: err?.status,
+        err: String(e),
+        detail: err?.message ?? err?.error?.message,
+      }),
+    );
     return json(502, { error: "Vision estimate failed. Try entering calories manually." });
   }
 

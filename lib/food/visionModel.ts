@@ -1,9 +1,10 @@
 import type { FoodVisionEstimate } from "./contracts";
 import { parseFoodVisionEstimate } from "./parseFoodVisionJson";
 
+/** Default: Sonnet 4.6 (vision). Avoid deprecated `claude-sonnet-4-20250514` — see Anthropic model deprecations. */
 const VISION_MODEL =
   (typeof process !== "undefined" && process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim()) ||
-  "claude-sonnet-4-20250514";
+  "claude-sonnet-4-6";
 
 const VISION_SYSTEM = `You estimate calories and protein from a meal photo for a diet-tracking app.
 Return ONLY one JSON object (no markdown fences) with exactly these keys:
