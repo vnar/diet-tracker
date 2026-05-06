@@ -12,15 +12,23 @@ function dayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function withRules(insight: Insight): Insight {
+  return { ...insight, generationSource: "rules" };
+}
+
+function withLlm(insight: Insight): Insight {
+  return { ...insight, generationSource: "llm" };
+}
+
 export async function refine(insight: Insight, userContext: UserPrefs): Promise<Insight> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || !userContext.userId) return insight;
+  if (!apiKey || !userContext.userId) return withRules(insight);
   const cacheKey = `${insight.id}#${dayKey()}`;
   const cached = await getInsightCache({ userId: userContext.userId, cacheKey });
-  if (cached) return cached;
+  if (cached) return withLlm({ ...insight, ...cached, generationSource: "llm" });
 
   const count = await incrementLlmUsage(userContext.userId);
-  if (count > DAILY_LIMIT) return insight;
+  if (count > DAILY_LIMIT) return withRules(insight);
 
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic({ apiKey });
@@ -48,24 +56,24 @@ Recent notes sample:
     ],
   });
   const text = response.content.find((part) => part.type === "text")?.text;
-  if (!text) return insight;
+  if (!text) return withRules(insight);
   try {
     const parsed = JSON.parse(text) as { headline?: string; detail?: string };
-    const nextInsight = {
+    const nextInsight = withLlm({
       ...insight,
       headline: parsed.headline?.trim() || insight.headline,
       detail: parsed.detail?.trim() || insight.detail,
-    };
+    });
     await putInsightCache({ userId: userContext.userId, cacheKey, insight: nextInsight });
     return nextInsight;
   } catch {
-    return insight;
+    return withRules(insight);
   }
 }
 
 export async function maybeRefineInsight(insight: Insight, userContext: UserPrefs): Promise<Insight> {
   if (!isInsightsLlmRefineEnabled()) {
-    return insight;
+    return withRules(insight);
   }
   return refine(insight, userContext);
 }

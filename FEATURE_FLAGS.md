@@ -20,6 +20,12 @@
 - **Scope:** no-op now; future copy refinement adapter for insights.
 - **Env keys supported:** `FF_INSIGHTS_LLM_REFINE`, `NEXT_PUBLIC_FF_INSIGHTS_LLM_REFINE`.
 
+### `FF_INSIGHTS_SOURCE_LABEL`
+
+- **Default:** `true` when unset (shows AI vs rule-based labels on insight cards).
+- **Scope:** Insights panel only; requires API field `generationSource` (`llm` | `rules`).
+- **Env keys supported:** `FF_INSIGHTS_SOURCE_LABEL`, `NEXT_PUBLIC_FF_INSIGHTS_SOURCE_LABEL`, `NEXT_PUBLIC_INSIGHTS_SOURCE_LABEL`.
+
 ### `FF_BILLING_ENABLED`
 
 - **Default:** `false`.

@@ -11,6 +11,9 @@ export type InsightCategory =
   | "trajectory";
 export type InsightTone = "friendly" | "clinical" | "tough-love" | "ayurvedic";
 
+/** Set by the insights API: whether headline/detail were rewritten by an LLM or left as rule output. */
+export type InsightGenerationSource = "llm" | "rules";
+
 export type UserPrefs = {
   userId?: string;
   firstName?: string;
@@ -27,6 +30,7 @@ export interface Insight {
   why: string[];
   action: string;
   category: InsightCategory;
+  generationSource?: InsightGenerationSource;
 }
 
 export type InsightLog = DailyEntry & {

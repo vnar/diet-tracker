@@ -3,7 +3,7 @@ import {
   isLambdaInsightsLlmRefineEnabled,
   maybeRefineInsightCards,
   type LambdaInsightCard,
-} from "../../infra/cdk/lambda/insights-llm-refine";
+} from "../../infra/cdk/lambda/insights-llm-refine.ts";
 
 const baseInsight: LambdaInsightCard = {
   id: "i1",
@@ -52,6 +52,20 @@ describe("lambda insights LLM refine", () => {
       firstName: "Pat",
       recentNotes: [],
     });
-    expect(out).toEqual([baseInsight]);
+    expect(out).toEqual([{ ...baseInsight, generationSource: "rules" }]);
+  });
+
+  it("maybeRefineInsightCards tags rules when refine is disabled", async () => {
+    clearLlmRefineEnv();
+    process.env.INSIGHTS_LLM_REFINE = "false";
+    const ddb = {} as import("@aws-sdk/client-dynamodb").DynamoDBClient;
+    const out = await maybeRefineInsightCards(ddb, {
+      userId: "u1",
+      insights: [baseInsight],
+      tone: "friendly",
+      firstName: "Pat",
+      recentNotes: [],
+    });
+    expect(out).toEqual([{ ...baseInsight, generationSource: "rules" }]);
   });
 });

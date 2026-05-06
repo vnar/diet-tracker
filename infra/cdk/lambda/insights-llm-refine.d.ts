@@ -9,6 +9,7 @@ export type LambdaInsightCard = {
     why: string[];
     action: string;
     category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
+    generationSource?: "llm" | "rules";
 };
 /** Mirrors app `isInsightsLlmRefineEnabled`: off only when explicitly false. */
 export declare function isLambdaInsightsLlmRefineEnabled(): boolean;

@@ -60,3 +60,12 @@ export function isInsightsLlmRefineEnabled(userId?: string): boolean {
   if (explicit !== undefined) return isEnabled("INSIGHTS_LLM_REFINE", userId);
   return true;
 }
+
+/** When true, insights UI shows whether copy is AI-refined vs rule-based (requires API `generationSource`). */
+export function isInsightsSourceLabelEnabled(userId?: string): boolean {
+  const legacyExplicit = parseBoolean(process.env.NEXT_PUBLIC_INSIGHTS_SOURCE_LABEL);
+  if (legacyExplicit !== undefined) return legacyExplicit;
+  const explicit = readEnvFlag("INSIGHTS_SOURCE_LABEL");
+  if (explicit !== undefined) return isEnabled("INSIGHTS_SOURCE_LABEL", userId);
+  return true;
+}

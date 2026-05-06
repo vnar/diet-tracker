@@ -98,6 +98,7 @@ type InsightCard = {
   why: string[];
   action: string;
   category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
+  generationSource?: "llm" | "rules";
 };
 
 function json(statusCode: number, payload: unknown): HttpResult {
@@ -667,7 +668,10 @@ async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResu
     entries.length === 0
       ? baselineInsightNoLogs(to)
       : baselineInsightWithLogs(entries.length, latestDate);
-  const insights: InsightCard[] = top.length > 0 ? top : [fallback];
+  const insights: InsightCard[] = (top.length > 0 ? top : [fallback]).map((i) => ({
+    ...i,
+    generationSource: "rules" as const,
+  }));
   const tone = await fetchToneForUser(userId);
   const firstName = firstNameFromJwtClaims(getJwtClaims(event)) ?? "there";
   const recentNotes = entries

@@ -13,6 +13,7 @@ export type LambdaInsightCard = {
   why: string[];
   action: string;
   category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
+  generationSource?: "llm" | "rules";
 };
 
 function parseBoolEnv(value: string | undefined): boolean | undefined {
@@ -36,6 +37,14 @@ export function isLambdaInsightsLlmRefineEnabled(): boolean {
 
 function dayKey(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function withRulesCard(insight: LambdaInsightCard): LambdaInsightCard {
+  return { ...insight, generationSource: "rules" };
+}
+
+function withLlmCard(insight: LambdaInsightCard): LambdaInsightCard {
+  return { ...insight, generationSource: "llm" };
 }
 
 async function getInsightCache(
@@ -108,10 +117,10 @@ async function refineOne(
 ): Promise<LambdaInsightCard> {
   const cacheKey = `${insight.id}#${dayKey()}`;
   const cached = await getInsightCache(ddb, cacheTableName, userId, cacheKey);
-  if (cached) return cached;
+  if (cached) return withLlmCard({ ...insight, ...cached, generationSource: "llm" });
 
   const count = await incrementLlmUsage(ddb, cacheTableName, userId);
-  if (count > DAILY_LIMIT) return insight;
+  if (count > DAILY_LIMIT) return withRulesCard(insight);
 
   try {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
@@ -138,17 +147,17 @@ Recent notes sample:
       ],
     });
     const text = response.content.find((part) => part.type === "text")?.text;
-    if (!text) return insight;
+    if (!text) return withRulesCard(insight);
     const parsed = JSON.parse(text) as { headline?: string; detail?: string };
-    const nextInsight: LambdaInsightCard = {
+    const nextInsight = withLlmCard({
       ...insight,
       headline: parsed.headline?.trim() || insight.headline,
       detail: parsed.detail?.trim() || insight.detail,
-    };
+    });
     await putInsightCache(ddb, cacheTableName, userId, cacheKey, nextInsight);
     return nextInsight;
   } catch {
-    return insight;
+    return withRulesCard(insight);
   }
 }
 
@@ -166,11 +175,13 @@ export async function maybeRefineInsightCards(
     recentNotes: string[];
   },
 ): Promise<LambdaInsightCard[]> {
-  if (!isLambdaInsightsLlmRefineEnabled()) return input.insights;
+  if (!isLambdaInsightsLlmRefineEnabled()) {
+    return input.insights.map((i) => withRulesCard(i));
+  }
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return input.insights;
+  if (!apiKey) return input.insights.map((i) => withRulesCard(i));
   const tableName = process.env.INSIGHT_CACHE_TABLE_NAME?.trim();
-  if (!tableName) return input.insights;
+  if (!tableName) return input.insights.map((i) => withRulesCard(i));
 
   const out: LambdaInsightCard[] = [];
   for (const insight of input.insights) {

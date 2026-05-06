@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { track } from "@/lib/analytics";
 import {
   getInsightsV2,
   submitInsightFeedback,
 } from "@/lib/frontend-api-client";
+import { isInsightsSourceLabelEnabled } from "@/lib/featureFlags";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 
 export function InsightsPanel({ accessToken }: { accessToken: string }) {
+  const { user } = useCognitoAuth();
+  const showSourceLabel = useMemo(
+    () => isInsightsSourceLabelEnabled(user?.id),
+    [user?.id],
+  );
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +37,11 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
       setInsights(next);
       setLoading(false);
       next.forEach((insight) => {
-        track("insight_shown", { insight_id: insight.id, category: insight.category });
+        track("insight_shown", {
+          insight_id: insight.id,
+          category: insight.category,
+          generation_source: insight.generationSource ?? "rules",
+        });
       });
     }
     void run();
@@ -74,6 +85,20 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
           <p className="text-[15px] font-medium leading-relaxed tracking-wide text-slate-200">
             {ins.headline}
           </p>
+          {showSourceLabel && ins.generationSource ? (
+            <p
+              className="mt-1 max-w-prose text-[11px] font-medium leading-snug text-slate-500"
+              title={
+                ins.generationSource === "llm"
+                  ? "Headline and detail were rewritten by a language model; supporting facts still come from your logs and rules."
+                  : "Headline and detail come directly from deterministic rules applied to your entries (no generative rewrite)."
+              }
+            >
+              {ins.generationSource === "llm"
+                ? "AI-generated copy"
+                : "Rule-based (deterministic)"}
+            </p>
+          ) : null}
           {ins.detail ? (
             <p className="mt-1 text-xs leading-relaxed text-slate-400">{ins.detail}</p>
           ) : null}

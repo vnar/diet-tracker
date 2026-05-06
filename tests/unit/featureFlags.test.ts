@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearUserFlagOverrides,
   isEnabled,
+  isInsightsSourceLabelEnabled,
   setUserFlagOverrides,
 } from "@/lib/featureFlags";
 
@@ -32,5 +33,23 @@ describe("feature flag evaluation", () => {
 
   it("returns false for missing flag by default", () => {
     expect(isEnabled("FF_DOES_NOT_EXIST", "u1")).toBe(false);
+  });
+});
+
+describe("insights source label flag", () => {
+  beforeEach(() => {
+    delete process.env.FF_INSIGHTS_SOURCE_LABEL;
+    delete process.env.NEXT_PUBLIC_FF_INSIGHTS_SOURCE_LABEL;
+    delete process.env.NEXT_PUBLIC_INSIGHTS_SOURCE_LABEL;
+    clearUserFlagOverrides();
+  });
+
+  it("defaults to true when unset", () => {
+    expect(isInsightsSourceLabelEnabled()).toBe(true);
+  });
+
+  it("respects explicit false", () => {
+    process.env.FF_INSIGHTS_SOURCE_LABEL = "false";
+    expect(isInsightsSourceLabelEnabled()).toBe(false);
   });
 });

@@ -20,6 +20,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   },
 }));
 
+import { isInsightsLlmRefineEnabled } from "@/lib/featureFlags";
 import { maybeRefineInsight } from "@/lib/insights/llmRefiner";
 import {
   getInsightCache,
@@ -49,12 +50,20 @@ describe("insights llm refiner", () => {
     vi.mocked(getInsightCache).mockResolvedValue({ ...baseInsight, headline: "Cached" });
     const result = await maybeRefineInsight(baseInsight, { userId: "u1" });
     expect(result.headline).toBe("Cached");
+    expect(result.generationSource).toBe("llm");
   });
 
   it("returns raw output when daily cap exceeded", async () => {
     vi.mocked(incrementLlmUsage).mockResolvedValue(101);
     const result = await maybeRefineInsight(baseInsight, { userId: "u1" });
     expect(result.headline).toBe("Original headline");
+    expect(result.generationSource).toBe("rules");
+  });
+
+  it("tags rules when refine flag is off", async () => {
+    vi.mocked(isInsightsLlmRefineEnabled).mockReturnValueOnce(false);
+    const result = await maybeRefineInsight(baseInsight, { userId: "u1" });
+    expect(result.generationSource).toBe("rules");
   });
 
   it("caches refined output when model succeeds", async () => {
@@ -65,6 +74,7 @@ describe("insights llm refiner", () => {
       recentNotes: ["Had a late snack"],
     });
     expect(result.headline).toBe("Warm headline");
+    expect(result.generationSource).toBe("llm");
     expect(putInsightCache).toHaveBeenCalled();
   });
 });

@@ -61,6 +61,7 @@ export async function generateInsights(
       ],
       action: "Keep tracking daily habits and weight to unlock stronger personalized insights.",
       category: "streak",
+      generationSource: "rules",
     },
   ];
 }
