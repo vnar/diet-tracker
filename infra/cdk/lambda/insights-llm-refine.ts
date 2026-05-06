@@ -1,5 +1,6 @@
 import type { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { GetItemCommand, PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { parseInsightCopyFromLlmText } from "../../../lib/insights/llmJsonParse";
 
 const DAILY_LIMIT = 100;
 
@@ -131,7 +132,7 @@ async function refineOne(
       max_tokens: 180,
       temperature: 0.4,
       system:
-        "Rewrite a health insight in a warmer, personalized tone while preserving facts. Return strict JSON with keys headline and detail only.",
+        "Rewrite a health insight in a warmer, personalized tone while preserving facts. Reply with ONLY a single JSON object (no markdown, no code fences) with keys headline and detail (strings).",
       messages: [
         {
           role: "user",
@@ -148,15 +149,32 @@ Recent notes sample:
     });
     const text = response.content.find((part) => part.type === "text")?.text;
     if (!text) return withRulesCard(insight);
-    const parsed = JSON.parse(text) as { headline?: string; detail?: string };
+    const parsed = parseInsightCopyFromLlmText(text);
+    if (!parsed) {
+      console.error(
+        JSON.stringify({
+          msg: "insights_llm_parse_failed",
+          insightId: insight.id,
+          textPreview: text.slice(0, 200),
+        }),
+      );
+      return withRulesCard(insight);
+    }
     const nextInsight = withLlmCard({
       ...insight,
       headline: parsed.headline?.trim() || insight.headline,
-      detail: parsed.detail?.trim() || insight.detail,
+      detail: parsed.detail !== undefined ? parsed.detail.trim() || insight.detail : insight.detail,
     });
     await putInsightCache(ddb, cacheTableName, userId, cacheKey, nextInsight);
     return nextInsight;
-  } catch {
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        msg: "insights_llm_request_failed",
+        insightId: insight.id,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
     return withRulesCard(insight);
   }
 }

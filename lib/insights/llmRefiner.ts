@@ -4,6 +4,7 @@ import {
   incrementLlmUsage,
   putInsightCache,
 } from "@/lib/insights/cacheStore";
+import { parseInsightCopyFromLlmText } from "@/lib/insights/llmJsonParse";
 import type { Insight, UserPrefs } from "@/lib/insights/types";
 
 const DAILY_LIMIT = 100;
@@ -30,21 +31,22 @@ export async function refine(insight: Insight, userContext: UserPrefs): Promise<
   const count = await incrementLlmUsage(userContext.userId);
   if (count > DAILY_LIMIT) return withRules(insight);
 
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const client = new Anthropic({ apiKey });
-  const tone = userContext.tone ?? "friendly";
-  const notes = (userContext.recentNotes ?? []).slice(-3).join("\n- ");
-  const firstName = userContext.firstName ?? "there";
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 180,
-    temperature: 0.4,
-    system:
-      "Rewrite a health insight in a warmer, personalized tone while preserving facts. Return strict JSON with keys headline and detail only.",
-    messages: [
-      {
-        role: "user",
-        content: `Tone: ${tone}
+  try {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const client = new Anthropic({ apiKey });
+    const tone = userContext.tone ?? "friendly";
+    const notes = (userContext.recentNotes ?? []).slice(-3).join("\n- ");
+    const firstName = userContext.firstName ?? "there";
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 180,
+      temperature: 0.4,
+      system:
+        "Rewrite a health insight in a warmer, personalized tone while preserving facts. Reply with ONLY a single JSON object (no markdown, no code fences) with keys headline and detail (strings).",
+      messages: [
+        {
+          role: "user",
+          content: `Tone: ${tone}
 First name: ${firstName}
 Original headline: ${insight.headline}
 Original detail: ${insight.detail ?? ""}
@@ -52,17 +54,17 @@ Why points:
 - ${insight.why.join("\n- ")}
 Recent notes sample:
 - ${notes || "None"}`,
-      },
-    ],
-  });
-  const text = response.content.find((part) => part.type === "text")?.text;
-  if (!text) return withRules(insight);
-  try {
-    const parsed = JSON.parse(text) as { headline?: string; detail?: string };
+        },
+      ],
+    });
+    const text = response.content.find((part) => part.type === "text")?.text;
+    if (!text) return withRules(insight);
+    const parsed = parseInsightCopyFromLlmText(text);
+    if (!parsed) return withRules(insight);
     const nextInsight = withLlm({
       ...insight,
       headline: parsed.headline?.trim() || insight.headline,
-      detail: parsed.detail?.trim() || insight.detail,
+      detail: parsed.detail !== undefined ? parsed.detail.trim() || insight.detail : insight.detail,
     });
     await putInsightCache({ userId: userContext.userId, cacheKey, insight: nextInsight });
     return nextInsight;
