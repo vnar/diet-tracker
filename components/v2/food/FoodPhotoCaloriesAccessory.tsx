@@ -139,8 +139,8 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
         <input
           ref={inputRef}
           id={FOOD_PHOTO_INPUT_ID}
-          type="file"
-          accept="image/*"
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
           className="sr-only"
           onChange={onFile}
           tabIndex={-1}

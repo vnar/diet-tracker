@@ -2,7 +2,13 @@ import type { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { GetItemCommand, PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { guessFoodImageMediaType, parseS3Uri, s3KeyAllowedForUser } from "../../../lib/food/s3Uri";
+import {
+  bufferLooksLikeHeicOrHeif,
+  guessFoodImageMediaType,
+  isUnsupportedFoodImageFormat,
+  parseS3Uri,
+  s3KeyAllowedForUser,
+} from "../../../lib/food/s3Uri";
 import { runFoodVisionModel } from "../../../lib/food/visionModel";
 
 export type HttpEvent = {
@@ -94,6 +100,13 @@ export async function handleV2FoodEstimate(
   } catch (e) {
     console.error(JSON.stringify({ msg: "food_vision_s3_get_failed", key: ref.key, err: String(e) }));
     return json(400, { error: "Could not read image from storage." });
+  }
+
+  if (isUnsupportedFoodImageFormat(ref.key, contentType) || bufferLooksLikeHeicOrHeif(buf)) {
+    return json(400, {
+      error:
+        "This photo is HEIC/HEIF (common on iPhone), which the vision API cannot read. Pick the same photo after converting to JPEG/PNG, or use Settings → Camera → Formats → Most Compatible, then take a new picture.",
+    });
   }
 
   const mediaType = guessFoodImageMediaType(ref.key, contentType);

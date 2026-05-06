@@ -949,10 +949,18 @@ async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpRe
     typeof body.contentType === "string" && body.contentType.length > 0
       ? body.contentType
       : "application/octet-stream";
-  const extension =
+  const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "";
+  const extFromFileName = fileName.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? "";
+  const extFromBody =
     typeof body.extension === "string" && /^[a-zA-Z0-9]+$/.test(body.extension)
       ? body.extension.toLowerCase()
-      : "jpg";
+      : "";
+  const extension =
+    extFromFileName && /^[a-z0-9]+$/.test(extFromFileName)
+      ? extFromFileName
+      : extFromBody && /^[a-z0-9]+$/.test(extFromBody)
+        ? extFromBody
+        : "jpg";
   const date = isDateString(body.date) ? body.date : new Date().toISOString().slice(0, 10);
   const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "";
   const key =

@@ -267,6 +267,10 @@ export async function uploadPhotoFile(
       body: JSON.stringify({
         fileName: file.name,
         contentType: file.type || "application/octet-stream",
+        extension: (() => {
+          const m = file.name.match(/\.([a-zA-Z0-9]+)$/);
+          return m?.[1]?.toLowerCase() ?? "jpg";
+        })(),
         ...(options?.day ? { date: options.day } : {}),
         ...(options?.kind ? { kind: options.kind } : {}),
       }),
