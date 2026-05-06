@@ -131,6 +131,13 @@ function isDateString(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function envFlagTriState(name: string): boolean | undefined {
+  const v = process.env[name];
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return undefined;
+}
+
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
@@ -1066,7 +1073,7 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
       ConsistentRead: true,
     }),
   );
-  const overrides = (out.Items ?? []).reduce<Record<string, boolean>>((acc, item) => {
+  const fromDb = (out.Items ?? []).reduce<Record<string, boolean>>((acc, item) => {
     const flag = item.flag?.S;
     const enabledRaw = item.enabled?.BOOL;
     if (typeof flag === "string" && typeof enabledRaw === "boolean") {
@@ -1074,6 +1081,14 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
     }
     return acc;
   }, {});
+
+  const serverDefaults: Record<string, boolean> = {};
+  const photoFood = envFlagTriState("FF_PHOTO_FOOD_LOG");
+  if (typeof photoFood === "boolean") {
+    serverDefaults.FF_PHOTO_FOOD_LOG = photoFood;
+  }
+
+  const overrides = { ...serverDefaults, ...fromDb };
   return json(200, { userId, overrides });
 }
 

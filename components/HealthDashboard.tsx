@@ -21,6 +21,7 @@ import { Settings, Users } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
 import { isPhotoFoodLogEnabled } from "@/lib/featureFlags";
+import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -29,6 +30,7 @@ const fadeInUp = {
 };
 
 export function HealthDashboard() {
+  useFeatureFlagOverridesEpoch();
   const settings = useHealthStore((s) => s.settings);
   const unit = settings.unit;
   const entryCount = useHealthStore((s) => s.entries.length);

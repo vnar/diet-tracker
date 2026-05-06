@@ -2,6 +2,24 @@ type OverrideMap = Record<string, boolean>;
 
 const overrideCacheByUser = new Map<string, OverrideMap>();
 
+let featureFlagOverridesEpoch = 0;
+const featureFlagOverridesSubscribers = new Set<() => void>();
+
+function notifyFeatureFlagOverridesChanged(): void {
+  featureFlagOverridesEpoch += 1;
+  featureFlagOverridesSubscribers.forEach((fn) => fn());
+}
+
+/** Subscribe to cache updates from `setUserFlagOverrides` / `clearUserFlagOverrides` (client UI). */
+export function subscribeFeatureFlagOverrides(listener: () => void): () => void {
+  featureFlagOverridesSubscribers.add(listener);
+  return () => featureFlagOverridesSubscribers.delete(listener);
+}
+
+export function getFeatureFlagOverridesEpoch(): number {
+  return featureFlagOverridesEpoch;
+}
+
 function parseBoolean(value: string | undefined): boolean | undefined {
   if (value === "true") return true;
   if (value === "false") return false;
@@ -22,14 +40,17 @@ function readEnvFlag(flag: string): boolean | undefined {
 
 export function setUserFlagOverrides(userId: string, overrides: OverrideMap): void {
   overrideCacheByUser.set(userId, { ...overrides });
+  notifyFeatureFlagOverridesChanged();
 }
 
 export function clearUserFlagOverrides(userId?: string): void {
   if (typeof userId === "string") {
     overrideCacheByUser.delete(userId);
+    notifyFeatureFlagOverridesChanged();
     return;
   }
   overrideCacheByUser.clear();
+  notifyFeatureFlagOverridesChanged();
 }
 
 export function isEnabled(flag: string, userId?: string): boolean {
