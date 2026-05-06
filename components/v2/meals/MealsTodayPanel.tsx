@@ -19,6 +19,9 @@ export function MealsTodayPanel(props: Props) {
 
   if (props.entries.length === 0) return null;
 
+  const totalKcal = props.entries.reduce((s, e) => s + (Number(e.kcal) || 0), 0);
+  const totalProtein = props.entries.reduce((s, e) => s + (Number(e.proteinG) || 0), 0);
+
   async function remove(id: string) {
     const token = props.getAccessToken();
     if (!token) return;
@@ -32,17 +35,24 @@ export function MealsTodayPanel(props: Props) {
   }
 
   return (
-    <div className="mb-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-        Meals today
-      </p>
+    <div className="mb-3 rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-zinc-800/80 pb-2">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+          Meals today
+        </p>
+        <p className="text-right text-[11px] text-zinc-400">
+          <span className="font-mono text-zinc-100">{Math.round(totalKcal)}</span> kcal
+          <span className="mx-1.5 text-zinc-600">·</span>
+          <span className="font-mono text-zinc-100">{Math.round(totalProtein)}</span> g protein
+        </p>
+      </div>
       <ul className="space-y-2">
         {props.entries.map((e) => (
           <li
             key={e.id}
-            className="flex items-center gap-2 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2 py-1.5"
+            className="flex items-center gap-2 rounded-lg border border-zinc-700/50 bg-zinc-900/40 px-2.5 py-2 transition-colors hover:border-emerald-800/40 hover:bg-zinc-900/70"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-500">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/90 text-zinc-400 ring-1 ring-zinc-700/50">
               <Utensils className="h-4 w-4" aria-hidden />
             </div>
             <button
@@ -57,7 +67,7 @@ export function MealsTodayPanel(props: Props) {
             </button>
             <button
               type="button"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-rose-950/50 hover:text-rose-300 disabled:opacity-40"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-rose-950/60 hover:text-rose-200 disabled:opacity-40"
               aria-label={`Remove ${e.nameSnapshot}`}
               disabled={busyId === e.id}
               onClick={() => void remove(e.id)}

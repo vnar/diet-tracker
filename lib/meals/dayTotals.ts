@@ -1,6 +1,6 @@
 export type DayMealEntryLike = {
-  kcal: number | null | undefined;
-  proteinG: number | null | undefined;
+  kcal: number | null | undefined | string;
+  proteinG: number | null | undefined | string;
   deletedAt?: string | null;
 };
 
@@ -20,10 +20,21 @@ export type DayTotalsResult = {
   activeMealCount: number;
 };
 
-function sumNumbers(values: (number | null | undefined)[]): number {
+function toFiniteNumber(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function sumNumbers(values: (number | null | undefined | string)[]): number {
   let s = 0;
   for (const v of values) {
-    if (v != null && Number.isFinite(v)) s += v;
+    const n = toFiniteNumber(v);
+    if (n != null) s += n;
   }
   return s;
 }

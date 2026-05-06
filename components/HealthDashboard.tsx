@@ -86,8 +86,8 @@ export function HealthDashboard() {
     const totals = getDayTotals({
       mealLibraryEnabled: true,
       mealEntries: mealEntries.map((e) => ({
-        kcal: e.kcal,
-        proteinG: e.proteinG,
+        kcal: e.kcal != null ? Number(e.kcal) : null,
+        proteinG: e.proteinG != null ? Number(e.proteinG) : null,
         deletedAt: undefined,
       })),
       manualCalories: todayEntry?.calories,

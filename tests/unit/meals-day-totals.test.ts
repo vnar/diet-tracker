@@ -40,6 +40,21 @@ describe("getDayTotals", () => {
     expect(r.proteinDisplay).toBe("40");
   });
 
+  it("coerces string kcal/protein from JSON when needed", () => {
+    const r = getDayTotals({
+      mealLibraryEnabled: true,
+      mealEntries: [
+        { kcal: "95" as unknown as number, proteinG: "0" as unknown as number, deletedAt: undefined },
+        { kcal: 650, proteinG: 28, deletedAt: undefined },
+      ],
+      manualCalories: 0,
+      manualProtein: 0,
+    });
+    expect(r.fromMeals).toBe(true);
+    expect(r.caloriesDisplay).toBe("745");
+    expect(r.proteinDisplay).toBe("28");
+  });
+
   it("excludes soft-deleted entries from sum", () => {
     const r = getDayTotals({
       mealLibraryEnabled: true,

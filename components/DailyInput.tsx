@@ -226,6 +226,11 @@ export function DailyInput({
             value={calories}
             onChange={(e) => setCalories(e.target.value)}
             readOnly={Boolean(caloriesProteinAggregate?.readOnly)}
+            title={
+              caloriesProteinAggregate?.readOnly && calories.trim() !== ""
+                ? `Total from logged meals: ${calories} kcal (saved with Today)`
+                : undefined
+            }
             placeholder={
               ph?.calories !== undefined ? String(ph.calories) : ""
             }
