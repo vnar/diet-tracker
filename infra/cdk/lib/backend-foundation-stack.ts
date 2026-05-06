@@ -223,6 +223,9 @@ export class BackendFoundationStack extends cdk.Stack {
     const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
     const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "true" ? "true" : "false";
     const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "true" ? "true" : "false";
+    /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
+    const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
+    const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -250,6 +253,10 @@ export class BackendFoundationStack extends cdk.Stack {
         INSIGHTS_LLM_REFINE: insightsLlmRefineEnv,
         FF_PHOTO_FOOD_LOG: photoFoodLogEnv,
         FF_MEAL_LIBRARY: mealLibraryEnv,
+        ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
+        ...(anthropicFoodVisionModel
+          ? { ANTHROPIC_FOOD_VISION_MODEL: anthropicFoodVisionModel }
+          : {}),
       },
       bundling: {
         minify: true,
