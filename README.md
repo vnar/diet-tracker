@@ -20,6 +20,23 @@ Set:
 
 The frontend then uses AWS API endpoints for entries/settings/photos.
 
+### Photo food log + meal library (P1.3 / P1.3.1)
+
+After sign-in, the app loads `GET /feature-flags` and caches those booleans. **Lambda defaults** can keep flags off while you still enable the UI locally:
+
+1. In **`.env.local`** (not committed), set:
+
+   - `NEXT_PUBLIC_FF_PHOTO_FOOD_LOG=true` — camera + estimate modal on Today’s log  
+   - `NEXT_PUBLIC_FF_MEAL_LIBRARY=true` — meals today, library sheet, `/meals`, extended confirm  
+
+   These override the API response for **client-side** gating only. Restart `npm run dev` after editing env.
+
+2. **Meal APIs** (`/v2/meals/*`, `/v2/food/meal-complete`, etc.) still read **`FF_MEAL_LIBRARY`** / **`FF_PHOTO_FOOD_LOG`** on the API Lambda. Turn them on at deploy time, e.g.:
+
+   `FF_PHOTO_FOOD_LOG=true FF_MEAL_LIBRARY=true npm run infra:cdk:deploy`
+
+   (or set the same env vars your CDK deploy pipeline uses before `cdk deploy`). Otherwise the UI may appear but meal requests return 403 until Lambda matches.
+
 ## Docker Postgres (legacy, optional)
 
 ```bash

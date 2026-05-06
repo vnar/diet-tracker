@@ -10,6 +10,20 @@ import {
   isAwsBackendEnabled,
 } from "@/lib/frontend-api-client";
 import { clearUserFlagOverrides, setUserFlagOverrides } from "@/lib/featureFlags";
+
+/** NEXT_PUBLIC_* wins over `/feature-flags` so local `.env.local` can turn on gated UI without redeploying Lambda. */
+function mergeNextPublicFeatureFlags(
+  overrides: Record<string, boolean>,
+): Record<string, boolean> {
+  const out = { ...overrides };
+  const meal = process.env.NEXT_PUBLIC_FF_MEAL_LIBRARY;
+  if (meal === "true") out.FF_MEAL_LIBRARY = true;
+  if (meal === "false") out.FF_MEAL_LIBRARY = false;
+  const photo = process.env.NEXT_PUBLIC_FF_PHOTO_FOOD_LOG;
+  if (photo === "true") out.FF_PHOTO_FOOD_LOG = true;
+  if (photo === "false") out.FF_PHOTO_FOOD_LOG = false;
+  return out;
+}
 import { setHealthStorageMode, useHealthStore } from "@/lib/store";
 
 export function HealthBootstrap({ children }: { children: React.ReactNode }) {
@@ -77,7 +91,7 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
       }
 
       if (flagResult.ok && user?.id) {
-        setUserFlagOverrides(user.id, flagResult.data.overrides);
+        setUserFlagOverrides(user.id, mergeNextPublicFeatureFlags(flagResult.data.overrides));
       }
     })();
   }, [getAccessToken, status, user?.id]);
