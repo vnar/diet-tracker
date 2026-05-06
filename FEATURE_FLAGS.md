@@ -38,3 +38,10 @@
 - **Scope:** camera/upload on Today’s log → vision estimate → confirmation modal → fills calories/protein (save path unchanged). Requires AWS backend, `FoodLogEntries` table, and `ANTHROPIC_API_KEY` on the API Lambda.
 - **Env keys supported:** `FF_PHOTO_FOOD_LOG`, `NEXT_PUBLIC_FF_PHOTO_FOOD_LOG`. Per-user overrides: flag id `FF_PHOTO_FOOD_LOG` in `FeatureFlagOverrides`.
 - **API:** `GET /feature-flags` merges Lambda env `FF_PHOTO_FOOD_LOG` into `overrides` when unset in DynamoDB, so the web app can show the control after bootstrap without a separate `NEXT_PUBLIC_` build flag. DynamoDB overrides still win when present.
+
+### `FF_MEAL_LIBRARY`
+
+- **Default:** `false` (CDK sets Lambda `FF_MEAL_LIBRARY` to `false` unless deploy uses `FF_MEAL_LIBRARY=true`).
+- **Scope:** P1.3.1 — personal meal library (`Meals` + `DayMealEntries` DynamoDB tables), “Meals today” list, optional extended photo confirm (`POST /v2/food/meal-complete`), `/meals` library page, quick-add from library / frequent carousel, and read-only calorie/protein totals when at least one meal entry exists for the day. Requires `FF_PHOTO_FOOD_LOG` for the photo completion path; library-only flows (quick-add, `/meals`) work whenever this flag is on and AWS backend is enabled.
+- **Env keys supported:** `FF_MEAL_LIBRARY`, `NEXT_PUBLIC_FF_MEAL_LIBRARY`. Per-user overrides: `FF_MEAL_LIBRARY` in `FeatureFlagOverrides`.
+- **API:** `GET /feature-flags` merges Lambda env `FF_MEAL_LIBRARY` into `overrides` when unset in DynamoDB (same pattern as photo food flag).

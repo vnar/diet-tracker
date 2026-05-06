@@ -6,28 +6,47 @@ import { Camera } from "lucide-react";
 import { track } from "@/lib/analytics";
 import type { DailyInputCaloriesAccessoryContext } from "@/components/DailyInput";
 import {
+  getMealsSuggestMatch,
+  postDayMealEntry,
   postFoodLogConfirm,
+  postFoodMealComplete,
   postFoodVisionEstimate,
   uploadPhotoFile,
+  type MealLibraryRow,
 } from "@/lib/frontend-api-client";
 import type { FoodVisionEstimate } from "@/lib/food/contracts";
+import { inferMealTypeFromLocalTime, isMealType, MEAL_TYPES, type MealType } from "@/lib/meals/mealTypes";
 
 type Props = DailyInputCaloriesAccessoryContext & {
   getAccessToken: () => string | null;
+  /** P1.3.1 — extended confirm + meal-complete when true. */
+  mealLibraryEnabled?: boolean;
+  /** IANA timezone for meal-type suggestion when vision returns null. */
+  clientTimezone?: string;
+  onMealsChanged?: () => void;
 };
 
 const FOOD_PHOTO_INPUT_ID = "food-photo-meal-file";
 
+type DialogState = {
+  estimate: FoodVisionEstimate;
+  foodLogId: string;
+  kcal: string;
+  protein: string;
+  dishName: string;
+  mealType: MealType;
+  saveToLibrary: boolean;
+};
+
 export function FoodPhotoCaloriesAccessory(props: Props) {
+  const tz =
+    props.clientTimezone ?? (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<{
-    estimate: FoodVisionEstimate;
-    foodLogId: string;
-    kcal: string;
-    protein: string;
-  } | null>(null);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [quickMatch, setQuickMatch] = useState<MealLibraryRow | null>(null);
+  const [quickMatchDismissed, setQuickMatchDismissed] = useState(false);
 
   useEffect(() => {
     if (!dialog) return;
@@ -37,6 +56,31 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [dialog]);
+
+  useEffect(() => {
+    if (!dialog || !props.mealLibraryEnabled) {
+      setQuickMatch(null);
+      setQuickMatchDismissed(false);
+      return;
+    }
+    let cancelled = false;
+    const q = (dialog.estimate.suggestedName ?? dialog.estimate.mealLabel).trim();
+    if (!q) return;
+    const token = props.getAccessToken();
+    if (!token) return;
+    void (async () => {
+      const res = await getMealsSuggestMatch(q, token);
+      if (cancelled) return;
+      if (res.ok && res.data.match && res.data.similarity >= 0.6) {
+        setQuickMatch(res.data.match);
+      } else {
+        setQuickMatch(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dialog, props.mealLibraryEnabled, props.getAccessToken]);
 
   async function onFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const file = ev.target.files?.[0];
@@ -83,12 +127,62 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       mealLabel: e.mealLabel,
       confidence: e.confidence,
     });
+    const inferred = inferMealTypeFromLocalTime(new Date(), tz);
+    const mealType: MealType =
+      e.suggestedMealType != null && isMealType(e.suggestedMealType) ? e.suggestedMealType : inferred;
+    const dishName = (e.suggestedName ?? e.mealLabel).trim() || e.mealLabel;
     setDialog({
       estimate: e,
       foodLogId: est.data.foodLogId,
       kcal: String(e.kcalMid),
       protein: String(e.proteinG),
+      dishName,
+      mealType,
+      saveToLibrary: true,
     });
+    setQuickMatchDismissed(false);
+  }
+
+  async function acceptQuickMatch() {
+    if (!dialog || !quickMatch) return;
+    const token = props.getAccessToken();
+    if (!token) return;
+    track("meal_quick_match_accepted", {
+      day: props.todayKey,
+      mealId: quickMatch.id,
+      foodLogId: dialog.foodLogId,
+    });
+    const kc = Math.round(quickMatch.estKcal);
+    const pr = Math.round(quickMatch.estProteinG);
+    const confirmRes = await postFoodLogConfirm(
+      {
+        foodLogId: dialog.foodLogId,
+        confirmedKcal: kc,
+        confirmedProtein: pr,
+      },
+      token,
+    );
+    if (!confirmRes.ok) {
+      setErr(confirmRes.error ?? "Could not confirm food log");
+      return;
+    }
+    const add = await postDayMealEntry(props.todayKey, { meal_id: quickMatch.id }, token);
+    if (!add.ok) {
+      setErr(add.error ?? "Could not log meal");
+      return;
+    }
+    track("meal_logged_from_photo", { day: props.todayKey, mealId: quickMatch.id, quickMatch: true });
+    track("meal_logged_from_library", { day: props.todayKey, mealId: quickMatch.id, source: "quick_match" });
+    setErr(null);
+    props.setCalories(String(kc));
+    props.setProtein(String(pr));
+    setDialog(null);
+    props.onMealsChanged?.();
+  }
+
+  function rejectQuickMatch() {
+    track("meal_quick_match_rejected", { day: props.todayKey });
+    setQuickMatchDismissed(true);
   }
 
   async function confirmDialog() {
@@ -115,6 +209,54 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       foodLogId: dialog.foodLogId,
       edited,
     });
+
+    if (props.mealLibraryEnabled) {
+      const dishName = dialog.dishName.trim();
+      if (!dishName) {
+        setErr("Enter a dish name.");
+        return;
+      }
+      const carbsMid =
+        dialog.estimate.carbsGRange != null
+          ? Math.round((dialog.estimate.carbsGRange.low + dialog.estimate.carbsGRange.high) / 2)
+          : undefined;
+      const fatMid =
+        dialog.estimate.fatGRange != null
+          ? Math.round((dialog.estimate.fatGRange.low + dialog.estimate.fatGRange.high) / 2)
+          : undefined;
+      const res = await postFoodMealComplete(
+        {
+          foodLogId: dialog.foodLogId,
+          confirmedKcal: kcalN,
+          confirmedProtein: protN,
+          dishName,
+          mealType: dialog.mealType,
+          saveToLibrary: dialog.saveToLibrary,
+          carbsG: carbsMid,
+          fatG: fatMid,
+        },
+        token,
+      );
+      if (!res.ok) {
+        setErr(res.error ?? "Could not save meal");
+        return;
+      }
+      setErr(null);
+      track("meal_logged_from_photo", {
+        day: props.todayKey,
+        foodLogId: dialog.foodLogId,
+        saveToLibrary: dialog.saveToLibrary,
+      });
+      if (dialog.saveToLibrary) {
+        track("meal_saved_to_library", { day: props.todayKey, dishName });
+      }
+      props.setCalories(String(kcalN));
+      props.setProtein(String(protN));
+      setDialog(null);
+      props.onMealsChanged?.();
+      return;
+    }
+
     const confirmRes = await postFoodLogConfirm(
       {
         foodLogId: dialog.foodLogId,
@@ -133,14 +275,17 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
     setDialog(null);
   }
 
+  const showQuickBanner =
+    Boolean(props.mealLibraryEnabled && dialog && quickMatch && !quickMatchDismissed);
+
   return (
     <>
       <div className="relative flex shrink-0">
         <input
           ref={inputRef}
           id={FOOD_PHOTO_INPUT_ID}
-        type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
           className="sr-only"
           onChange={onFile}
           tabIndex={-1}
@@ -190,34 +335,110 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
                   {dialog.estimate.mealLabel} · ~{dialog.estimate.kcalLow}–
                   {dialog.estimate.kcalHigh} kcal (mid {dialog.estimate.kcalMid})
                 </p>
-                <p className="mt-3 text-sm text-zinc-300">
-                  We estimate ~{dialog.estimate.kcalMid} kcal,{" "}
-                  {dialog.estimate.proteinG}g protein. Adjust?
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <label className="block text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                    Calories (kcal)
-                    <input
-                      className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 font-mono text-sm text-zinc-100"
-                      inputMode="numeric"
-                      value={dialog.kcal}
-                      onChange={(e) =>
-                        setDialog((d) => (d ? { ...d, kcal: e.target.value } : d))
-                      }
-                    />
-                  </label>
-                  <label className="block text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                    Protein (g)
-                    <input
-                      className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 font-mono text-sm text-zinc-100"
-                      inputMode="numeric"
-                      value={dialog.protein}
-                      onChange={(e) =>
-                        setDialog((d) => (d ? { ...d, protein: e.target.value } : d))
-                      }
-                    />
-                  </label>
-                </div>
+
+                {showQuickBanner && quickMatch ? (
+                  <div className="mt-3 rounded-lg border border-emerald-600/40 bg-emerald-950/40 p-3 text-xs text-emerald-100">
+                    <p>
+                      Looks like your usual <span className="font-semibold">{quickMatch.name}</span> — use that?
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="rounded-md bg-emerald-600 px-2 py-1.5 text-[11px] font-medium text-white hover:bg-emerald-500"
+                        onClick={() => void acceptQuickMatch()}
+                      >
+                        Yes, use it
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md border border-zinc-600 px-2 py-1.5 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                        onClick={rejectQuickMatch}
+                      >
+                        No, this is different
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {!showQuickBanner ? (
+                  <>
+                    <p className="mt-3 text-sm text-zinc-300">
+                      We estimate ~{dialog.estimate.kcalMid} kcal,{" "}
+                      {dialog.estimate.proteinG}g protein. Adjust?
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <label className="block text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                        Calories (kcal)
+                        <input
+                          className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 font-mono text-sm text-zinc-100"
+                          inputMode="numeric"
+                          value={dialog.kcal}
+                          onChange={(e) =>
+                            setDialog((d) => (d ? { ...d, kcal: e.target.value } : d))
+                          }
+                        />
+                      </label>
+                      <label className="block text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                        Protein (g)
+                        <input
+                          className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 font-mono text-sm text-zinc-100"
+                          inputMode="numeric"
+                          value={dialog.protein}
+                          onChange={(e) =>
+                            setDialog((d) => (d ? { ...d, protein: e.target.value } : d))
+                          }
+                        />
+                      </label>
+                    </div>
+                    {props.mealLibraryEnabled ? (
+                      <div className="mt-4 space-y-3 border-t border-zinc-800 pt-3">
+                        <label className="block text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                          Dish name
+                          <input
+                            className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-zinc-100"
+                            value={dialog.dishName}
+                            onChange={(e) =>
+                              setDialog((d) => (d ? { ...d, dishName: e.target.value } : d))
+                            }
+                          />
+                        </label>
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                            Meal type
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {MEAL_TYPES.map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setDialog((d) => (d ? { ...d, mealType: t } : d))}
+                                className={`rounded-full px-2.5 py-1 text-[10px] capitalize ${
+                                  dialog.mealType === t
+                                    ? "bg-emerald-600 text-white"
+                                    : "border border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-emerald-600/50"
+                                }`}
+                              >
+                                {t}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            className="rounded border-zinc-600"
+                            checked={dialog.saveToLibrary}
+                            onChange={(e) =>
+                              setDialog((d) => (d ? { ...d, saveToLibrary: e.target.checked } : d))
+                            }
+                          />
+                          Save to my meal library
+                        </label>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     type="button"
@@ -226,13 +447,15 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-                    onClick={() => void confirmDialog()}
-                  >
-                    Use values
-                  </button>
+                  {!showQuickBanner ? (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                      onClick={() => void confirmDialog()}
+                    >
+                      {props.mealLibraryEnabled ? "Save meal" : "Use values"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>,

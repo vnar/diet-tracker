@@ -7,12 +7,16 @@ const VISION_MODEL =
   "claude-haiku-4-5";
 
 const VISION_SYSTEM = `You estimate calories and protein from a meal photo for a diet-tracking app.
-Return ONLY one JSON object (no markdown fences) with exactly these keys:
+Return ONLY one JSON object (no markdown fences) with these keys:
 - mealLabel: short meal name (string)
 - kcalLow, kcalMid, kcalHigh: integers for plausible calorie range (low ≤ mid ≤ high)
 - proteinG: integer grams of protein
 - confidence: number from 0 to 1 for how sure you are
-If the image is not food, use mealLabel "Unrecognized" and wide ranges with confidence under 0.3.`;
+- suggestedName: concise 2–5 words, Title Case, e.g. "Greek Salad with Chicken" (string)
+- suggestedMealType: one of breakfast, lunch, dinner, snack, dessert — or null if unsure
+- carbsGRange: { "low": number, "high": number } plausible total carbs in grams for the plate
+- fatGRange: { "low": number, "high": number } plausible total fat in grams for the plate
+If the image is not food, use mealLabel "Unrecognized" and wide ranges with confidence under 0.3; suggestedName may echo mealLabel; suggestedMealType may be null.`;
 
 export type FoodVisionMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 

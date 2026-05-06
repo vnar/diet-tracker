@@ -32,4 +32,13 @@ describe("parseFoodVisionEstimate", () => {
     expect(parseFoodVisionEstimate("")).toBeNull();
     expect(parseFoodVisionEstimate("not json")).toBeNull();
   });
+
+  it("parses optional P1.3.1 fields when present", () => {
+    const raw = `{"mealLabel":"Salad","kcalLow":400,"kcalMid":500,"kcalHigh":600,"proteinG":25,"confidence":0.8,"suggestedName":"Greek Salad With Chicken","suggestedMealType":"lunch","carbsGRange":{"low":30,"high":45},"fatGRange":{"low":10,"high":18}}`;
+    const r = parseFoodVisionEstimate(raw);
+    expect(r?.suggestedName).toBe("Greek Salad With Chicken");
+    expect(r?.suggestedMealType).toBe("lunch");
+    expect(r?.carbsGRange).toEqual({ low: 30, high: 45 });
+    expect(r?.fatGRange).toEqual({ low: 10, high: 18 });
+  });
 });

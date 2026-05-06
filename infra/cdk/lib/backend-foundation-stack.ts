@@ -122,6 +122,36 @@ export class BackendFoundationStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const mealsTable = new dynamodb.Table(this, "MealsTable", {
+      tableName: "Meals",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "mealId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+    mealsTable.addGlobalSecondaryIndex({
+      indexName: "NameLookupKeyIndex",
+      partitionKey: { name: "nameLookupKey", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "mealId", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    const dayMealEntriesTable = new dynamodb.Table(this, "DayMealEntriesTable", {
+      tableName: "DayMealEntries",
+      partitionKey: { name: "dayKey", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "entryId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+    dayMealEntriesTable.addGlobalSecondaryIndex({
+      indexName: "MealHistoryIndex",
+      partitionKey: { name: "libraryMealId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "mealHistorySk", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -174,6 +204,8 @@ export class BackendFoundationStack extends cdk.Stack {
     subscriptionsTable.grantReadWriteData(backendLambdaRole);
     billingEventsTable.grantReadWriteData(backendLambdaRole);
     foodLogEntriesTable.grantReadWriteData(backendLambdaRole);
+    mealsTable.grantReadWriteData(backendLambdaRole);
+    dayMealEntriesTable.grantReadWriteData(backendLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -190,6 +222,7 @@ export class BackendFoundationStack extends cdk.Stack {
     /** Set to "false" on deploy machine to ship Lambda with LLM refine disabled. Key must be set on the function in AWS (not here) so it never appears in CloudFormation. */
     const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
     const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "true" ? "true" : "false";
+    const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "true" ? "true" : "false";
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -207,6 +240,8 @@ export class BackendFoundationStack extends cdk.Stack {
         SUBSCRIPTIONS_TABLE_NAME: subscriptionsTable.tableName,
         BILLING_EVENTS_TABLE_NAME: billingEventsTable.tableName,
         FOOD_LOG_ENTRIES_TABLE_NAME: foodLogEntriesTable.tableName,
+        MEALS_TABLE_NAME: mealsTable.tableName,
+        DAY_MEAL_ENTRIES_TABLE_NAME: dayMealEntriesTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
@@ -214,6 +249,7 @@ export class BackendFoundationStack extends cdk.Stack {
         DOWNLOAD_URL_TTL_SECONDS: "604800",
         INSIGHTS_LLM_REFINE: insightsLlmRefineEnv,
         FF_PHOTO_FOOD_LOG: photoFoodLogEnv,
+        FF_MEAL_LIBRARY: mealLibraryEnv,
       },
       bundling: {
         minify: true,
@@ -256,6 +292,19 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "POST /v2/insights/feedback", id: "InsightsV2FeedbackPostRoute" },
       { routeKey: "POST /v2/food/estimate", id: "FoodEstimatePostRoute" },
       { routeKey: "POST /v2/food/log-confirm", id: "FoodLogConfirmPostRoute" },
+      { routeKey: "POST /v2/food/meal-complete", id: "FoodMealCompletePostRoute" },
+      { routeKey: "GET /v2/meals", id: "MealsListGetRoute" },
+      { routeKey: "POST /v2/meals", id: "MealsCreatePostRoute" },
+      { routeKey: "GET /v2/meals/suggest-match", id: "MealsSuggestMatchGetRoute" },
+      { routeKey: "GET /v2/meals/{mealId}/history", id: "MealsHistoryGetRoute" },
+      { routeKey: "PATCH /v2/meals/{mealId}", id: "MealsPatchRoute" },
+      { routeKey: "DELETE /v2/meals/{mealId}", id: "MealsDeleteRoute" },
+      { routeKey: "GET /v2/days/{day}/meal-entries", id: "DayMealEntriesListGetRoute" },
+      { routeKey: "POST /v2/days/{day}/meal-entries", id: "DayMealEntriesCreatePostRoute" },
+      {
+        routeKey: "DELETE /v2/days/{day}/meal-entries/{entryId}",
+        id: "DayMealEntryDeleteRoute",
+      },
       { routeKey: "GET /feature-flags", id: "FeatureFlagsGetRoute" },
       { routeKey: "GET /admin/flags", id: "AdminFlagsGetRoute" },
       { routeKey: "PUT /admin/flags", id: "AdminFlagsPutRoute" },

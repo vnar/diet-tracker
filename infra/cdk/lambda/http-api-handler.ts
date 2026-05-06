@@ -16,6 +16,18 @@ import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { maybeRefineInsightCards } from "./insights-llm-refine";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
+import {
+  handleV2DayMealEntriesCreate,
+  handleV2DayMealEntriesList,
+  handleV2DayMealEntryDelete,
+  handleV2FoodMealComplete,
+  handleV2MealsCreate,
+  handleV2MealsDelete,
+  handleV2MealsHistory,
+  handleV2MealsList,
+  handleV2MealsPatch,
+  handleV2MealsSuggestMatch,
+} from "./meals-api";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -27,6 +39,8 @@ const insightFeedbackTableName = process.env.INSIGHT_FEEDBACK_TABLE_NAME;
 const featureFlagOverridesTableName = process.env.FEATURE_FLAG_OVERRIDES_TABLE_NAME;
 const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const foodLogEntriesTableName = process.env.FOOD_LOG_ENTRIES_TABLE_NAME;
+const mealsTableName = process.env.MEALS_TABLE_NAME;
+const dayMealEntriesTableName = process.env.DAY_MEAL_ENTRIES_TABLE_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
@@ -1095,6 +1109,10 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
   if (typeof photoFood === "boolean") {
     serverDefaults.FF_PHOTO_FOOD_LOG = photoFood;
   }
+  const mealLibrary = envFlagTriState("FF_MEAL_LIBRARY");
+  if (typeof mealLibrary === "boolean") {
+    serverDefaults.FF_MEAL_LIBRARY = mealLibrary;
+  }
 
   const overrides = { ...serverDefaults, ...fromDb };
   return json(200, { userId, overrides });
@@ -1215,6 +1233,82 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       const table = foodLogEntriesTableName;
       if (!table) return json(500, { error: "Food log storage is not configured." });
       return handleV2FoodLogConfirm(userId, event, { ddb, foodLogTableName: table });
+    }
+
+    if (event.rawPath === "/v2/food/meal-complete" && method === "POST") {
+      const foodT = foodLogEntriesTableName;
+      const mT = mealsTableName;
+      const dT = dayMealEntriesTableName;
+      if (!foodT || !mT || !dT) {
+        return json(500, { error: "Meal library storage is not configured." });
+      }
+      return handleV2FoodMealComplete(userId, event, {
+        ddb,
+        foodLogTableName: foodT,
+        mealsTableName: mT,
+        dayMealsTableName: dT,
+      });
+    }
+
+    if (event.rawPath === "/v2/meals/suggest-match" && method === "GET") {
+      const mT = mealsTableName;
+      if (!mT) return json(500, { error: "Meals storage is not configured." });
+      return handleV2MealsSuggestMatch(userId, event, { ddb, mealsTableName: mT });
+    }
+
+    if (event.rawPath === "/v2/meals" && method === "GET") {
+      const mT = mealsTableName;
+      if (!mT) return json(500, { error: "Meals storage is not configured." });
+      return handleV2MealsList(userId, event, { ddb, mealsTableName: mT });
+    }
+
+    if (event.rawPath === "/v2/meals" && method === "POST") {
+      const mT = mealsTableName;
+      if (!mT) return json(500, { error: "Meals storage is not configured." });
+      return handleV2MealsCreate(userId, event, { ddb, mealsTableName: mT });
+    }
+
+    const mealHistoryMatch = event.rawPath.match(/^\/v2\/meals\/([^/]+)\/history$/);
+    if (mealHistoryMatch && method === "GET") {
+      const dT = dayMealEntriesTableName;
+      if (!dT) return json(500, { error: "Day meal entries storage is not configured." });
+      return handleV2MealsHistory(userId, mealHistoryMatch[1], { ddb, dayMealsTableName: dT });
+    }
+
+    const mealPatchDel = event.rawPath.match(/^\/v2\/meals\/([^/]+)$/);
+    if (mealPatchDel && mealPatchDel[1] !== "suggest-match" && method === "PATCH") {
+      const mT = mealsTableName;
+      if (!mT) return json(500, { error: "Meals storage is not configured." });
+      return handleV2MealsPatch(userId, mealPatchDel[1], event, { ddb, mealsTableName: mT });
+    }
+    if (mealPatchDel && mealPatchDel[1] !== "suggest-match" && method === "DELETE") {
+      const mT = mealsTableName;
+      if (!mT) return json(500, { error: "Meals storage is not configured." });
+      return handleV2MealsDelete(userId, mealPatchDel[1], { ddb, mealsTableName: mT });
+    }
+
+    const dayMealListOrCreate = event.rawPath.match(/^\/v2\/days\/([\d-]+)\/meal-entries$/);
+    if (dayMealListOrCreate && method === "GET") {
+      const dT = dayMealEntriesTableName;
+      if (!dT) return json(500, { error: "Day meal entries storage is not configured." });
+      return handleV2DayMealEntriesList(userId, dayMealListOrCreate[1], { ddb, dayMealsTableName: dT });
+    }
+    if (dayMealListOrCreate && method === "POST") {
+      const dT = dayMealEntriesTableName;
+      const mT = mealsTableName;
+      if (!dT || !mT) return json(500, { error: "Meal library storage is not configured." });
+      return handleV2DayMealEntriesCreate(userId, dayMealListOrCreate[1], event, {
+        ddb,
+        dayMealsTableName: dT,
+        mealsTableName: mT,
+      });
+    }
+
+    const dayMealDel = event.rawPath.match(/^\/v2\/days\/([\d-]+)\/meal-entries\/([^/]+)$/);
+    if (dayMealDel && method === "DELETE") {
+      const dT = dayMealEntriesTableName;
+      if (!dT) return json(500, { error: "Day meal entries storage is not configured." });
+      return handleV2DayMealEntryDelete(userId, dayMealDel[1], dayMealDel[2], { ddb, dayMealsTableName: dT });
     }
 
     if (event.rawPath === "/admin/users" && method === "GET") {

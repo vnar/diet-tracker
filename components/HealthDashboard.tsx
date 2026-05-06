@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { DailyInput } from "@/components/DailyInput";
 import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCaloriesAccessory";
+import { AddFromLibrarySheet } from "@/components/v2/meals/AddFromLibrarySheet";
+import { FrequentMealsCarousel } from "@/components/v2/meals/FrequentMealsCarousel";
+import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
 import { WeightChart } from "@/components/WeightChart";
 import { AIInsights } from "@/components/AIInsights";
@@ -14,14 +18,17 @@ import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthBar } from "@/components/AuthBar";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
-import { getSettings, isAwsBackendEnabled } from "@/lib/frontend-api-client";
+import { getDayMealEntries, getSettings, isAwsBackendEnabled, type DayMealEntryRow } from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings, Users } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
-import { isPhotoFoodLogEnabled } from "@/lib/featureFlags";
+import { isMealLibraryEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
+import { useClientTodayKey } from "@/hooks/useClientTodayKey";
+import { getEntryForDate } from "@/lib/calculations";
+import { getDayTotals } from "@/lib/meals/dayTotals";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -31,6 +38,8 @@ const fadeInUp = {
 
 export function HealthDashboard() {
   useFeatureFlagOverridesEpoch();
+  const todayKey = useClientTodayKey();
+  const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const unit = settings.unit;
   const entryCount = useHealthStore((s) => s.entries.length);
@@ -45,6 +54,54 @@ export function HealthDashboard() {
   const { status, getAccessToken, user } = useCognitoAuth();
   const [adminUsersOpen, setAdminUsersOpen] = useState(false);
   const showAdminUsers = isAppAdminViewer(user?.email);
+  const [mealEntries, setMealEntries] = useState<DayMealEntryRow[]>([]);
+  const [mealRefreshEpoch, setMealRefreshEpoch] = useState(0);
+
+  const refreshMeals = useCallback(() => {
+    setMealRefreshEpoch((n) => n + 1);
+  }, []);
+
+  const todayEntry = todayKey ? getEntryForDate(entries, todayKey) : undefined;
+
+  useEffect(() => {
+    if (
+      status !== "authenticated" ||
+      !todayKey ||
+      !isAwsBackendEnabled() ||
+      !user?.id ||
+      !isMealLibraryEnabled(user.id)
+    ) {
+      setMealEntries([]);
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) return;
+    void getDayMealEntries(todayKey, token).then((r) => {
+      if (r.ok) setMealEntries(r.data.items);
+    });
+  }, [status, todayKey, user?.id, mealRefreshEpoch]);
+
+  const caloriesProteinAggregate = useMemo(() => {
+    if (!user?.id || !isMealLibraryEnabled(user.id) || !todayKey) return null;
+    const totals = getDayTotals({
+      mealLibraryEnabled: true,
+      mealEntries: mealEntries.map((e) => ({
+        kcal: e.kcal,
+        proteinG: e.proteinG,
+        deletedAt: undefined,
+      })),
+      manualCalories: todayEntry?.calories,
+      manualProtein: todayEntry?.protein,
+    });
+    if (!totals.fromMeals) return null;
+    return {
+      calories: totals.caloriesDisplay,
+      protein: totals.proteinDisplay,
+      readOnly: true as const,
+      caption:
+        "Totals reflect what you've logged today — edit or remove any meal above.",
+    };
+  }, [user?.id, todayKey, mealEntries, todayEntry?.calories, todayEntry?.protein]);
 
   useEffect(() => {
     setStartWeight(String(settings.startWeight));
@@ -160,6 +217,14 @@ export function HealthDashboard() {
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
               <AuthBar compact />
+              {user?.id && isMealLibraryEnabled(user.id) ? (
+                <Link
+                  href="/meals"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-700"
+                >
+                  Meals
+                </Link>
+              ) : null}
               {showAdminUsers ? (
                 <button
                   type="button"
@@ -241,6 +306,14 @@ export function HealthDashboard() {
             </p>
             <div className="flex flex-shrink-0 items-center gap-2">
               <AuthBar />
+              {user?.id && isMealLibraryEnabled(user.id) ? (
+                <Link
+                  href="/meals"
+                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                >
+                  Meals
+                </Link>
+              ) : null}
               {showAdminUsers ? (
                 <button
                   type="button"
@@ -288,17 +361,48 @@ export function HealthDashboard() {
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
             <motion.section {...fadeInUp} className="min-w-0">
+              {status === "authenticated" &&
+              isAwsBackendEnabled() &&
+              user?.id &&
+              isMealLibraryEnabled(user.id) &&
+              todayKey ? (
+                <>
+                  <FrequentMealsCarousel
+                    day={todayKey}
+                    getAccessToken={getAccessToken}
+                    onLogged={refreshMeals}
+                  />
+                  <MealsTodayPanel
+                    day={todayKey}
+                    entries={mealEntries}
+                    getAccessToken={getAccessToken}
+                    onChanged={refreshMeals}
+                  />
+                </>
+              ) : null}
               <DailyInput
+                caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
                   status === "authenticated" &&
                   isAwsBackendEnabled() &&
                   user?.id &&
                   isPhotoFoodLogEnabled(user.id)
                     ? (ctx) => (
-                        <FoodPhotoCaloriesAccessory
-                          {...ctx}
-                          getAccessToken={getAccessToken}
-                        />
+                        <div className="flex shrink-0 items-center gap-1">
+                          {isMealLibraryEnabled(user.id) ? (
+                            <AddFromLibrarySheet
+                              day={ctx.todayKey}
+                              getAccessToken={getAccessToken}
+                              onAdded={refreshMeals}
+                            />
+                          ) : null}
+                          <FoodPhotoCaloriesAccessory
+                            {...ctx}
+                            getAccessToken={getAccessToken}
+                            mealLibraryEnabled={isMealLibraryEnabled(user.id)}
+                            onMealsChanged={refreshMeals}
+                          />
+                        </div>
                       )
                     : undefined
                 }

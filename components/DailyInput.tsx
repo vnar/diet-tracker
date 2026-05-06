@@ -26,8 +26,16 @@ export type DailyInputCaloriesAccessoryContext = {
 
 export function DailyInput({
   renderCaloriesAccessory,
+  caloriesProteinAggregate,
 }: {
   renderCaloriesAccessory?: (ctx: DailyInputCaloriesAccessoryContext) => ReactNode;
+  /** When set with readOnly, calories/protein reflect meal totals and are not editable. */
+  caloriesProteinAggregate?: {
+    calories: string;
+    protein: string;
+    readOnly: boolean;
+    caption?: string;
+  } | null;
 } = {}) {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
@@ -62,6 +70,10 @@ export function DailyInput({
   }, []);
 
   useEffect(() => {
+    if (caloriesProteinAggregate?.readOnly) {
+      setCalories(caloriesProteinAggregate.calories);
+      setProtein(caloriesProteinAggregate.protein);
+    }
     if (todayEntry) {
       setMorning(String(kgToInput(todayEntry.morningWeight, u)));
       setNight(
@@ -69,12 +81,14 @@ export function DailyInput({
           ? String(kgToInput(todayEntry.nightWeight, u))
           : ""
       );
-      setCalories(
-        todayEntry.calories !== undefined ? String(todayEntry.calories) : ""
-      );
-      setProtein(
-        todayEntry.protein !== undefined ? String(todayEntry.protein) : ""
-      );
+      if (!caloriesProteinAggregate?.readOnly) {
+        setCalories(
+          todayEntry.calories !== undefined ? String(todayEntry.calories) : ""
+        );
+        setProtein(
+          todayEntry.protein !== undefined ? String(todayEntry.protein) : ""
+        );
+      }
       setSteps(todayEntry.steps !== undefined ? String(todayEntry.steps) : "");
       setSleep(todayEntry.sleep !== undefined ? String(todayEntry.sleep) : "");
       setLateSnack(todayEntry.lateSnack);
@@ -84,8 +98,10 @@ export function DailyInput({
     } else {
       setMorning("");
       setNight("");
-      setCalories("");
-      setProtein("");
+      if (!caloriesProteinAggregate?.readOnly) {
+        setCalories("");
+        setProtein("");
+      }
       setSteps("");
       setSleep("");
       setLateSnack(false);
@@ -93,7 +109,7 @@ export function DailyInput({
       setWorkout(false);
       setAlcohol(false);
     }
-  }, [todayEntry, u]);
+  }, [todayEntry, u, caloriesProteinAggregate]);
 
   const ph = !todayEntry && yesterdayEntry ? yesterdayEntry : null;
 
@@ -109,15 +125,26 @@ export function DailyInput({
       night.trim() === "" || Number.isNaN(nightParsed)
         ? null
         : inputToKg(nightParsed, u);
+    const calOut =
+      caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.calories.trim() !== ""
+        ? Math.round(parseFloat(caloriesProteinAggregate.calories))
+        : calories.trim() === ""
+          ? undefined
+          : Math.round(parseFloat(calories));
+    const protOut =
+      caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.protein.trim() !== ""
+        ? Math.round(parseFloat(caloriesProteinAggregate.protein))
+        : protein.trim() === ""
+          ? undefined
+          : Math.round(parseFloat(protein));
+
     const entry: DailyEntry = {
       id: todayEntry?.id ?? nanoid(),
       date: today,
       morningWeight: mw,
       nightWeight,
-      calories:
-        calories.trim() === "" ? undefined : Math.round(parseFloat(calories)),
-      protein:
-        protein.trim() === "" ? undefined : Math.round(parseFloat(protein)),
+      calories: calOut,
+      protein: protOut,
       steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
       sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
       notes: todayEntry?.notes,
@@ -198,6 +225,7 @@ export function DailyInput({
             inputMode="numeric"
             value={calories}
             onChange={(e) => setCalories(e.target.value)}
+            readOnly={Boolean(caloriesProteinAggregate?.readOnly)}
             placeholder={
               ph?.calories !== undefined ? String(ph.calories) : ""
             }
@@ -221,10 +249,16 @@ export function DailyInput({
             inputMode="numeric"
             value={protein}
             onChange={(e) => setProtein(e.target.value)}
+            readOnly={Boolean(caloriesProteinAggregate?.readOnly)}
             placeholder={
               ph?.protein !== undefined ? String(ph.protein) : ""
             }
           />
+          {caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.caption ? (
+            <p className="text-[10px] text-zinc-500 sm:col-span-2">
+              {caloriesProteinAggregate.caption}
+            </p>
+          ) : null}
           <InputField
             id="steps"
             label="Steps"

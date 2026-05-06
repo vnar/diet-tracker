@@ -3,6 +3,7 @@
 import type { DailyEntry, UserSettings } from "@/lib/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
+import type { MealType } from "@/lib/meals/mealTypes";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -237,6 +238,167 @@ export async function postFoodLogConfirm(body: FoodLogConfirmBody, accessToken: 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
+    true,
+    accessToken,
+  );
+}
+
+export type MealLibraryRow = {
+  id: string;
+  name: string;
+  mealType: MealType;
+  photoKey?: string;
+  estKcal: number;
+  estProteinG: number;
+  timesLogged: number;
+  lastLoggedAt?: string;
+};
+
+export type DayMealEntryRow = {
+  id: string;
+  day: string;
+  mealId?: string;
+  nameSnapshot: string;
+  mealType: MealType;
+  photoKey?: string;
+  kcal: number | null;
+  proteinG: number | null;
+  loggedAt: string;
+  notes?: string;
+};
+
+export async function postFoodMealComplete(
+  body: {
+    foodLogId: string;
+    confirmedKcal: number;
+    confirmedProtein: number;
+    dishName: string;
+    mealType: MealType;
+    saveToLibrary: boolean;
+    carbsG?: number;
+    fatG?: number;
+  },
+  accessToken: string,
+) {
+  return fetchJson<{ ok: true; entry: DayMealEntryRow; libraryMealId: string | null }>(
+    "/v2/food/meal-complete",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function getMealsSuggestMatch(query: string, accessToken: string) {
+  return fetchJson<{ match: MealLibraryRow | null; similarity: number }>(
+    `/v2/meals/suggest-match?query=${encodeURIComponent(query)}`,
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function getMealsList(
+  accessToken: string,
+  params?: { type?: MealType; q?: string; sort?: "frequent" | "recent" | "alpha"; limit?: number },
+) {
+  const sp = new URLSearchParams();
+  if (params?.type) sp.set("type", params.type);
+  if (params?.q) sp.set("q", params.q);
+  if (params?.sort) sp.set("sort", params.sort);
+  if (params?.limit != null) sp.set("limit", String(params.limit));
+  const qs = sp.toString();
+  return fetchJson<{ items: MealLibraryRow[] }>(`/v2/meals${qs ? `?${qs}` : ""}`, undefined, true, accessToken);
+}
+
+export async function getMealHistory(mealId: string, accessToken: string) {
+  return fetchJson<{
+    items: Array<{
+      day: string;
+      nameSnapshot: string;
+      kcal: number | null;
+      proteinG: number | null;
+      loggedAt: string;
+      notes?: string;
+    }>;
+  }>(`/v2/meals/${encodeURIComponent(mealId)}/history`, undefined, true, accessToken);
+}
+
+export async function patchMealLibrary(
+  mealId: string,
+  body: Partial<{
+    name: string;
+    meal_type: MealType;
+    est_kcal: number;
+    est_protein_g: number;
+  }>,
+  accessToken: string,
+) {
+  return fetchJson<{ meal: MealLibraryRow }>(
+    `/v2/meals/${encodeURIComponent(mealId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function deleteMealLibrary(mealId: string, accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    `/v2/meals/${encodeURIComponent(mealId)}`,
+    { method: "DELETE" },
+    true,
+    accessToken,
+  );
+}
+
+export async function getDayMealEntries(day: string, accessToken: string) {
+  return fetchJson<{ items: DayMealEntryRow[] }>(
+    `/v2/days/${encodeURIComponent(day)}/meal-entries`,
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function postDayMealEntry(
+  day: string,
+  body:
+    | { meal_id: string }
+    | {
+        name: string;
+        meal_type: MealType;
+        kcal: number;
+        protein_g: number;
+        photo_key?: string;
+        carbs_g?: number;
+        fat_g?: number;
+        notes?: string;
+      },
+  accessToken: string,
+) {
+  return fetchJson<{ entry: DayMealEntryRow }>(
+    `/v2/days/${encodeURIComponent(day)}/meal-entries`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function deleteDayMealEntry(day: string, entryId: string, accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    `/v2/days/${encodeURIComponent(day)}/meal-entries/${encodeURIComponent(entryId)}`,
+    { method: "DELETE" },
     true,
     accessToken,
   );

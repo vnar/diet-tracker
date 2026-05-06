@@ -95,3 +95,8 @@ export function isInsightsSourceLabelEnabled(userId?: string): boolean {
 export function isPhotoFoodLogEnabled(userId?: string): boolean {
   return isEnabled("PHOTO_FOOD_LOG", userId);
 }
+
+/** P1.3.1 meal library + daily meal log (extends photo flow when also enabled). Default OFF. */
+export function isMealLibraryEnabled(userId?: string): boolean {
+  return isEnabled("MEAL_LIBRARY", userId);
+}

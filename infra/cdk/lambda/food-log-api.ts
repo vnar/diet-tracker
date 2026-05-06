@@ -1,4 +1,4 @@
-import type { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import type { AttributeValue, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { GetItemCommand, PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
@@ -135,23 +135,37 @@ export async function handleV2FoodEstimate(
   const foodLogId = `food#${day}#${Date.now()}#${Math.random().toString(36).slice(2, 10)}`;
   const ts = new Date().toISOString();
 
+  const item: Record<string, AttributeValue> = {
+    userId: { S: userId },
+    foodLogId: { S: foodLogId },
+    day: { S: day },
+    imageKey: { S: ref.key },
+    estKcalLow: { N: String(estimate.kcalLow) },
+    estKcalMid: { N: String(estimate.kcalMid) },
+    estKcalHigh: { N: String(estimate.kcalHigh) },
+    estProtein: { N: String(estimate.proteinG) },
+    confidence: { N: String(estimate.confidence) },
+    mealLabel: { S: estimate.mealLabel },
+    ts: { S: ts },
+  };
+  if (estimate.suggestedName) item.suggestedName = { S: estimate.suggestedName };
+  if (estimate.suggestedMealType != null && estimate.suggestedMealType !== "") {
+    item.suggestedMealType = { S: String(estimate.suggestedMealType) };
+  }
+  if (estimate.carbsGRange) {
+    item.carbsGRangeLow = { N: String(estimate.carbsGRange.low) };
+    item.carbsGRangeHigh = { N: String(estimate.carbsGRange.high) };
+  }
+  if (estimate.fatGRange) {
+    item.fatGRangeLow = { N: String(estimate.fatGRange.low) };
+    item.fatGRangeHigh = { N: String(estimate.fatGRange.high) };
+  }
+
   try {
     await deps.ddb.send(
       new PutItemCommand({
         TableName: deps.foodLogTableName,
-        Item: {
-          userId: { S: userId },
-          foodLogId: { S: foodLogId },
-          day: { S: day },
-          imageKey: { S: ref.key },
-          estKcalLow: { N: String(estimate.kcalLow) },
-          estKcalMid: { N: String(estimate.kcalMid) },
-          estKcalHigh: { N: String(estimate.kcalHigh) },
-          estProtein: { N: String(estimate.proteinG) },
-          confidence: { N: String(estimate.confidence) },
-          mealLabel: { S: estimate.mealLabel },
-          ts: { S: ts },
-        },
+        Item: item,
       }),
     );
   } catch (e) {
