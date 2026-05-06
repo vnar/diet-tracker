@@ -32,6 +32,26 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         ? "shrink-0 text-sm text-zinc-500"
         : "shrink-0 text-sm text-zinc-500 dark:text-zinc-400";
 
+    if (trailingAccessory) {
+      return (
+        <div className="block">
+          <label htmlFor={id} className="block">
+            <span className={labelClass}>{label}</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              ref={ref}
+              id={id}
+              className={`${inputClass} ${className}`}
+              {...rest}
+            />
+            {trailingAccessory}
+            {unit ? <span className={unitClass}>{unit}</span> : null}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <label htmlFor={id} className="block">
         <span className={labelClass}>{label}</span>
@@ -42,7 +62,6 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             className={`${inputClass} ${className}`}
             {...rest}
           />
-          {trailingAccessory}
           {unit ? <span className={unitClass}>{unit}</span> : null}
         </div>
       </label>

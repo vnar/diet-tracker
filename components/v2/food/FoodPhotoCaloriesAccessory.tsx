@@ -16,6 +16,8 @@ type Props = DailyInputCaloriesAccessoryContext & {
   getAccessToken: () => string | null;
 };
 
+const FOOD_PHOTO_INPUT_ID = "food-photo-meal-file";
+
 export function FoodPhotoCaloriesAccessory(props: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -133,27 +135,36 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onFile}
-      />
-      <button
-        type="button"
-        disabled={busy}
-        title={err ?? "Estimate calories from a meal photo"}
-        aria-label="Log food from photo"
-        onClick={() => {
-          setErr(null);
-          inputRef.current?.click();
-        }}
-        className="flex h-9 shrink-0 items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 disabled:opacity-50"
-      >
-        <Camera className="h-4 w-4" aria-hidden />
-      </button>
+      <div className="relative flex shrink-0">
+        <input
+          ref={inputRef}
+          id={FOOD_PHOTO_INPUT_ID}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={onFile}
+          tabIndex={-1}
+          aria-hidden
+        />
+        <label
+          htmlFor={FOOD_PHOTO_INPUT_ID}
+          className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy ? "pointer-events-none opacity-50" : ""}`}
+          aria-label="Log food from photo"
+          aria-busy={busy}
+          aria-describedby={err ? "food-photo-meal-err" : undefined}
+        >
+          <Camera className="h-4 w-4" aria-hidden />
+        </label>
+        {err ? (
+          <span
+            id="food-photo-meal-err"
+            role="status"
+            className="absolute left-1/2 top-full z-20 mt-1 w-max max-w-[14rem] -translate-x-1/2 rounded-md border border-rose-500/30 bg-rose-950/95 px-2 py-1 text-center text-[10px] leading-snug text-rose-200 shadow-lg"
+          >
+            {err}
+          </span>
+        ) : null}
+      </div>
       {dialog && typeof document !== "undefined"
         ? createPortal(
             <div

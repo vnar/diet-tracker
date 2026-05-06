@@ -57,10 +57,8 @@ describe("FoodPhotoCaloriesAccessory", () => {
       />,
     );
 
-    await user.click(
-      within(view.container).getByRole("button", { name: /log food from photo/i }),
-    );
-    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.click(within(view.container).getByLabelText(/log food from photo/i));
+    const input = view.container.querySelector("#food-photo-meal-file") as HTMLInputElement;
     const file = new File(["x"], "meal.jpg", { type: "image/jpeg" });
     await user.upload(input, file);
 
@@ -110,10 +108,8 @@ describe("FoodPhotoCaloriesAccessory", () => {
       />,
     );
 
-    await user.click(
-      within(view.container).getByRole("button", { name: /log food from photo/i }),
-    );
-    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.click(within(view.container).getByLabelText(/log food from photo/i));
+    const input = view.container.querySelector("#food-photo-meal-file") as HTMLInputElement;
     await user.upload(input, new File(["x"], "m.jpg", { type: "image/jpeg" }));
 
     await waitFor(() => expect(estimateMock).toHaveBeenCalled());
