@@ -119,12 +119,10 @@ function ActionIcon({ icon }: { icon: AiInsightActionIcon }) {
 export function AiInsightCardV2({
   insight,
   accessToken,
-  onRefresh,
   showSourceLabel,
 }: {
   insight: Insight;
   accessToken: string;
-  onRefresh: () => void;
   showSourceLabel: boolean;
 }) {
   const s = insight.structured;
@@ -165,8 +163,7 @@ export function AiInsightCardV2({
   const hasActions = s.actions.some((a) => a.action !== "—");
   const hasPrediction = s.prediction.headline.trim().length > 0;
   const hideEmptySecondary =
-    insight.degraded === true ||
-    (!hasWorking && !hasStalling && !hasActions && !hasPrediction);
+    !hasWorking && !hasStalling && !hasActions && !hasPrediction;
 
   return (
     <div
@@ -360,21 +357,6 @@ export function AiInsightCardV2({
             </div>
           ) : null}
         </>
-      ) : null}
-
-      {insight.degraded ? (
-        <div className="px-3.5 pb-3">
-          <button
-            type="button"
-            onClick={() => {
-              track("insight_refresh_clicked", { insight_id: insight.id });
-              onRefresh();
-            }}
-            className="w-full rounded-lg border border-white/10 py-2 text-xs font-semibold text-zinc-200 transition hover:border-emerald-500/40 hover:text-emerald-300"
-          >
-            Refresh insight
-          </button>
-        </div>
       ) : null}
 
       {showSourceLabel ? (

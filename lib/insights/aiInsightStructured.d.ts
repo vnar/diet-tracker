@@ -27,6 +27,8 @@ export type AiInsightStructured = {
         basis: string;
     };
 };
+/** Pull a single JSON object from model text (handles trailing junk; balanced braces). */
+export declare function extractJsonObjectFromModelText(raw: string): string | null;
 /**
  * Extract and validate structured insight JSON from model output.
  */

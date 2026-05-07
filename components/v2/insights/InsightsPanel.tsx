@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { track } from "@/lib/analytics";
@@ -37,12 +37,6 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [voted, setVoted] = useState<Record<string, InsightVote>>({});
-  const [refreshEpoch, setRefreshEpoch] = useState(0);
-
-  const refetch = useCallback(() => {
-    setRefreshEpoch((e) => e + 1);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -75,7 +69,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, refreshEpoch]);
+  }, [accessToken]);
 
   async function handleVote(insightId: string, vote: InsightVote) {
     setVoted((prev) => ({ ...prev, [insightId]: vote }));
@@ -114,7 +108,6 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
               <AiInsightCardV2
                 insight={ins}
                 accessToken={accessToken}
-                onRefresh={refetch}
                 showSourceLabel={showSourceLabel}
               />
             </li>

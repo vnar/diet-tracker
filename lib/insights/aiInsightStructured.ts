@@ -28,19 +28,69 @@ export type AiInsightStructured = {
 
 const ALLOWED_ICONS = new Set<string>(["walk", "food", "moon", "heart", "run"]);
 
-function isVerdictStatus(s: unknown): s is VerdictStatus {
-  return s === "on_track" || s === "at_risk" || s === "off_track";
-}
-
 function isStr(v: unknown): v is string {
   return typeof v === "string";
+}
+
+function asTrimmedString(v: unknown): string | null {
+  if (isStr(v)) return v.trim();
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  if (typeof v === "boolean") return v ? "true" : "false";
+  return null;
+}
+
+/** Model may return enum variants or spacing differences. */
+function normalizeVerdictStatus(s: unknown): VerdictStatus | null {
+  const raw = asTrimmedString(s);
+  if (!raw) return null;
+  const t = raw.toLowerCase().replace(/[\s-]+/g, "_");
+  if (t === "on_track" || t === "ontrack") return "on_track";
+  if (t === "at_risk" || t === "atrisk" || t === "rate_at_risk") return "at_risk";
+  if (t === "off_track" || t === "offtrack") return "off_track";
+  return null;
+}
+
+/** Pull a single JSON object from model text (handles trailing junk; balanced braces). */
+export function extractJsonObjectFromModelText(raw: string): string | null {
+  let text = raw.trim();
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const c = text[i]!;
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (c === "{") depth += 1;
+      else if (c === "}") {
+        depth -= 1;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
 }
 
 function normMetric(v: unknown): { value: string; label: string } | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
-  if (!isStr(o.value) || !isStr(o.label)) return null;
-  return { value: o.value.trim(), label: o.label.trim() };
+  const value = asTrimmedString(o.value);
+  const label = asTrimmedString(o.label);
+  if (value === null || label === null) return null;
+  return { value, label };
 }
 
 function normAction(v: unknown): {
@@ -50,13 +100,15 @@ function normAction(v: unknown): {
 } | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
-  const iconRaw = o.icon;
-  if (!isStr(iconRaw) || !ALLOWED_ICONS.has(iconRaw)) return null;
-  if (!isStr(o.action) || !isStr(o.reason)) return null;
+  const iconRaw = asTrimmedString(o.icon)?.toLowerCase();
+  if (!iconRaw || !ALLOWED_ICONS.has(iconRaw)) return null;
+  const action = asTrimmedString(o.action);
+  const reason = asTrimmedString(o.reason);
+  if (action === null || reason === null) return null;
   return {
     icon: iconRaw as AiInsightActionIcon,
-    action: o.action.trim(),
-    reason: o.reason.trim(),
+    action,
+    reason,
   };
 }
 
@@ -86,14 +138,11 @@ function padActions(
 export function parseAiInsightStructured(
   raw: string,
 ): { ok: true; data: AiInsightStructured } | { ok: false; error: string } {
-  let text = raw.trim();
-  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) {
+  const extracted = extractJsonObjectFromModelText(raw);
+  if (!extracted) {
     return { ok: false, error: "no_json_object" };
   }
-  text = text.slice(start, end + 1);
+  let text = extracted.replace(/,\s*([}\]])/g, "$1");
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -110,12 +159,19 @@ export function parseAiInsightStructured(
     return { ok: false, error: "verdict" };
   }
   const v = verdict as Record<string, unknown>;
-  if (!isVerdictStatus(v.status) || !isStr(v.headline) || !isStr(v.detail)) {
+  const statusNorm = normalizeVerdictStatus(v.status);
+  const headline = asTrimmedString(v.headline);
+  const detail = asTrimmedString(v.detail);
+  if (!statusNorm || headline === null || detail === null) {
     return { ok: false, error: "verdict_fields" };
   }
 
   const working = o.working;
-  if (!working || typeof working !== "object" || !isStr((working as Record<string, unknown>).body)) {
+  if (!working || typeof working !== "object") {
+    return { ok: false, error: "working" };
+  }
+  const workingBody = asTrimmedString((working as Record<string, unknown>).body);
+  if (workingBody === null) {
     return { ok: false, error: "working" };
   }
 
@@ -124,7 +180,8 @@ export function parseAiInsightStructured(
     return { ok: false, error: "stalling" };
   }
   const st = stalling as Record<string, unknown>;
-  if (!isStr(st.body) || !Array.isArray(st.metrics)) {
+  const stallBody = asTrimmedString(st.body);
+  if (stallBody === null || !Array.isArray(st.metrics)) {
     return { ok: false, error: "stalling_fields" };
   }
   const metrics = st.metrics.map(normMetric).filter((x): x is NonNullable<typeof x> => x !== null);
@@ -146,25 +203,27 @@ export function parseAiInsightStructured(
     return { ok: false, error: "prediction" };
   }
   const p = prediction as Record<string, unknown>;
-  if (!isStr(p.headline) || !isStr(p.basis)) {
+  const predHeadline = asTrimmedString(p.headline);
+  const predBasis = asTrimmedString(p.basis);
+  if (predHeadline === null || predBasis === null) {
     return { ok: false, error: "prediction_fields" };
   }
 
   const data: AiInsightStructured = {
     verdict: {
-      status: v.status,
-      headline: v.headline.trim(),
-      detail: v.detail.trim(),
+      status: statusNorm,
+      headline,
+      detail,
     },
-    working: { body: (working as { body: string }).body.trim() },
+    working: { body: workingBody },
     stalling: {
-      body: st.body.trim(),
+      body: stallBody,
       metrics: padMetrics(metrics),
     },
     actions: padActions(actions),
     prediction: {
-      headline: p.headline.trim(),
-      basis: p.basis.trim(),
+      headline: predHeadline,
+      basis: predBasis,
     },
   };
 

@@ -131,6 +131,12 @@ async function getCachedCard(
   }
 }
 
+/** Legacy rows may have omitted `degraded` while storing this placeholder headline. */
+function isPoisonedCachedAiCard(hit: LambdaInsightCard): boolean {
+  const h = hit.structured?.verdict?.headline ?? "";
+  return h.includes("Analysis updating") && h.toLowerCase().includes("check back");
+}
+
 async function putCachedCard(
   ddb: DynamoDBClient,
   cacheTable: string,
@@ -240,36 +246,10 @@ function buildFallbackStructured(input: {
   };
 }
 
-function buildDegradedStructured(): AiInsightStructured {
-  return {
-    verdict: {
-      status: "off_track",
-      headline: "Analysis updating — check back in a moment.",
-      detail: "",
-    },
-    working: { body: "" },
-    stalling: {
-      body: "",
-      metrics: [
-        { value: "—", label: "—" },
-        { value: "—", label: "—" },
-        { value: "—", label: "—" },
-      ],
-    },
-    actions: [
-      { icon: "walk", action: "Refresh below", reason: "Reload this insight" },
-      { icon: "food", action: "—", reason: "—" },
-      { icon: "moon", action: "—", reason: "—" },
-    ],
-    prediction: { headline: "", basis: "" },
-  };
-}
-
 function lambdaCardFromStructured(
   base: () => LambdaInsightCard,
   structured: AiInsightStructured,
   source: "llm" | "rules",
-  degraded?: boolean,
 ): LambdaInsightCard {
   const a0 = structured.actions[0];
   const generatedAt = new Date().toISOString();
@@ -280,7 +260,6 @@ function lambdaCardFromStructured(
     action: a0 ? `${a0.action} — ${a0.reason}` : "",
     why: [],
     structured,
-    degraded: degraded === true,
     generationSource: source,
     generatedAt,
   };
@@ -338,8 +317,8 @@ export async function generateAiInsightCard(
 
   if (cacheTable) {
     const hit = await getCachedCard(ddb, cacheTable, ctx.userId, fingerprint);
-    /** Pre–JSON-schema cache entries had prose-only `headline` and no `structured`; treat as miss. */
-    if (hit?.structured) return [hit];
+    /** Skip prose-only cache, parse-failure placeholders (`degraded`), poisoned legacy payloads, and pre-v4 keys. */
+    if (hit?.structured && !hit.degraded && !isPoisonedCachedAiCard(hit)) return [hit];
   }
 
   const currentW = last?.morningWeight ?? ctx.startWeight;
@@ -456,13 +435,20 @@ export async function generateAiInsightCard(
     let text = response.content.find((part) => part.type === "text")?.text ?? "";
     let parsed = parseAiInsightStructured(text);
     if (!parsed.ok) {
+      console.error(
+        JSON.stringify({
+          msg: "insights_ai_parse_failed_first",
+          error: parsed.error,
+          sample: text.slice(0, 400),
+        }),
+      );
       messages = [
         { role: "user", content: userMsg },
         { role: "assistant", content: text },
         {
           role: "user",
           content:
-            "Your previous reply was not valid JSON. Reply with ONLY one JSON object matching the schema from the system prompt. No markdown, no code fences, no extra text.",
+            "Your previous reply was not valid JSON. Reply with ONLY one JSON object matching the schema from the system prompt. No markdown, no code fences, no extra text. Use double quotes for all keys and string values.",
         },
       ];
       response = await run(messages);
@@ -473,11 +459,22 @@ export async function generateAiInsightCard(
     let card: LambdaInsightCard;
     if (parsed.ok) {
       card = lambdaCardFromStructured(baseCard, parsed.data, "llm");
+      if (cacheTable) {
+        await putCachedCard(ddb, cacheTable, ctx.userId, fingerprint, card);
+      }
     } else {
-      card = lambdaCardFromStructured(baseCard, buildDegradedStructured(), "llm", true);
-    }
-    if (cacheTable) {
-      await putCachedCard(ddb, cacheTable, ctx.userId, fingerprint, card);
+      console.error(
+        JSON.stringify({
+          msg: "insights_ai_parse_failed_final",
+          error: parsed.error,
+          sample: text.slice(0, 400),
+        }),
+      );
+      const structured = buildFallbackStructured(fallbackCtx);
+      card = lambdaCardFromStructured(baseCard, structured, "rules");
+      if (cacheTable) {
+        await putCachedCard(ddb, cacheTable, ctx.userId, fingerprint, card);
+      }
     }
     return [card];
   } catch (err) {
