@@ -444,7 +444,8 @@ export async function generateAiInsightCard(
     const run = (messages: Msg[]) =>
       client.messages.create({
         model,
-        max_tokens: 300,
+        /** JSON schema needs more room than prose; 300 often truncates and triggers the degraded fallback. */
+        max_tokens: 1200,
         temperature: 0,
         system: OJAS_AI_INSIGHT_SYSTEM,
         messages,
