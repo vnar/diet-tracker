@@ -18,12 +18,20 @@ export interface DailyEntry {
   notes?: string | null;
 }
 
+/** Optional tuning for weight plateau detection (synced with backend settings when present). */
+export type PlateauUserSettings = {
+  rollingWindowDays?: number;
+  comparisonSpanDays?: number;
+  maxAvgMovementKg?: number;
+};
+
 export interface UserSettings {
   goalWeight: number;
   startWeight: number;
   targetDate: string;
   unit: "kg" | "lbs";
   tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
+  plateau?: PlateauUserSettings;
 }
 
 export type InsightSeverity = "warning" | "success" | "info" | "neutral";

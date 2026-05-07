@@ -6,8 +6,32 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { generateInsights } from "@/lib/insights/index";
 import type { Insight, InsightLog, InsightTone, UserPrefs } from "@/lib/insights/types";
+import type { PlateauUserSettings } from "@/lib/types";
 
 const ddb = new DynamoDBClient({});
+
+function plateauSettingsFromDdb(
+  item: Record<string, { S?: string; N?: string }> | undefined,
+): PlateauUserSettings | undefined {
+  if (!item) return undefined;
+  const out: PlateauUserSettings = {};
+  const rw = item.plateauRollingWindowDays?.N;
+  const span = item.plateauComparisonSpanDays?.N;
+  const mv = item.plateauMaxMovementKg?.N;
+  if (rw != null) {
+    const n = Number(rw);
+    if (Number.isFinite(n)) out.rollingWindowDays = n;
+  }
+  if (span != null) {
+    const n = Number(span);
+    if (Number.isFinite(n)) out.comparisonSpanDays = n;
+  }
+  if (mv != null) {
+    const n = Number(mv);
+    if (Number.isFinite(n)) out.maxAvgMovementKg = n;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 function req(name: string): string {
   const value = process.env[name];
@@ -61,6 +85,7 @@ export async function getInsightsForUser(input: {
     notes: item.notes?.S ?? undefined,
   }));
 
+  const plateauPrefs = plateauSettingsFromDdb(settingsOut.Item);
   const prefs: UserPrefs = {
     userId: input.userId,
     firstName: input.firstName,
@@ -69,6 +94,7 @@ export async function getInsightsForUser(input: {
       .map((log) => (typeof log.notes === "string" ? log.notes : undefined))
       .filter((note): note is string => Boolean(note))
       .slice(-5),
+    plateau: plateauPrefs,
   };
   const settingsGoal = settingsOut.Item?.goalWeight?.N;
   const settingsStart = settingsOut.Item?.startWeight?.N;

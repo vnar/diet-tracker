@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { evaluatePlateau, plateauInsightFromEvaluation } from "../../../lib/insights/plateauDetection";
 import { maybeRefineInsightCards } from "./insights-llm-refine";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 import {
@@ -103,6 +104,12 @@ type StoredEntry = DailyEntryUpsert & {
 
 type StoredSettings = SettingsPatch & {
   userId: string;
+};
+
+type PlateauUserSettings = {
+  rollingWindowDays?: number;
+  comparisonSpanDays?: number;
+  maxAvgMovementKg?: number;
 };
 
 type InsightCard = {
@@ -300,18 +307,53 @@ function firstNameFromJwtClaims(claims: Record<string, unknown> | undefined): st
   return undefined;
 }
 
-async function fetchToneForUser(userId: string): Promise<string> {
-  const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
-  const out = await ddb.send(
-    new GetItemCommand({
-      TableName: tableName,
-      Key: { userId: { S: userId } },
-      ConsistentRead: true,
-    }),
-  );
-  const t = out.Item?.tone?.S;
-  if (t === "friendly" || t === "clinical" || t === "tough-love" || t === "ayurvedic") return t;
-  return "friendly";
+function plateauSettingsFromItem(
+  item: Record<string, { S?: string; N?: string }> | undefined,
+): PlateauUserSettings | undefined {
+  if (!item) return undefined;
+  const out: PlateauUserSettings = {};
+  const rw = item.plateauRollingWindowDays?.N;
+  const span = item.plateauComparisonSpanDays?.N;
+  const mv = item.plateauMaxMovementKg?.N;
+  if (rw != null) {
+    const n = Number(rw);
+    if (Number.isFinite(n)) out.rollingWindowDays = n;
+  }
+  if (span != null) {
+    const n = Number(span);
+    if (Number.isFinite(n)) out.comparisonSpanDays = n;
+  }
+  if (mv != null) {
+    const n = Number(mv);
+    if (Number.isFinite(n)) out.maxAvgMovementKg = n;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function validatePlateauPatchObject(
+  raw: unknown,
+): { ok: true; data: PlateauUserSettings } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "plateau must be an object" };
+  }
+  const o = raw as Record<string, unknown>;
+  const data: PlateauUserSettings = {};
+  if (o.rollingWindowDays !== undefined) {
+    const n = Number(o.rollingWindowDays);
+    if (!Number.isFinite(n)) return { ok: false, error: "Invalid plateau.rollingWindowDays" };
+    data.rollingWindowDays = n;
+  }
+  if (o.comparisonSpanDays !== undefined) {
+    const n = Number(o.comparisonSpanDays);
+    if (!Number.isFinite(n)) return { ok: false, error: "Invalid plateau.comparisonSpanDays" };
+    data.comparisonSpanDays = n;
+  }
+  if (o.maxAvgMovementKg !== undefined) {
+    const n = Number(o.maxAvgMovementKg);
+    if (!Number.isFinite(n)) return { ok: false, error: "Invalid plateau.maxAvgMovementKg" };
+    data.maxAvgMovementKg = n;
+  }
+  return { ok: true, data };
 }
 
 /** Gmail treats dots and +labels as aliases; normalize so admin list matches real sign-in identities. */
@@ -581,38 +623,6 @@ function lateSnackInsight(logs: StoredEntry[]): InsightCard | null {
   };
 }
 
-function plateauInsight(logs: StoredEntry[]): InsightCard | null {
-  const sorted = sortByDateAsc(logs);
-  if (sorted.length < 14) return null;
-  const rollingAvg = (idx: number) => {
-    const start = Math.max(0, idx - 6);
-    const chunk = sorted.slice(start, idx + 1);
-    return chunk.reduce((acc, log) => acc + log.morningWeight, 0) / chunk.length;
-  };
-  const latestIdx = sorted.length - 1;
-  const priorIdx = latestIdx - 13;
-  if (priorIdx < 0) return null;
-  const current = rollingAvg(latestIdx);
-  const prior = rollingAvg(priorIdx);
-  const movement = Math.abs(current - prior);
-  if (movement >= 0.2) return null;
-  return {
-    id: `plateau-${sorted[latestIdx].date}`,
-    ruleId: "plateau",
-    priority: 93,
-    headline: "You may be in a weight plateau right now.",
-    detail:
-      "Your 7-day average has barely moved over the last two weeks. Try a tighter calorie target or add one extra walk/workout block this week.",
-    why: [
-      `Current 7-day average: ${round2(current)} kg`,
-      `7-day average from 14 days ago: ${round2(prior)} kg`,
-      `Total movement over 14 days: ${round2(movement)} kg (< 0.2 kg threshold)`,
-    ],
-    action: "Adjust one habit this week: calories or activity.",
-    category: "plateau",
-  };
-}
-
 function baselineInsightWithLogs(entryCount: number, latestDate: string): InsightCard {
   return {
     id: `baseline-insight-${latestDate}`,
@@ -676,11 +686,27 @@ async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResu
       notes: item.notes?.S ?? undefined,
     }),
   );
+  const settingsTable = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const settingsRow = await ddb.send(
+    new GetItemCommand({
+      TableName: settingsTable,
+      Key: { userId: { S: userId } },
+      ConsistentRead: true,
+    }),
+  );
+  const plateauPrefs = plateauSettingsFromItem(settingsRow.Item);
+  const sortedForPlateau = sortByDateAsc(entries);
+  const plateauEval = evaluatePlateau(
+    sortedForPlateau.map((e) => ({ date: e.date, morningWeight: e.morningWeight })),
+    plateauPrefs,
+  );
+  const plateauCard: InsightCard | null = plateauEval ? plateauInsightFromEvaluation(plateauEval) : null;
+
   const candidates = [
     sodiumInsight(entries),
     alcoholInsight(entries),
     lateSnackInsight(entries),
-    plateauInsight(entries),
+    plateauCard,
   ].filter((ins): ins is InsightCard => ins !== null);
   const top = [...new Map(candidates.map((item) => [item.ruleId, item])).values()]
     .sort((a, b) => b.priority - a.priority)
@@ -695,7 +721,9 @@ async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResu
     ...i,
     generationSource: "rules" as const,
   }));
-  const tone = await fetchToneForUser(userId);
+  const t = settingsRow.Item?.tone?.S;
+  const tone =
+    t === "friendly" || t === "clinical" || t === "tough-love" || t === "ayurvedic" ? t : "friendly";
   const firstName = firstNameFromJwtClaims(getJwtClaims(event)) ?? "there";
   const recentNotes = entries
     .map((e) => (typeof e.notes === "string" ? e.notes : undefined))
@@ -911,6 +939,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
         targetDate: settings.targetDate,
         unit: settings.unit,
         tone: settings.tone,
+        plateau: undefined,
       },
     });
   }
@@ -927,32 +956,82 @@ async function getSettings(userId: string): Promise<HttpResult> {
         out.Item.tone?.S === "ayurvedic"
           ? out.Item.tone.S
           : "friendly",
+      plateau: plateauSettingsFromItem(out.Item),
     },
   });
 }
 
 async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResult> {
   const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+  const existingOut = await ddb.send(
+    new GetItemCommand({
+      TableName: tableName,
+      Key: { userId: { S: userId } },
+      ConsistentRead: true,
+    }),
+  );
   const payload = parseJsonBody(event);
   const parsed = validateSettings(payload);
   if (!parsed.ok) return json(400, { error: "Validation failed", details: parsed.error });
   const data = parsed.data;
+  const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+
+  const existingTone =
+    existingOut.Item?.tone?.S === "clinical" ||
+    existingOut.Item?.tone?.S === "tough-love" ||
+    existingOut.Item?.tone?.S === "ayurvedic" ||
+    existingOut.Item?.tone?.S === "friendly"
+      ? existingOut.Item.tone.S
+      : undefined;
+  const tone = data.tone ?? existingTone ?? "friendly";
+
+  let nextPlateau = plateauSettingsFromItem(existingOut.Item);
+  if (Object.prototype.hasOwnProperty.call(body, "plateau")) {
+    const rawPlateau = body.plateau;
+    if (rawPlateau === null) {
+      nextPlateau = undefined;
+    } else {
+      const p = validatePlateauPatchObject(rawPlateau);
+      if (!p.ok) return json(400, { error: "Validation failed", details: p.error });
+      nextPlateau = { ...nextPlateau, ...p.data };
+    }
+  }
+
+  const item: Record<string, { S?: string; N?: string }> = {
+    userId: { S: userId },
+    goalWeight: { N: String(data.goalWeight) },
+    startWeight: { N: String(data.startWeight) },
+    targetDate: { S: data.targetDate },
+    unit: { S: data.unit },
+    tone: { S: tone },
+  };
+  if (nextPlateau?.rollingWindowDays != null) {
+    item.plateauRollingWindowDays = { N: String(Math.round(nextPlateau.rollingWindowDays)) };
+  }
+  if (nextPlateau?.comparisonSpanDays != null) {
+    item.plateauComparisonSpanDays = { N: String(Math.round(nextPlateau.comparisonSpanDays)) };
+  }
+  if (nextPlateau?.maxAvgMovementKg != null) {
+    item.plateauMaxMovementKg = { N: String(nextPlateau.maxAvgMovementKg) };
+  }
 
   await ddb.send(
     new PutItemCommand({
       TableName: tableName,
-      Item: {
-        userId: { S: userId },
-        goalWeight: { N: String(data.goalWeight) },
-        startWeight: { N: String(data.startWeight) },
-        targetDate: { S: data.targetDate },
-        unit: { S: data.unit },
-        ...(data.tone ? { tone: { S: data.tone } } : {}),
-      },
+      Item: item as never,
     }),
   );
 
-  return json(200, { settings: data });
+  return json(200, {
+    settings: {
+      goalWeight: data.goalWeight,
+      startWeight: data.startWeight,
+      targetDate: data.targetDate,
+      unit: data.unit,
+      tone,
+      plateau: nextPlateau,
+    },
+  });
 }
 
 async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpResult> {

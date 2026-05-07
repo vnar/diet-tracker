@@ -83,6 +83,14 @@ describe("insight rules", () => {
     expect(plateauRule(trend, {})).toBeNull();
   });
 
+  it("plateau rule respects custom comparison span from user prefs", () => {
+    const logs = Array.from({ length: 16 }).map((_, idx) =>
+      mk(`2026-08-${String(idx + 1).padStart(2, "0")}`, 80 + (idx % 2) * 0.02),
+    );
+    expect(plateauRule(logs, {})).toBeNull();
+    expect(plateauRule(logs, { plateau: { comparisonSpanDays: 10 } })).not.toBeNull();
+  });
+
   it("streak rule celebrates milestones and ignores short streaks", () => {
     const streak14 = Array.from({ length: 14 }).map((_, idx) =>
       mk(`2026-07-${String(idx + 1).padStart(2, "0")}`, 80 - idx * 0.01),

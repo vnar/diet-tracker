@@ -1,4 +1,4 @@
-import type { DailyEntry } from "@/lib/types";
+import type { DailyEntry, PlateauUserSettings } from "@/lib/types";
 
 export type InsightVote = "up" | "down";
 export type InsightCategory =
@@ -19,6 +19,7 @@ export type UserPrefs = {
   firstName?: string;
   tone?: InsightTone;
   recentNotes?: string[];
+  plateau?: PlateauUserSettings;
 };
 
 export interface Insight {
