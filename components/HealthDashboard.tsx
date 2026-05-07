@@ -29,6 +29,8 @@ import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpo
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { getEntryForDate } from "@/lib/calculations";
 import { getDayTotals } from "@/lib/meals/dayTotals";
+import { track } from "@/lib/analytics";
+import { goalEditedFieldNames } from "@/lib/weightTrendAnalytics";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 10 },
@@ -155,6 +157,8 @@ export function HealthDashboard() {
       return;
     }
 
+    const prevSettings = useHealthStore.getState().settings;
+
     setSettingsError(null);
     setSavingSettings(true);
     const result = await patchSettings({
@@ -186,6 +190,18 @@ export function HealthDashboard() {
         "Cloud settings did not match your latest save. Please try once more."
       );
       return;
+    }
+
+    const editedFields = goalEditedFieldNames(prevSettings, {
+      startWeight: start,
+      goalWeight: goal,
+      targetDate,
+    });
+    if (editedFields.length > 0) {
+      track("goal_edited", {
+        fields: editedFields,
+        source: "settings_modal",
+      });
     }
 
     setSettingsOpen(false);

@@ -42,6 +42,12 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
           category: insight.category,
           generation_source: insight.generationSource ?? "rules",
         });
+        if (insight.category === "plateau") {
+          track("plateau_alert_viewed", {
+            insight_id: insight.id,
+            generation_source: insight.generationSource ?? "rules",
+          });
+        }
       });
     }
     void run();

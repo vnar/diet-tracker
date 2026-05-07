@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import {
   Area,
   ComposedChart,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/calculations";
 import { displayWeight } from "@/lib/units";
 import { useHealthStore } from "@/lib/store";
+import { track } from "@/lib/analytics";
 
 interface Row {
   date: string;
@@ -33,6 +34,8 @@ function formatTick(dateStr: string): string {
 }
 
 export function WeightChart() {
+  const chartSectionRef = useRef<HTMLDivElement>(null);
+  const hasTrackedChartView = useRef(false);
   const gradId = useId().replace(/:/g, "");
   const entries = useHealthStore((s) => s.entries);
   const unit = useHealthStore((s) => s.settings.unit);
@@ -112,7 +115,34 @@ export function WeightChart() {
 
   const empty = sorted.length < 2;
 
+  useEffect(() => {
+    const el = chartSectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    if (hasTrackedChartView.current) return;
+
+    const observer = new IntersectionObserver(
+      (entriesObs) => {
+        if (hasTrackedChartView.current) return;
+        const entry = entriesObs[0];
+        if (!entry?.isIntersecting || entry.intersectionRatio < 0.2) return;
+        hasTrackedChartView.current = true;
+        const state = useHealthStore.getState();
+        const sortedNow = sortEntriesByDateAsc(state.entries);
+        track("chart_viewed", {
+          chart: "weight_trend",
+          entry_count: sortedNow.length,
+          has_trend_line: sortedNow.length >= 2,
+        });
+        observer.disconnect();
+      },
+      { threshold: [0, 0.2, 0.35, 0.5], rootMargin: "0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
+    <div ref={chartSectionRef} className="w-full">
     <Card variant="surface" className="overflow-hidden">
       <div className="-mt-0.5 mb-6 flex flex-col gap-4 border-b border-slate-600/40 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <h3 className="ui-card-title-lg shrink-0">Weight trend</h3>
@@ -246,5 +276,6 @@ export function WeightChart() {
         </div>
       ) : null}
     </Card>
+    </div>
   );
 }
