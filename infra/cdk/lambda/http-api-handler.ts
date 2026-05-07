@@ -14,8 +14,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { evaluatePlateau, plateauInsightFromEvaluation } from "../../../lib/insights/plateauDetection";
-import { maybeRefineInsightCards } from "./insights-llm-refine";
+import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 import {
   handleV2DayMealEntriesCreate,
@@ -653,7 +652,7 @@ function baselineInsightNoLogs(asOfDate: string): InsightCard {
   };
 }
 
-async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResult> {
+async function getInsightsV2(userId: string, _event: HttpEvent): Promise<HttpResult> {
   const tableName = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
   const to = new Date().toISOString().slice(0, 10);
   const fromDate = new Date();
@@ -673,19 +672,22 @@ async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResu
       ConsistentRead: true,
     }),
   );
-  const entries: StoredEntry[] = (out.Items ?? []).map(
+  const entriesRaw = (out.Items ?? []).map(
     (item: Record<string, { S?: string; N?: string; BOOL?: boolean }>) => ({
-      id: item.id?.S ?? `${userId}:${item.date?.S ?? ""}`,
-      userId: item.userId?.S ?? userId,
       date: item.date?.S ?? "",
       morningWeight: Number(item.morningWeight?.N ?? 0),
+      nightWeight: item.nightWeight?.N ? Number(item.nightWeight.N) : undefined,
+      calories: item.calories?.N ? Number(item.calories.N) : undefined,
+      protein: item.protein?.N ? Number(item.protein.N) : undefined,
+      steps: item.steps?.N ? Number(item.steps.N) : undefined,
+      sleep: item.sleep?.N ? Number(item.sleep.N) : undefined,
       lateSnack: item.lateSnack?.BOOL ?? false,
       highSodium: item.highSodium?.BOOL ?? false,
       workout: item.workout?.BOOL ?? false,
       alcohol: item.alcohol?.BOOL ?? false,
-      notes: item.notes?.S ?? undefined,
     }),
-  );
+  ).filter((e) => e.date && e.morningWeight > 0);
+
   const settingsTable = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
   const settingsRow = await ddb.send(
     new GetItemCommand({
@@ -694,49 +696,20 @@ async function getInsightsV2(userId: string, event: HttpEvent): Promise<HttpResu
       ConsistentRead: true,
     }),
   );
-  const plateauPrefs = plateauSettingsFromItem(settingsRow.Item);
-  const sortedForPlateau = sortByDateAsc(entries);
-  const plateauEval = evaluatePlateau(
-    sortedForPlateau.map((e) => ({ date: e.date, morningWeight: e.morningWeight })),
-    plateauPrefs,
-  );
-  const plateauCard: InsightCard | null = plateauEval ? plateauInsightFromEvaluation(plateauEval) : null;
+  const gItem = settingsRow.Item;
+  const goalWeight = gItem ? Number(gItem.goalWeight?.N ?? 72) : 72;
+  const startWeight = gItem ? Number(gItem.startWeight?.N ?? 85) : 85;
+  const targetDate = gItem?.targetDate?.S ?? to;
 
-  const candidates = [
-    sodiumInsight(entries),
-    alcoholInsight(entries),
-    lateSnackInsight(entries),
-    plateauCard,
-  ].filter((ins): ins is InsightCard => ins !== null);
-  const top = [...new Map(candidates.map((item) => [item.ruleId, item])).values()]
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, 3);
-  const sortedEntries = sortByDateAsc(entries);
-  const latestDate = sortedEntries[sortedEntries.length - 1]?.date ?? to;
-  const fallback: InsightCard =
-    entries.length === 0
-      ? baselineInsightNoLogs(to)
-      : baselineInsightWithLogs(entries.length, latestDate);
-  const insights: InsightCard[] = (top.length > 0 ? top : [fallback]).map((i) => ({
-    ...i,
-    generationSource: "rules" as const,
-  }));
-  const t = settingsRow.Item?.tone?.S;
-  const tone =
-    t === "friendly" || t === "clinical" || t === "tough-love" || t === "ayurvedic" ? t : "friendly";
-  const firstName = firstNameFromJwtClaims(getJwtClaims(event)) ?? "there";
-  const recentNotes = entries
-    .map((e) => (typeof e.notes === "string" ? e.notes : undefined))
-    .filter((n): n is string => Boolean(n))
-    .slice(-5);
-  const refined = await maybeRefineInsightCards(ddb, {
+  const insights = await generateAiInsightCard(ddb, {
     userId,
-    insights,
-    tone,
-    firstName,
-    recentNotes,
+    entriesRaw,
+    goalWeight,
+    startWeight,
+    targetDate,
+    dayMealsTableName: dayMealEntriesTableName,
   });
-  return json(200, { insights: refined });
+  return json(200, { insights });
 }
 
 async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<HttpResult> {

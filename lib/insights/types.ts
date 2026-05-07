@@ -32,6 +32,8 @@ export interface Insight {
   action: string;
   category: InsightCategory;
   generationSource?: InsightGenerationSource;
+  /** ISO timestamp when the AI card was generated (Lambda). */
+  generatedAt?: string;
 }
 
 export type InsightLog = DailyEntry & {

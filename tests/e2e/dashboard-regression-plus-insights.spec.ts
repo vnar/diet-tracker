@@ -24,7 +24,7 @@ test.describe("dashboard regression plus insights", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
-    await expect(page.getByText("No nudges right now — keep logging.")).toBeVisible();
+    await expect(page.getByText("No insight available right now.")).toBeVisible();
     await expect(page.getByRole("button", { name: /Helpful insight/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Not helpful insight/i })).toHaveCount(0);
   });
