@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
@@ -64,9 +64,16 @@ export function DailyInput({
   const [workout, setWorkout] = useState(false);
   const [alcohol, setAlcohol] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const habitSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     weightRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (habitSaveTimerRef.current) clearTimeout(habitSaveTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -117,43 +124,93 @@ export function DailyInput({
   const canSave =
     morning.trim() !== "" && !Number.isNaN(morningNum) && morningNum > 0;
 
+  const buildTodayEntry = useCallback(
+    (habits: {
+      workout: boolean;
+      alcohol: boolean;
+      lateSnack: boolean;
+      highSodium: boolean;
+    }): DailyEntry | null => {
+      if (!today || !canSave) return null;
+      const mw = inputToKg(morningNum, u);
+      const nightParsed = night.trim() === "" ? NaN : parseFloat(night);
+      const nightWeight =
+        night.trim() === "" || Number.isNaN(nightParsed)
+          ? null
+          : inputToKg(nightParsed, u);
+      const calOut =
+        caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.calories.trim() !== ""
+          ? Math.round(parseFloat(caloriesProteinAggregate.calories))
+          : calories.trim() === ""
+            ? undefined
+            : Math.round(parseFloat(calories));
+      const protOut =
+        caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.protein.trim() !== ""
+          ? Math.round(parseFloat(caloriesProteinAggregate.protein))
+          : protein.trim() === ""
+            ? undefined
+            : Math.round(parseFloat(protein));
+
+      return {
+        id: todayEntry?.id ?? nanoid(),
+        date: today,
+        morningWeight: mw,
+        nightWeight,
+        calories: calOut,
+        protein: protOut,
+        steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
+        sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
+        notes: todayEntry?.notes,
+        lateSnack: habits.lateSnack,
+        highSodium: habits.highSodium,
+        workout: habits.workout,
+        alcohol: habits.alcohol,
+        photoUrl: todayEntry?.photoUrl,
+      };
+    },
+    [
+      today,
+      todayEntry,
+      canSave,
+      morning,
+      morningNum,
+      u,
+      night,
+      calories,
+      protein,
+      steps,
+      sleep,
+      caloriesProteinAggregate,
+    ],
+  );
+
+  function scheduleHabitPersist(next: {
+    workout: boolean;
+    alcohol: boolean;
+    lateSnack: boolean;
+    highSodium: boolean;
+  }) {
+    if (!todayEntry) return;
+    if (habitSaveTimerRef.current) clearTimeout(habitSaveTimerRef.current);
+    habitSaveTimerRef.current = setTimeout(() => {
+      habitSaveTimerRef.current = null;
+      const entry = buildTodayEntry(next);
+      if (!entry) return;
+      setSaveError(null);
+      void saveEntry(entry).then((r) => {
+        if (!r.ok) setSaveError(r.error ?? "Could not save habits");
+        else {
+          setPulse(true);
+          window.setTimeout(() => setPulse(false), 450);
+        }
+      });
+    }, 420);
+  }
+
   function handleSave() {
     if (!canSave || !today) return;
-    const mw = inputToKg(morningNum, u);
-    const nightParsed = night.trim() === "" ? NaN : parseFloat(night);
-    const nightWeight =
-      night.trim() === "" || Number.isNaN(nightParsed)
-        ? null
-        : inputToKg(nightParsed, u);
-    const calOut =
-      caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.calories.trim() !== ""
-        ? Math.round(parseFloat(caloriesProteinAggregate.calories))
-        : calories.trim() === ""
-          ? undefined
-          : Math.round(parseFloat(calories));
-    const protOut =
-      caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.protein.trim() !== ""
-        ? Math.round(parseFloat(caloriesProteinAggregate.protein))
-        : protein.trim() === ""
-          ? undefined
-          : Math.round(parseFloat(protein));
-
-    const entry: DailyEntry = {
-      id: todayEntry?.id ?? nanoid(),
-      date: today,
-      morningWeight: mw,
-      nightWeight,
-      calories: calOut,
-      protein: protOut,
-      steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
-      sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
-      notes: todayEntry?.notes,
-      lateSnack,
-      highSodium,
-      workout,
-      alcohol,
-      photoUrl: todayEntry?.photoUrl,
-    };
+    const entry = buildTodayEntry({ workout, alcohol, lateSnack, highSodium });
+    if (!entry) return;
     setSaveError(null);
     void saveEntry(entry).then((r) => {
       if (!r.ok) setSaveError(r.error ?? "Could not save");
@@ -288,33 +345,78 @@ export function DailyInput({
           <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
             Daily habits
           </p>
+          {todayEntry ? (
+            <p className="mb-2 text-[10px] text-zinc-600">
+              Toggles save automatically. Alcohol on means you drank that day.
+            </p>
+          ) : (
+            <p className="mb-2 text-[10px] text-zinc-600">
+              Save today once with your morning weight; then habits sync on each tap.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 sm:gap-x-3 sm:gap-y-2.5">
             <Toggle
               id="workout"
               label="Workout"
+              habitPolarity="positive"
               checked={workout}
-              onChange={setWorkout}
+              onChange={(v) => {
+                setWorkout(v);
+                scheduleHabitPersist({
+                  workout: v,
+                  alcohol,
+                  lateSnack,
+                  highSodium,
+                });
+              }}
               className="min-w-0"
             />
             <Toggle
               id="alcohol"
               label="Alcohol"
+              habitPolarity="negative"
               checked={alcohol}
-              onChange={setAlcohol}
+              onChange={(v) => {
+                setAlcohol(v);
+                scheduleHabitPersist({
+                  workout,
+                  alcohol: v,
+                  lateSnack,
+                  highSodium,
+                });
+              }}
               className="min-w-0"
             />
             <Toggle
               id="lateSnack"
               label="Late snack"
+              habitPolarity="negative"
               checked={lateSnack}
-              onChange={setLateSnack}
+              onChange={(v) => {
+                setLateSnack(v);
+                scheduleHabitPersist({
+                  workout,
+                  alcohol,
+                  lateSnack: v,
+                  highSodium,
+                });
+              }}
               className="min-w-0"
             />
             <Toggle
               id="highSodium"
               label="High sodium"
+              habitPolarity="negative"
               checked={highSodium}
-              onChange={setHighSodium}
+              onChange={(v) => {
+                setHighSodium(v);
+                scheduleHabitPersist({
+                  workout,
+                  alcohol,
+                  lateSnack,
+                  highSodium: v,
+                });
+              }}
               className="min-w-0"
             />
           </div>

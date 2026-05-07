@@ -319,6 +319,11 @@ export function HealthDashboard() {
               <button
                 type="button"
                 className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+                onClick={() =>
+                  document
+                    .getElementById("dashboard-history")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
               >
                 History
               </button>
@@ -443,7 +448,7 @@ export function HealthDashboard() {
             </motion.section>
           </div>
 
-          <motion.section {...fadeInUp}>
+          <motion.section {...fadeInUp} id="dashboard-history">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
               Review + history
             </p>

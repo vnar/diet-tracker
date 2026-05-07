@@ -540,24 +540,28 @@ export function PastDayGrid() {
               <Toggle
                 id="pastWorkout"
                 label="Workout / training"
+                habitPolarity="positive"
                 checked={workout}
                 onChange={setWorkout}
               />
               <Toggle
                 id="pastAlcohol"
                 label="Alcohol"
+                habitPolarity="negative"
                 checked={alcohol}
                 onChange={setAlcohol}
               />
               <Toggle
                 id="pastLateSnack"
                 label="Late snack"
+                habitPolarity="negative"
                 checked={lateSnack}
                 onChange={setLateSnack}
               />
               <Toggle
                 id="pastHighSodium"
                 label="High sodium day"
+                habitPolarity="negative"
                 checked={highSodium}
                 onChange={setHighSodium}
               />
