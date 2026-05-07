@@ -397,5 +397,5 @@ export function buildAiInsightFingerprint(input: {
     input.habitTail,
   ].join("|");
   const h = createHash("sha256").update(raw).digest("hex").slice(0, 24);
-  return `ai_insight_v1#${input.userId}#${h}`;
+  return `ai_insight_v2#${input.userId}#${h}`;
 }

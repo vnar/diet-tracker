@@ -338,7 +338,8 @@ export async function generateAiInsightCard(
 
   if (cacheTable) {
     const hit = await getCachedCard(ddb, cacheTable, ctx.userId, fingerprint);
-    if (hit) return [hit];
+    /** Pre–JSON-schema cache entries had prose-only `headline` and no `structured`; treat as miss. */
+    if (hit?.structured) return [hit];
   }
 
   const currentW = last?.morningWeight ?? ctx.startWeight;
