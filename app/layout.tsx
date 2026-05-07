@@ -42,12 +42,6 @@ export default function RootLayout({
       className={`${fontSans.variable} ${fontMono.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased`}>
         <Providers>
           <ErrorBoundary>

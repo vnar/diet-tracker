@@ -208,61 +208,194 @@ export function HealthDashboard() {
   }
 
   return (
-    <main className="p-2">
-      <div className="ojas-shell">
-        <header className="ojas-topnav">
-          <div className="ojas-brand">
-            <span className="ojas-logo">Ojas</span>
-            <span className="ojas-brand-sub">Health · by Vihar Nar</span>
-          </div>
-          <nav className="ojas-nav-pills">
-            <Link href="/" className="ojas-nav-pill active">Dashboard</Link>
-            <button className="ojas-nav-pill" type="button">History</button>
-            <Link href="/meals" className="ojas-nav-pill">Meals</Link>
-            {showAdminUsers ? (
-              <button className="ojas-nav-pill" type="button" onClick={() => setAdminUsersOpen(true)}>Users</button>
-            ) : (
-              <button className="ojas-nav-pill" type="button">Users</button>
-            )}
-            <button
-              className="ojas-nav-pill"
-              type="button"
-              onClick={() => {
-                setSettingsOpen(true);
-                void refreshSettingsFromCloud();
-              }}
-            >
-              Settings
-            </button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <span className="ojas-status-pill"><span className="ojas-pulse-dot" /> AWS live</span>
-            <button
-              type="button"
-              onClick={() => void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })}
-              className="text-[11px]"
-              style={{ color: "var(--mu2)" }}
-            >
-              {unit}
-            </button>
-            <div className="ojas-nav-aux">
+    <main className="min-h-screen bg-zinc-950">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/90 backdrop-blur-md">
+        <div className="mx-auto max-w-5xl px-5 py-2">
+          <div className="flex items-center justify-between sm:hidden">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-zinc-100">
+                Ojas-Health
+              </span>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <AuthBar compact />
+              {user?.id && isMealLibraryEnabled(user.id) ? (
+                <Link
+                  href="/meals"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-700"
+                >
+                  Meals
+                </Link>
+              ) : null}
               {showAdminUsers ? (
-                <button className="ojas-nav-pill" type="button" onClick={() => setAdminUsersOpen(true)}>
-                  Admin
+                <button
+                  type="button"
+                  onClick={() => setAdminUsersOpen(true)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                  aria-label="View registered users"
+                  title="Users (admin)"
+                >
+                  <Users className="h-3.5 w-3.5" />
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  void refreshSettingsFromCloud();
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                aria-label="Open settings"
+                title="Settings"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
+                }
+                className="h-7 min-w-10 rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+              >
+                {unit}
+              </button>
+              <ThemeToggle />
             </div>
-            <ThemeToggle />
-            <AuthBar compact />
           </div>
-        </header>
 
-        <div className="ojas-body-grid">
-          <section className="ojas-col ojas-left">
-            <motion.div {...fadeInUp}>
-              <DashboardKpiRow />
-            </motion.div>
-            <motion.div {...fadeInUp} className="ojas-card">
+          <p className="mt-1 text-center text-[11px] text-zinc-500 sm:hidden">
+            By{" "}
+            <a
+              href="https://www.linkedin.com/in/viharnar/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+            >
+              Vihar Nar
+            </a>
+          </p>
+
+          <div className="hidden h-8 grid-cols-[auto_1fr_auto] items-center gap-3 sm:grid">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-zinc-100">
+                Ojas-Health
+              </span>
+            </div>
+            <p className="truncate text-center text-[11px] text-zinc-500">
+              By{" "}
+              <a
+                href="https://www.linkedin.com/in/viharnar/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+              >
+                Vihar Nar
+              </a>
+            </p>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <AuthBar />
+              {user?.id && isMealLibraryEnabled(user.id) ? (
+                <Link
+                  href="/meals"
+                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                >
+                  Meals
+                </Link>
+              ) : null}
+              {showAdminUsers ? (
+                <button
+                  type="button"
+                  onClick={() => setAdminUsersOpen(true)}
+                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                >
+                  Users
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  void refreshSettingsFromCloud();
+                }}
+                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+              >
+                Settings
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
+                }
+                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+              >
+                {unit}
+              </button>
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-5">
+
+        <div className="ui-dashboard-stack">
+          <motion.section {...fadeInUp}>
+            <DashboardKpiRow />
+          </motion.section>
+
+          <motion.section {...fadeInUp}>
+            <WeightChart />
+          </motion.section>
+
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+            <motion.section {...fadeInUp} className="min-w-0">
+              {status === "authenticated" &&
+              isAwsBackendEnabled() &&
+              user?.id &&
+              isMealLibraryEnabled(user.id) &&
+              todayKey ? (
+                <>
+                  <FrequentMealsCarousel
+                    day={todayKey}
+                    getAccessToken={getAccessToken}
+                    onLogged={refreshMeals}
+                  />
+                  <MealsTodayPanel
+                    day={todayKey}
+                    entries={mealEntries}
+                    getAccessToken={getAccessToken}
+                    onChanged={refreshMeals}
+                  />
+                </>
+              ) : null}
               <DailyInput
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
@@ -290,57 +423,25 @@ export function HealthDashboard() {
                     : undefined
                 }
               />
-            </motion.div>
-            {status === "authenticated" &&
-            isAwsBackendEnabled() &&
-            user?.id &&
-            isMealLibraryEnabled(user.id) &&
-            todayKey ? (
-              <motion.div {...fadeInUp}>
-                <FrequentMealsCarousel day={todayKey} getAccessToken={getAccessToken} onLogged={refreshMeals} />
-              </motion.div>
-            ) : null}
-          </section>
-
-          <section className="ojas-col ojas-center">
-            <motion.div {...fadeInUp}>
-              <WeightChart />
-            </motion.div>
-            {status === "authenticated" &&
-            isAwsBackendEnabled() &&
-            user?.id &&
-            isMealLibraryEnabled(user.id) &&
-            todayKey ? (
-              <motion.div {...fadeInUp}>
-                <MealsTodayPanel
-                  day={todayKey}
-                  entries={mealEntries}
-                  getAccessToken={getAccessToken}
-                  onChanged={refreshMeals}
-                />
-              </motion.div>
-            ) : null}
-            <motion.div {...fadeInUp}>
-              <PastDayGrid />
-            </motion.div>
-            {entryCount > 0 ? (
-              <motion.div {...fadeInUp}>
-                <WeightHistoryTable />
-              </motion.div>
-            ) : null}
-          </section>
-
-          <section className="ojas-col ojas-right">
-            <motion.div {...fadeInUp}>
-              <AIInsights />
-            </motion.div>
-            <motion.div {...fadeInUp}>
+            </motion.section>
+            <motion.section {...fadeInUp} className="flex min-w-0 flex-col gap-3">
               <TodayActivityCard />
-            </motion.div>
-            <motion.div {...fadeInUp}>
+              <AIInsights />
+            </motion.section>
+            <motion.section {...fadeInUp} className="min-w-0">
               <PhotoTracker />
-            </motion.div>
-          </section>
+            </motion.section>
+          </div>
+
+          <motion.section {...fadeInUp}>
+            <PastDayGrid />
+          </motion.section>
+
+          {entryCount > 0 ? (
+            <motion.section {...fadeInUp}>
+              <WeightHistoryTable />
+            </motion.section>
+          ) : null}
         </div>
       </div>
 
