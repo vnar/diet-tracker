@@ -245,6 +245,13 @@ export function HealthDashboard() {
             >
               {unit}
             </button>
+            <div className="ojas-nav-aux">
+              {showAdminUsers ? (
+                <button className="ojas-nav-pill" type="button" onClick={() => setAdminUsersOpen(true)}>
+                  Admin
+                </button>
+              ) : null}
+            </div>
             <ThemeToggle />
             <AuthBar compact />
           </div>
@@ -295,7 +302,7 @@ export function HealthDashboard() {
             ) : null}
           </section>
 
-          <section className="ojas-col">
+          <section className="ojas-col ojas-center">
             <motion.div {...fadeInUp}>
               <WeightChart />
             </motion.div>

@@ -175,8 +175,8 @@ export function AppFooter() {
                 <p className="truncate text-[11px]" style={{ color: "var(--mu2)" }}>{entry.note}</p>
                 <p className="text-[10px]" style={{ color: "var(--mu)" }}>{entry.date}</p>
               </div>
-              <span className="rounded px-1.5 py-0.5 text-[9px]" style={{ background: entry.latest ? "var(--g3)" : "rgba(96,165,250,0.16)", color: entry.latest ? "var(--g)" : "#93c5fd" }}>
-                {entry.latest ? "current" : "fix"}
+              <span className="rounded px-1.5 py-0.5 text-[9px]" style={{ background: entry.latest ? "var(--g3)" : "rgba(167,139,250,0.16)", color: entry.latest ? "var(--g)" : "#c4b5fd" }}>
+                {entry.latest ? "current" : index % 2 === 0 ? "fix" : "feat"}
               </span>
             </div>
           ))}

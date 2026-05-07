@@ -45,7 +45,8 @@
     background: var(--bg);
     border: 1px solid var(--b);
     max-height: 100vh;
-    min-height: calc(100vh - 1px);
+    min-height: min(100vh, 762px);
+    height: min(100vh, 762px);
     display: grid;
     grid-template-rows: 50px minmax(0, 1fr) 36px;
   }
@@ -111,6 +112,10 @@
     @apply min-h-0 space-y-3 overflow-y-auto p-3.5;
   }
 
+  .ojas-center {
+    @apply px-4 py-3.5;
+  }
+
   .ojas-col::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -133,6 +138,50 @@
     @apply rounded-xl border p-3;
     background: var(--s1);
     border-color: var(--b);
+  }
+
+  .ojas-card h2,
+  .ojas-card h3 {
+    color: var(--txt);
+  }
+
+  .ojas-left input,
+  .ojas-left textarea,
+  .ojas-center input {
+    background: var(--s2) !important;
+    border-color: var(--b) !important;
+    color: var(--txt) !important;
+  }
+
+  .ojas-left button,
+  .ojas-center button,
+  .ojas-right button {
+    transition: all 0.18s ease;
+  }
+
+  .ojas-left .rounded-2xl,
+  .ojas-center .rounded-2xl,
+  .ojas-right .rounded-2xl {
+    border-radius: 13px !important;
+  }
+
+  .ojas-left .border-zinc-800,
+  .ojas-center .border-zinc-800,
+  .ojas-right .border-zinc-800 {
+    border-color: var(--b) !important;
+  }
+
+  .ojas-left .bg-zinc-900,
+  .ojas-left .bg-zinc-900\/80,
+  .ojas-center .bg-zinc-900,
+  .ojas-center .bg-zinc-900\/80,
+  .ojas-right .bg-zinc-900,
+  .ojas-right .bg-zinc-900\/80 {
+    background: var(--s1) !important;
+  }
+
+  .ojas-nav-aux {
+    @apply hidden items-center gap-2 lg:flex;
   }
 
   .ojas-footer {
