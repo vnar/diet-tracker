@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
 import { ChevronDown, Trash2, Upload } from "lucide-react";
@@ -17,7 +17,16 @@ import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useDeleteEntry, useRefreshEntries, useSaveEntry } from "@/hooks/useHealthActions";
 import { displayWeight } from "@/lib/units";
-import { isAwsBackendEnabled, uploadPhotoFile } from "@/lib/frontend-api-client";
+import {
+  getDayMealEntries,
+  isAwsBackendEnabled,
+  uploadPhotoFile,
+  type DayMealEntryRow,
+} from "@/lib/frontend-api-client";
+import { isMealLibraryEnabled } from "@/lib/featureFlags";
+import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
+import { getDayTotals } from "@/lib/meals/dayTotals";
+import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
 
 const GRID_DAYS = 42;
 
@@ -71,7 +80,8 @@ function formatLong(iso: string): string {
 }
 
 export function PastDayGrid() {
-  const { status, getAccessToken } = useCognitoAuth();
+  useFeatureFlagOverridesEpoch();
+  const { status, getAccessToken, user } = useCognitoAuth();
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
@@ -115,6 +125,53 @@ export function PastDayGrid() {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
   const [refreshingBrokenImages, setRefreshingBrokenImages] = useState(false);
 
+  const [pastMealEntries, setPastMealEntries] = useState<DayMealEntryRow[]>([]);
+  const [pastMealsEpoch, setPastMealsEpoch] = useState(0);
+
+  const refreshPastMeals = useCallback(() => {
+    setPastMealsEpoch((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !selected ||
+      status !== "authenticated" ||
+      !isAwsBackendEnabled() ||
+      !user?.id ||
+      !isMealLibraryEnabled(user.id)
+    ) {
+      setPastMealEntries([]);
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) return;
+    void getDayMealEntries(selected, token).then((r) => {
+      if (r.ok) setPastMealEntries(r.data.items);
+    });
+  }, [selected, status, user?.id, pastMealsEpoch, getAccessToken]);
+
+  const pastDayCaloriesProteinAggregate = useMemo(() => {
+    if (!user?.id || !isMealLibraryEnabled(user.id) || !selected) return null;
+    const totals = getDayTotals({
+      mealLibraryEnabled: true,
+      mealEntries: pastMealEntries.map((e) => ({
+        kcal: e.kcal != null ? Number(e.kcal) : null,
+        proteinG: e.proteinG != null ? Number(e.proteinG) : null,
+        deletedAt: undefined,
+      })),
+      manualCalories: selectedEntry?.calories,
+      manualProtein: selectedEntry?.protein,
+    });
+    if (!totals.fromMeals) return null;
+    return {
+      calories: totals.caloriesDisplay,
+      protein: totals.proteinDisplay,
+      readOnly: true as const,
+      caption:
+        "Totals reflect meals logged for this day. Remove a meal above to adjust, or clear all meals to edit calories and protein manually.",
+    };
+  }, [user?.id, selected, pastMealEntries, selectedEntry?.calories, selectedEntry?.protein]);
+
   useEffect(() => {
     if (!selected) return;
     const e = getEntryForDate(entries, selected);
@@ -123,8 +180,13 @@ export function PastDayGrid() {
       setNight(
         e.nightWeight != null ? String(kgToInput(e.nightWeight, u)) : ""
       );
-      setCalories(e.calories !== undefined ? String(e.calories) : "");
-      setProtein(e.protein !== undefined ? String(e.protein) : "");
+      if (pastDayCaloriesProteinAggregate?.readOnly) {
+        setCalories(pastDayCaloriesProteinAggregate.calories);
+        setProtein(pastDayCaloriesProteinAggregate.protein);
+      } else {
+        setCalories(e.calories !== undefined ? String(e.calories) : "");
+        setProtein(e.protein !== undefined ? String(e.protein) : "");
+      }
       setSteps(e.steps !== undefined ? String(e.steps) : "");
       setSleep(e.sleep !== undefined ? String(e.sleep) : "");
       setNotes(e.notes ?? "");
@@ -135,8 +197,13 @@ export function PastDayGrid() {
     } else {
       setMorning("");
       setNight("");
-      setCalories("");
-      setProtein("");
+      if (pastDayCaloriesProteinAggregate?.readOnly) {
+        setCalories(pastDayCaloriesProteinAggregate.calories);
+        setProtein(pastDayCaloriesProteinAggregate.protein);
+      } else {
+        setCalories("");
+        setProtein("");
+      }
       setSteps("");
       setSleep("");
       setNotes("");
@@ -145,7 +212,7 @@ export function PastDayGrid() {
       setWorkout(false);
       setAlcohol(false);
     }
-  }, [selected, entries, u]);
+  }, [selected, entries, u, pastDayCaloriesProteinAggregate]);
 
   const morningNum = parseFloat(morning);
   const canSave =
@@ -162,15 +229,28 @@ export function PastDayGrid() {
       night.trim() === "" || Number.isNaN(nightParsed)
         ? null
         : inputToKg(nightParsed, u);
+    const calOut =
+      pastDayCaloriesProteinAggregate?.readOnly &&
+      pastDayCaloriesProteinAggregate.calories.trim() !== ""
+        ? Math.round(parseFloat(pastDayCaloriesProteinAggregate.calories))
+        : calories.trim() === ""
+          ? undefined
+          : Math.round(parseFloat(calories));
+    const protOut =
+      pastDayCaloriesProteinAggregate?.readOnly &&
+      pastDayCaloriesProteinAggregate.protein.trim() !== ""
+        ? Math.round(parseFloat(pastDayCaloriesProteinAggregate.protein))
+        : protein.trim() === ""
+          ? undefined
+          : Math.round(parseFloat(protein));
+
     const entry: DailyEntry = {
       id: selectedEntry?.id ?? nanoid(),
       date: selected,
       morningWeight: mw,
       nightWeight,
-      calories:
-        calories.trim() === "" ? undefined : Math.round(parseFloat(calories)),
-      protein:
-        protein.trim() === "" ? undefined : Math.round(parseFloat(protein)),
+      calories: calOut,
+      protein: protOut,
       steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
       sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
       notes: notes.trim() === "" ? undefined : notes.trim(),
@@ -353,6 +433,18 @@ export function PastDayGrid() {
                 {formatLong(selected)}
               </span>
             </div>
+            {status === "authenticated" &&
+            isAwsBackendEnabled() &&
+            user?.id &&
+            isMealLibraryEnabled(user.id) ? (
+              <MealsTodayPanel
+                day={selected}
+                entries={pastMealEntries}
+                getAccessToken={getAccessToken}
+                onChanged={refreshPastMeals}
+                heading="Meals for this day"
+              />
+            ) : null}
             <div className="grid gap-5 sm:grid-cols-2">
               <InputField
                 id="pastMorningWeight"
@@ -383,6 +475,12 @@ export function PastDayGrid() {
                 inputMode="numeric"
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}
+                readOnly={Boolean(pastDayCaloriesProteinAggregate?.readOnly)}
+                title={
+                  pastDayCaloriesProteinAggregate?.readOnly && calories.trim() !== ""
+                    ? `Total from logged meals: ${calories} kcal`
+                    : undefined
+                }
                 placeholder=""
               />
               <InputField
@@ -393,8 +491,15 @@ export function PastDayGrid() {
                 inputMode="numeric"
                 value={protein}
                 onChange={(e) => setProtein(e.target.value)}
+                readOnly={Boolean(pastDayCaloriesProteinAggregate?.readOnly)}
                 placeholder=""
               />
+              {pastDayCaloriesProteinAggregate?.readOnly &&
+              pastDayCaloriesProteinAggregate.caption ? (
+                <p className="text-[10px] text-zinc-500 sm:col-span-2">
+                  {pastDayCaloriesProteinAggregate.caption}
+                </p>
+              ) : null}
               <InputField
                 id="pastSteps"
                 label="Steps"

@@ -11,6 +11,8 @@ type Props = {
   entries: DayMealEntryRow[];
   getAccessToken: () => string | null;
   onChanged: () => void;
+  /** Section title; default keeps the main dashboard wording unchanged. */
+  heading?: string;
 };
 
 export function MealsTodayPanel(props: Props) {
@@ -38,7 +40,7 @@ export function MealsTodayPanel(props: Props) {
     <div className="mb-3 rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-zinc-800/80 pb-2">
         <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-          Meals today
+          {props.heading ?? "Meals today"}
         </p>
         <p className="text-right text-[11px] text-zinc-400">
           <span className="font-mono text-zinc-100">{Math.round(totalKcal)}</span> kcal
