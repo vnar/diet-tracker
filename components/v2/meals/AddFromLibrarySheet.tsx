@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Library } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { trackMealStickiness } from "@/lib/mealStickinessAnalytics";
 import { getMealsList, postDayMealEntry, type MealLibraryRow } from "@/lib/frontend-api-client";
 
 type Props = {
@@ -54,6 +55,16 @@ export function AddFromLibrarySheet(props: Props) {
     setAddingId(null);
     if (res.ok) {
       track("meal_logged_from_library", { day: props.day, mealId: m.id, source: "sheet" });
+      const entryId = res.data.entry?.id;
+      if (entryId) {
+        trackMealStickiness({
+          action: "reuse_logged",
+          day: props.day,
+          mealId: m.id,
+          entryId,
+          source: "sheet",
+        });
+      }
       setLastAddedName(m.name);
       props.onAdded();
     } else {

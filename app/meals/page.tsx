@@ -16,6 +16,7 @@ import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { MEAL_TYPES, type MealType } from "@/lib/meals/mealTypes";
 import { track } from "@/lib/analytics";
 import { isMealLibraryEnabled } from "@/lib/featureFlags";
+import { trackMealStickiness } from "@/lib/mealStickinessAnalytics";
 
 export default function MealsLibraryPage() {
   const { status, getAccessToken, user } = useCognitoAuth();
@@ -74,6 +75,16 @@ export default function MealsLibraryPage() {
     const res = await postDayMealEntry(todayKey, { meal_id: m.id }, token);
     if (res.ok) {
       track("meal_logged_from_library", { mealId: m.id, source: "meals_page" });
+      const entryId = res.data.entry?.id;
+      if (entryId) {
+        trackMealStickiness({
+          action: "reuse_logged",
+          day: todayKey,
+          mealId: m.id,
+          entryId,
+          source: "meals_page",
+        });
+      }
       setDetail(null);
     }
   }
@@ -85,6 +96,11 @@ export default function MealsLibraryPage() {
     const res = await patchMealLibrary(detail.id, { name: editName.trim() || detail.name }, token);
     if (res.ok) {
       track("meal_edited", { mealId: detail.id });
+      trackMealStickiness({
+        action: "library_item_edited",
+        mealId: detail.id,
+        field: "name",
+      });
       setDetail(res.data.meal);
       setItems((prev) => prev.map((x) => (x.id === detail.id ? res.data.meal : x)));
     }

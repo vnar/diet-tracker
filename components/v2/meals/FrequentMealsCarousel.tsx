@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { track } from "@/lib/analytics";
+import { trackMealStickiness } from "@/lib/mealStickinessAnalytics";
 import { getMealsList, postDayMealEntry, type MealLibraryRow } from "@/lib/frontend-api-client";
 
 type Props = {
@@ -57,6 +58,16 @@ export function FrequentMealsCarousel(props: Props) {
     setAddingId(null);
     if (res.ok) {
       track("meal_logged_from_frequent_carousel", { day: props.day, mealId: m.id });
+      const entryId = res.data.entry?.id;
+      if (entryId) {
+        trackMealStickiness({
+          action: "reuse_logged",
+          day: props.day,
+          mealId: m.id,
+          entryId,
+          source: "carousel",
+        });
+      }
       setFlash(m.name);
       window.setTimeout(() => setFlash(null), 2200);
       props.onLogged();

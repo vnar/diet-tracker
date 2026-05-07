@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { trackMealStickiness } from "@/lib/mealStickinessAnalytics";
 import type { DailyInputCaloriesAccessoryContext } from "@/components/DailyInput";
 import {
   getMealsSuggestMatch,
@@ -115,6 +116,10 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       setErr(up.error ?? "Upload failed");
       return;
     }
+    trackMealStickiness({
+      action: "photo_uploaded",
+      day: props.todayKey,
+    });
     const est = await postFoodVisionEstimate(
       { photoUrl: up.photoUrl, day: props.todayKey },
       token,
@@ -180,6 +185,16 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
     if (!add.ok) {
       setErr(add.error ?? "Could not log meal");
       return;
+    }
+    const entryId = add.data.entry?.id;
+    if (entryId) {
+      trackMealStickiness({
+        action: "reuse_logged",
+        day: props.todayKey,
+        mealId: quickMatch.id,
+        entryId,
+        source: "quick_match",
+      });
     }
     track("meal_logged_from_photo", { day: props.todayKey, mealId: quickMatch.id, quickMatch: true });
     track("meal_logged_from_library", { day: props.todayKey, mealId: quickMatch.id, source: "quick_match" });
@@ -307,6 +322,20 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
         foodLogId: dialog.foodLogId,
         saveToLibrary: dialog.saveToLibrary,
       });
+      const completedEntryId = res.data.entry?.id;
+      if (completedEntryId) {
+        const libId = res.data.libraryMealId ?? null;
+        trackMealStickiness({
+          action: "photo_flow_completed",
+          day: props.todayKey,
+          foodLogId: dialog.foodLogId,
+          entryId: completedEntryId,
+          saveToLibrary: dialog.saveToLibrary,
+          libraryMealId: libId,
+          newLibraryItem: Boolean(dialog.saveToLibrary && libId),
+          dishName: dishName.slice(0, 120),
+        });
+      }
       if (dialog.saveToLibrary) {
         track("meal_saved_to_library", { day: props.todayKey, dishName });
       }
