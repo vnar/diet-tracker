@@ -342,7 +342,7 @@ export function DailyInput({
           />
         </div>
         <div className="mt-3 border-t border-zinc-800 pt-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-100">
             Daily habits
           </p>
           {todayEntry ? (
