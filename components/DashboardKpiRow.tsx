@@ -156,30 +156,129 @@ export function DashboardKpiRow() {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {kpis.map((k) => (
+    <div className="space-y-3">
+      <div className="relative overflow-hidden rounded-[13px] border p-4" style={{ background: "var(--s1)", borderColor: "rgba(61,219,122,0.14)" }}>
         <div
-          key={k.title}
-          className="flex min-h-[96px] flex-col gap-1.5 rounded-2xl border border-zinc-800 bg-zinc-900 p-3.5"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[9px] font-medium uppercase tracking-widest text-zinc-500">
-              {k.title}
+          className="pointer-events-none absolute -right-8 -top-8 h-[110px] w-[110px]"
+          style={{ background: "radial-gradient(circle, rgba(61,219,122,0.1) 0%, transparent 70%)" }}
+        />
+        <p className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--mu)" }}>
+          Today&apos;s weight
+        </p>
+        <div className="mt-1 flex items-end gap-2">
+          <p style={{ fontFamily: '"Playfair Display", serif', fontSize: 46, fontWeight: 700, letterSpacing: "-2px", color: "var(--g)", lineHeight: 1 }}>
+            {currentKg !== undefined ? displayWeight(currentKg, u) : "—"}
+          </p>
+          <span className="pb-1 text-[17px] font-light" style={{ color: "var(--g2)" }}>{u}</span>
+        </div>
+        <div className="mt-2 inline-flex items-center gap-1 rounded-[10px] border px-2 py-1 text-[11px] font-medium" style={{ background: "var(--g3)", borderColor: "rgba(61,219,122,0.15)", color: "var(--g)" }}>
+          <span>▾</span>
+          <span>{dayDelta !== null ? fmtDelta(dayDelta, u) : "No delta yet"}</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg border p-2" style={{ background: "rgba(0,0,0,0.22)", borderColor: "var(--b)" }}>
+            <p className="text-[9px] uppercase tracking-[0.08em]" style={{ color: "var(--mu)" }}>7-day avg</p>
+            <p className="mt-1 text-[15px] font-semibold" style={{ color: "var(--txt)" }}>
+              {sevenAvg !== null ? `${displayWeight(sevenAvg, u)} ${u}` : "—"}
             </p>
           </div>
-          <p className="font-mono text-xl font-semibold tracking-tight text-zinc-100">
-            {k.value}
-          </p>
-          <p
-            className={`text-[10px] ${k.subClass} ${
-              k.subTooltip ? "cursor-help" : ""
-            }`}
-            title={k.subTooltip}
-          >
-            {k.sub}
-          </p>
+          <div className="rounded-lg border p-2" style={{ background: "rgba(0,0,0,0.22)", borderColor: "var(--b)" }}>
+            <p className="text-[9px] uppercase tracking-[0.08em]" style={{ color: "var(--mu)" }}>Target</p>
+            <p className="mt-1 text-[15px] font-semibold" style={{ color: "var(--warn)" }}>
+              {displayWeight(settings.goalWeight, u)} {u}
+            </p>
+            <p className="text-[9px]" style={{ color: "var(--mu)" }}>
+              {remainingKg !== null ? `${displayWeight(remainingKg, u)} left` : "—"}
+            </p>
+          </div>
         </div>
-      ))}
+      </div>
+
+      <div className="rounded-[13px] border p-3" style={{ background: "var(--s1)", borderColor: "var(--b)" }}>
+        {(() => {
+          const denom = settings.startWeight - settings.goalWeight;
+          const numer = settings.startWeight - (currentKg ?? settings.startWeight);
+          const rawPct = denom !== 0 ? (numer / denom) * 100 : 0;
+          const pct = Math.max(0, Math.min(100, Math.round(rawPct)));
+          const circumference = 144.5;
+          const dashOffset = circumference * (1 - pct / 100);
+          const dateSet = new Set(entries.map((e) => e.date));
+          const streak = Array.from({ length: 14 }).map((_, i) => {
+            const d = new Date();
+            d.setHours(12, 0, 0, 0);
+            d.setDate(d.getDate() - (13 - i));
+            const iso = d.toISOString().slice(0, 10);
+            return dateSet.has(iso);
+          });
+          return (
+            <>
+              <div className="flex items-center gap-3">
+                <svg width="58" height="58" viewBox="0 0 58 58" className="shrink-0">
+                  <defs>
+                    <linearGradient id="goalRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3DDB7A" />
+                      <stop offset="100%" stopColor="#6EE89A" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(61,219,122,0.1)" strokeWidth="6" />
+                  <circle
+                    cx="29"
+                    cy="29"
+                    r="23"
+                    fill="none"
+                    stroke="url(#goalRingGrad)"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    transform="rotate(-90 29 29)"
+                    strokeDasharray={144.5}
+                    strokeDashoffset={dashOffset}
+                  />
+                  <text x="29" y="32" textAnchor="middle" style={{ fontFamily: '"Playfair Display", serif', fontSize: 12, fontWeight: 700, fill: "var(--g)" }}>
+                    {pct}%
+                  </text>
+                </svg>
+                <div>
+                  <p className="text-[13px] font-medium" style={{ color: "var(--txt)" }}>
+                    {(settings.startWeight - (currentKg ?? settings.startWeight)).toFixed(1)} {u} lost
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--mu)" }}>
+                    {remainingKg !== null ? `${displayWeight(remainingKg, u)} to goal` : "—"} ·{" "}
+                    {daysLeft !== null ? `${Math.max(0, daysLeft)} days` : "—"} · {formatGoalDate(settings.targetDate)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--mu)" }}>
+                Logging streak
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {streak.map((on, i) => (
+                  <span
+                    key={i}
+                    className="h-[11px] w-[11px] rounded-[3px]"
+                    style={{ background: on ? "var(--g)" : "rgba(61,219,122,0.12)" }}
+                  />
+                ))}
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2">
+        {kpis.slice(1).map((k) => (
+          <div
+            key={k.title}
+            className="rounded-lg border p-2"
+            style={{ background: "var(--s2)", borderColor: "var(--b)" }}
+          >
+            <p className="text-[9px] uppercase tracking-[0.1em]" style={{ color: "var(--mu)" }}>{k.title}</p>
+            <p className="mt-1 text-[12px] font-medium" style={{ color: "var(--txt)" }}>{k.value}</p>
+            <p className={`text-[10px] ${k.subTooltip ? "cursor-help" : ""}`} style={{ color: "var(--mu)" }} title={k.subTooltip}>
+              {k.sub}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

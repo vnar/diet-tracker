@@ -3,6 +3,23 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg: #080d0a;
+    --s1: #0d1410;
+    --s2: #111812;
+    --b: rgba(255, 255, 255, 0.06);
+    --b2: rgba(255, 255, 255, 0.11);
+    --g: #3ddb7a;
+    --g2: #6ee89a;
+    --g3: rgba(61, 219, 122, 0.11);
+    --g4: rgba(61, 219, 122, 0.06);
+    --warn: #f97316;
+    --red: #f43f5e;
+    --txt: #dceee2;
+    --mu: rgba(220, 238, 226, 0.4);
+    --mu2: rgba(220, 238, 226, 0.62);
+  }
+
   html {
     @apply scroll-smooth;
     text-rendering: optimizeLegibility;
@@ -11,7 +28,10 @@
   }
 
   body {
-    @apply min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased;
+    @apply min-h-screen font-sans antialiased;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: "DM Sans", var(--font-sans), sans-serif;
   }
 
   ::selection {
@@ -20,6 +40,128 @@
 }
 
 @layer components {
+  .ojas-shell {
+    @apply mx-auto w-full overflow-hidden rounded-2xl;
+    background: var(--bg);
+    border: 1px solid var(--b);
+    max-height: 100vh;
+    min-height: calc(100vh - 1px);
+    display: grid;
+    grid-template-rows: 50px minmax(0, 1fr) 36px;
+  }
+
+  .ojas-topnav {
+    @apply flex items-center justify-between px-4;
+    background: rgba(8, 13, 10, 0.98);
+    border-bottom: 1px solid var(--b);
+  }
+
+  .ojas-brand {
+    @apply flex items-baseline gap-2;
+  }
+
+  .ojas-logo {
+    font-family: "Playfair Display", serif;
+    font-size: 18px;
+    color: var(--g);
+  }
+
+  .ojas-brand-sub {
+    @apply text-[10px] font-light;
+    color: var(--mu);
+  }
+
+  .ojas-nav-pills {
+    @apply hidden items-center gap-2 md:flex;
+  }
+
+  .ojas-nav-pill {
+    @apply rounded-full border px-3 py-1 text-[11px] font-medium transition;
+    border-color: transparent;
+    color: var(--mu);
+    background: transparent;
+  }
+
+  .ojas-nav-pill:hover,
+  .ojas-nav-pill.active {
+    background: var(--g3);
+    color: var(--g);
+    border-color: rgba(61, 219, 122, 0.15);
+  }
+
+  .ojas-status-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px];
+    border: 1px solid rgba(61, 219, 122, 0.18);
+    background: var(--g3);
+    color: var(--g2);
+  }
+
+  .ojas-pulse-dot {
+    @apply h-[5px] w-[5px] rounded-full;
+    background: var(--g);
+    animation: ojas-pulse 1.8s ease-in-out infinite;
+  }
+
+  .ojas-body-grid {
+    @apply grid min-h-0;
+    grid-template-columns: 248px minmax(0, 1fr) 206px;
+  }
+
+  .ojas-col {
+    @apply min-h-0 space-y-3 overflow-y-auto p-3.5;
+  }
+
+  .ojas-col::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  .ojas-col::-webkit-scrollbar-thumb {
+    background: var(--g3);
+    border-radius: 999px;
+  }
+
+  .ojas-left {
+    border-right: 1px solid var(--b);
+  }
+
+  .ojas-right {
+    border-left: 1px solid var(--b);
+  }
+
+  .ojas-card {
+    @apply rounded-xl border p-3;
+    background: var(--s1);
+    border-color: var(--b);
+  }
+
+  .ojas-footer {
+    @apply relative flex items-center px-3 text-[10px];
+    background: rgba(8, 13, 10, 0.98);
+    border-top: 1px solid var(--b);
+  }
+
+  .ojas-divider {
+    @apply mx-2 h-4 w-px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .ojas-service-pill {
+    @apply inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px];
+    background: var(--g4);
+    border: 1px solid rgba(61, 219, 122, 0.1);
+    color: var(--g2);
+  }
+
+  .ojas-dropdown {
+    @apply absolute right-0 z-50 overflow-hidden rounded-xl;
+    bottom: 38px;
+    min-width: 260px;
+    background: #0c1410;
+    border: 1px solid var(--b2);
+    animation: ojas-dropdown-in 150ms ease;
+  }
+
   /* Page & section hierarchy */
   .ui-page-title {
     @apply text-[2rem] font-bold tracking-[-0.04em] text-white sm:text-[1.85rem] sm:leading-[1.12];
@@ -71,5 +213,28 @@
 @layer utilities {
   .safe-pb {
     padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+@keyframes ojas-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(61, 219, 122, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 4px rgba(61, 219, 122, 0);
+  }
+}
+
+@keyframes ojas-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
