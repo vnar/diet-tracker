@@ -250,6 +250,8 @@ export type MealLibraryRow = {
   photoKey?: string;
   estKcal: number;
   estProteinG: number;
+  estCarbsG?: number;
+  estFatG?: number;
   timesLogged: number;
   lastLoggedAt?: string;
 };

@@ -34,19 +34,27 @@ type DialogState = {
   kcal: string;
   protein: string;
   dishName: string;
+  initialDishName: string;
   mealType: MealType;
   saveToLibrary: boolean;
 };
+
+function normalizeFoodName(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 export function FoodPhotoCaloriesAccessory(props: Props) {
   const tz =
     props.clientTimezone ?? (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [refreshingNutrition, setRefreshingNutrition] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [quickMatch, setQuickMatch] = useState<MealLibraryRow | null>(null);
   const [quickMatchDismissed, setQuickMatchDismissed] = useState(false);
+  const [nutritionRefreshFailedForName, setNutritionRefreshFailedForName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dialog) return;
@@ -137,10 +145,12 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       kcal: String(e.kcalMid),
       protein: String(e.proteinG),
       dishName,
+      initialDishName: dishName,
       mealType,
       saveToLibrary: true,
     });
     setQuickMatchDismissed(false);
+    setNutritionRefreshFailedForName(null);
   }
 
   async function acceptQuickMatch() {
@@ -189,12 +199,13 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
     if (!dialog) return;
     const token = props.getAccessToken();
     if (!token) return;
-    const kcalN = Math.round(Number(dialog.kcal));
-    const protN = Math.round(Number(dialog.protein));
+    let kcalN = Math.round(Number(dialog.kcal));
+    let protN = Math.round(Number(dialog.protein));
     if (!Number.isFinite(kcalN) || !Number.isFinite(protN)) {
       setErr("Enter valid numbers.");
       return;
     }
+    setSaving(true);
     const mid = dialog.estimate.kcalMid;
     const protEst = dialog.estimate.proteinG;
     const edited = kcalN !== mid || protN !== protEst;
@@ -213,17 +224,64 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
     if (props.mealLibraryEnabled) {
       const dishName = dialog.dishName.trim();
       if (!dishName) {
+        setSaving(false);
         setErr("Enter a dish name.");
         return;
       }
-      const carbsMid =
+      let carbsOut =
         dialog.estimate.carbsGRange != null
           ? Math.round((dialog.estimate.carbsGRange.low + dialog.estimate.carbsGRange.high) / 2)
           : undefined;
-      const fatMid =
+      let fatOut =
         dialog.estimate.fatGRange != null
           ? Math.round((dialog.estimate.fatGRange.low + dialog.estimate.fatGRange.high) / 2)
           : undefined;
+      const normalizedDish = normalizeFoodName(dishName);
+      const normalizedInitial = normalizeFoodName(dialog.initialDishName);
+
+      // Only refresh nutrition when the user truly changed the food name (case-insensitive).
+      // This avoids duplicate lookups for unrelated edits (meal type/notes), and preserves existing behavior.
+      if (
+        normalizedDish &&
+        normalizedDish !== normalizedInitial &&
+        nutritionRefreshFailedForName !== normalizedDish
+      ) {
+        setRefreshingNutrition(true);
+        const matchRes = await getMealsSuggestMatch(dishName, token);
+        setRefreshingNutrition(false);
+        if (!matchRes.ok) {
+          setSaving(false);
+          setNutritionRefreshFailedForName(normalizedDish);
+          setErr(
+            "Could not refresh nutrition for the corrected name. You can adjust calories and protein manually, then save.",
+          );
+          return;
+        }
+        if (matchRes.data.match) {
+          kcalN = Math.round(Number(matchRes.data.match.estKcal));
+          protN = Math.round(Number(matchRes.data.match.estProteinG));
+          carbsOut = matchRes.data.match.estCarbsG != null ? Math.round(Number(matchRes.data.match.estCarbsG)) : carbsOut;
+          fatOut = matchRes.data.match.estFatG != null ? Math.round(Number(matchRes.data.match.estFatG)) : fatOut;
+          setDialog((d) =>
+            d
+              ? {
+                  ...d,
+                  kcal: String(kcalN),
+                  protein: String(protN),
+                  initialDishName: d.dishName.trim(),
+                }
+              : d,
+          );
+          setNutritionRefreshFailedForName(null);
+        } else {
+          setSaving(false);
+          setNutritionRefreshFailedForName(normalizedDish);
+          setErr(
+            "No nutrition match found for the corrected name. Edit calories/protein manually, then save.",
+          );
+          return;
+        }
+      }
       const res = await postFoodMealComplete(
         {
           foodLogId: dialog.foodLogId,
@@ -232,15 +290,17 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
           dishName,
           mealType: dialog.mealType,
           saveToLibrary: dialog.saveToLibrary,
-          carbsG: carbsMid,
-          fatG: fatMid,
+          carbsG: carbsOut,
+          fatG: fatOut,
         },
         token,
       );
       if (!res.ok) {
+        setSaving(false);
         setErr(res.error ?? "Could not save meal");
         return;
       }
+      setSaving(false);
       setErr(null);
       track("meal_logged_from_photo", {
         day: props.todayKey,
@@ -266,8 +326,10 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       token,
     );
     if (!confirmRes.ok) {
+      setSaving(false);
       setErr(confirmRes.error ?? "Could not confirm food log");
     } else {
+      setSaving(false);
       setErr(null);
     }
     props.setCalories(String(kcalN));
@@ -293,9 +355,9 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
         />
         <label
           htmlFor={FOOD_PHOTO_INPUT_ID}
-          className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy ? "pointer-events-none opacity-50" : ""}`}
+          className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy || saving ? "pointer-events-none opacity-50" : ""}`}
           aria-label="Log food from photo"
-          aria-busy={busy}
+          aria-busy={busy || saving}
           aria-describedby={err ? "food-photo-meal-err" : undefined}
         >
           <Camera className="h-4 w-4" aria-hidden />
@@ -335,6 +397,9 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
                   {dialog.estimate.mealLabel} · ~{dialog.estimate.kcalLow}–
                   {dialog.estimate.kcalHigh} kcal (mid {dialog.estimate.kcalMid})
                 </p>
+                {refreshingNutrition ? (
+                  <p className="mt-2 text-xs text-emerald-300">Refreshing nutrition for corrected food name…</p>
+                ) : null}
 
                 {showQuickBanner && quickMatch ? (
                   <div className="mt-3 rounded-lg border border-emerald-600/40 bg-emerald-950/40 p-3 text-xs text-emerald-100">
@@ -450,10 +515,15 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
                   {!showQuickBanner ? (
                     <button
                       type="button"
-                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={() => void confirmDialog()}
+                      disabled={saving || refreshingNutrition}
                     >
-                      {props.mealLibraryEnabled ? "Save meal" : "Use values"}
+                      {saving || refreshingNutrition
+                        ? "Refreshing nutrition…"
+                        : props.mealLibraryEnabled
+                          ? "Save meal"
+                          : "Use values"}
                     </button>
                   ) : null}
                 </div>
