@@ -210,7 +210,7 @@ export function HealthDashboard() {
   return (
     <main className="min-h-screen bg-zinc-950">
       <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto max-w-5xl px-5 py-2">
+        <div className="mx-auto max-w-6xl px-5 py-2">
           <div className="flex items-center justify-between sm:hidden">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500">
@@ -309,32 +309,30 @@ export function HealthDashboard() {
                 Ojas-Health
               </span>
             </div>
-            <p className="truncate text-center text-[11px] text-zinc-500">
-              By{" "}
-              <a
-                href="https://www.linkedin.com/in/viharnar/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+            <nav className="mx-auto flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/60 p-1">
+              <Link
+                href="/"
+                className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-300"
               >
-                Vihar Nar
-              </a>
-            </p>
-            <div className="flex flex-shrink-0 items-center gap-2">
-              <AuthBar />
-              {user?.id && isMealLibraryEnabled(user.id) ? (
-                <Link
-                  href="/meals"
-                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
-                >
-                  Meals
-                </Link>
-              ) : null}
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+              >
+                History
+              </button>
+              <Link
+                href="/meals"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+              >
+                Meals
+              </Link>
               {showAdminUsers ? (
                 <button
                   type="button"
                   onClick={() => setAdminUsersOpen(true)}
-                  className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                  className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
                 >
                   Users
                 </button>
@@ -345,10 +343,13 @@ export function HealthDashboard() {
                   setSettingsOpen(true);
                   void refreshSettingsFromCloud();
                 }}
-                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
               >
                 Settings
               </button>
+            </nav>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <AuthBar />
               <button
                 type="button"
                 onClick={() =>
@@ -364,7 +365,7 @@ export function HealthDashboard() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-5">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-24 pt-4 sm:px-5">
 
         <div className="ui-dashboard-stack">
           <motion.section {...fadeInUp}>
@@ -375,8 +376,11 @@ export function HealthDashboard() {
             <WeightChart />
           </motion.section>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-[1.06fr_1fr_1fr]">
             <motion.section {...fadeInUp} className="min-w-0">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                Logging + meals
+              </p>
               {status === "authenticated" &&
               isAwsBackendEnabled() &&
               user?.id &&
@@ -425,15 +429,24 @@ export function HealthDashboard() {
               />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-w-0 flex-col gap-3">
+              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                Activity + insights
+              </p>
               <TodayActivityCard />
               <AIInsights />
             </motion.section>
             <motion.section {...fadeInUp} className="min-w-0">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                Photos
+              </p>
               <PhotoTracker />
             </motion.section>
           </div>
 
           <motion.section {...fadeInUp}>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              Review + history
+            </p>
             <PastDayGrid />
           </motion.section>
 
