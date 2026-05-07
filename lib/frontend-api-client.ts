@@ -198,7 +198,12 @@ export async function putAdminFlagOverride(
 }
 
 export async function submitInsightFeedback(
-  payload: { insightId: string; vote: InsightVote },
+  payload: {
+    insightId: string;
+    vote: InsightVote;
+    comment?: string;
+    feedbackType?: "negative";
+  },
   accessToken?: string,
 ) {
   return fetchJson<{ ok: true }>(

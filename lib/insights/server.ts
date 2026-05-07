@@ -112,6 +112,8 @@ export async function storeInsightFeedback(input: {
   userId: string;
   insightId: string;
   vote: "up" | "down";
+  comment?: string;
+  feedbackType?: "negative";
 }) {
   const table = req("INSIGHT_FEEDBACK_TABLE_NAME");
   const ts = new Date().toISOString();
@@ -124,6 +126,8 @@ export async function storeInsightFeedback(input: {
         insightId: { S: input.insightId },
         vote: { S: input.vote },
         ts: { S: ts },
+        ...(input.comment ? { comment: { S: input.comment } } : {}),
+        ...(input.feedbackType ? { feedbackType: { S: input.feedbackType } } : {}),
       },
     }),
   );

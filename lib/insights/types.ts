@@ -1,4 +1,5 @@
 import type { DailyEntry, PlateauUserSettings } from "@/lib/types";
+import type { AiInsightStructured } from "@/lib/insights/aiInsightStructured";
 
 export type InsightVote = "up" | "down";
 export type InsightCategory =
@@ -34,6 +35,10 @@ export interface Insight {
   generationSource?: InsightGenerationSource;
   /** ISO timestamp when the AI card was generated (Lambda). */
   generatedAt?: string;
+  /** Structured AI card zones (v2 layout). When set, the client renders AiInsightCardV2. */
+  structured?: AiInsightStructured;
+  /** True when the model returned invalid JSON twice; show minimal recovery UI. */
+  degraded?: boolean;
 }
 
 export type InsightLog = DailyEntry & {

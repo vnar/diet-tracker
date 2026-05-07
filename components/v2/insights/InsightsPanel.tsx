@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { track } from "@/lib/analytics";
@@ -11,6 +11,7 @@ import {
 import { isInsightsSourceLabelEnabled } from "@/lib/featureFlags";
 import { renderInsightEmphasis } from "@/lib/insights/renderRichPhrases";
 import type { Insight, InsightVote } from "@/lib/insights/types";
+import { AiInsightCardV2 } from "@/components/v2/insights/AiInsightCardV2";
 
 function formatUpdatedAgo(iso: string | undefined): string | null {
   if (!iso) return null;
@@ -36,10 +37,16 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [voted, setVoted] = useState<Record<string, InsightVote>>({});
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
+
+  const refetch = useCallback(() => {
+    setRefreshEpoch((e) => e + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
+      setLoading(true);
       const result = await getInsightsV2(accessToken);
       if (cancelled) return;
       if (!result.ok) {
@@ -68,7 +75,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [accessToken, refreshEpoch]);
 
   async function handleVote(insightId: string, vote: InsightVote) {
     setVoted((prev) => ({ ...prev, [insightId]: vote }));
@@ -100,6 +107,20 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
       {insights.map((ins) => {
         const generationSource = ins.generationSource ?? "rules";
         const updatedLabel = formatUpdatedAgo(ins.generatedAt);
+
+        if (ins.structured) {
+          return (
+            <li key={ins.id} className="list-none">
+              <AiInsightCardV2
+                insight={ins}
+                accessToken={accessToken}
+                onRefresh={refetch}
+                showSourceLabel={showSourceLabel}
+              />
+            </li>
+          );
+        }
+
         return (
         <li
           key={ins.id}

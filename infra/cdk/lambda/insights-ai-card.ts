@@ -30,6 +30,11 @@ import {
   type InsightEntryRow,
   type MealDayTotal,
 } from "../../../lib/insights/aiInsightData";
+import {
+  parseAiInsightStructured,
+  type AiInsightStructured,
+  type VerdictStatus,
+} from "../../../lib/insights/aiInsightStructured";
 
 const DAILY_LIMIT = 100;
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -45,6 +50,8 @@ export type LambdaInsightCard = {
   category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
   generationSource?: "llm" | "rules";
   generatedAt?: string;
+  structured?: AiInsightStructured;
+  degraded?: boolean;
 };
 
 function mealLibraryOn(): boolean {
@@ -164,25 +171,119 @@ async function incrementLlmUsage(ddb: DynamoDBClient, cacheTable: string, userId
   return Number(out.Attributes?.llmCalls?.N ?? 0);
 }
 
-function stripLlmPreamble(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/^\s*#+\s?.*$/gm, "")
-    .trim();
-}
-
-function fallbackProse(input: {
+function buildFallbackStructured(input: {
   today: string;
-  current: number;
-  target: number;
-  goalDate: string;
+  currentW: number;
+  goalWeight: number;
+  targetDate: string;
   nLogs: number;
   weekly: number | null;
   reqWeekly: number | null;
-}): string {
+  entriesAsc: InsightEntryRow[];
+  mealTotals: MealDayTotal[];
+}): AiInsightStructured {
+  const last = input.entriesAsc[input.entriesAsc.length - 1];
+  let daysNoWorkout = 0;
+  for (let i = input.entriesAsc.length - 1; i >= 0; i -= 1) {
+    if (input.entriesAsc[i]?.workout) break;
+    daysNoWorkout += 1;
+  }
+  const sleep =
+    last?.sleep != null && Number.isFinite(last.sleep) ? `${fmtOrDash(last.sleep, 1)}h` : "—";
+  let protein = "—";
+  if (last?.protein != null && Number.isFinite(last.protein)) {
+    protein = `${Math.round(last.protein)}g`;
+  } else if (input.mealTotals.length > 0) {
+    const mt = input.mealTotals[input.mealTotals.length - 1];
+    if (mt && mt.protein > 0) protein = `${Math.round(mt.protein)}g`;
+  }
   const w = input.weekly != null ? fmtOrDash(input.weekly, 2) : "—";
   const rq = input.reqWeekly != null ? fmtOrDash(input.reqWeekly, 2) : "—";
-  return `<b>${input.nLogs} morning weigh-ins on file through ${input.today}</b> Current scale reading is ${fmtOrDash(input.current, 2)} kg versus goal ${fmtOrDash(input.target, 2)} kg by ${input.goalDate}. <b>Trailing 7-day velocity is about ${w} kg/week</b> versus roughly ${rq} kg/week required on that deadline. <b>Today's lever is calories and sleep timing</b> — hold the line on the prior day's intake and get one structured walk if you have no workout logged yet.`;
+  let status: VerdictStatus = "at_risk";
+  if (input.weekly != null && input.reqWeekly != null) {
+    if (input.weekly >= input.reqWeekly) status = "on_track";
+    else if (input.weekly < input.reqWeekly * 0.35) status = "off_track";
+    else status = "at_risk";
+  }
+  const headline =
+    status === "on_track"
+      ? `Pace matches goal — ${w} kg/wk vs ${rq} needed`
+      : status === "off_track"
+        ? `Well under required pace — ${w} vs ${rq} kg/wk`
+        : `Below target pace — ${w} kg/wk vs ${rq} needed`;
+  const detail = `${input.nLogs} weigh-ins through ${input.today}; goal ${fmtOrDash(input.goalWeight, 2)} kg by ${input.targetDate}.`;
+  return {
+    verdict: { status, headline, detail },
+    working: {
+      body:
+        input.nLogs >= 2
+          ? `Current weight ${fmtOrDash(input.currentW, 2)} kg on ${last?.date ?? input.today}.`
+          : "Log a few more days to sharpen recommendations.",
+    },
+    stalling: {
+      body: `Velocity ~${w} kg/week vs ~${rq} kg/week required by ${input.targetDate}.`,
+      metrics: [
+        { value: String(daysNoWorkout), label: "days no workout" },
+        { value: sleep, label: "sleep last log" },
+        { value: protein, label: "protein same day" },
+      ],
+    },
+    actions: [
+      { icon: "walk", action: "10–20 min walk", reason: "Easy volume without overtraining" },
+      { icon: "food", action: "Hit daily protein", reason: "Preserves muscle in a deficit" },
+      { icon: "moon", action: "Target 7h sleep", reason: "Steadier mornings with adequate rest" },
+    ],
+    prediction: {
+      headline: `Trend toward ${fmtOrDash(input.goalWeight, 2)} kg by ${input.targetDate}`,
+      basis: "From current 7-day rate vs required weekly rate",
+    },
+  };
+}
+
+function buildDegradedStructured(): AiInsightStructured {
+  return {
+    verdict: {
+      status: "off_track",
+      headline: "Analysis updating — check back in a moment.",
+      detail: "",
+    },
+    working: { body: "" },
+    stalling: {
+      body: "",
+      metrics: [
+        { value: "—", label: "—" },
+        { value: "—", label: "—" },
+        { value: "—", label: "—" },
+      ],
+    },
+    actions: [
+      { icon: "walk", action: "Refresh below", reason: "Reload this insight" },
+      { icon: "food", action: "—", reason: "—" },
+      { icon: "moon", action: "—", reason: "—" },
+    ],
+    prediction: { headline: "", basis: "" },
+  };
+}
+
+function lambdaCardFromStructured(
+  base: () => LambdaInsightCard,
+  structured: AiInsightStructured,
+  source: "llm" | "rules",
+  degraded?: boolean,
+): LambdaInsightCard {
+  const a0 = structured.actions[0];
+  const generatedAt = new Date().toISOString();
+  return {
+    ...base(),
+    headline: structured.verdict.headline,
+    detail: structured.verdict.detail,
+    action: a0 ? `${a0.action} — ${a0.reason}` : "",
+    why: [],
+    structured,
+    degraded: degraded === true,
+    generationSource: source,
+    generatedAt,
+  };
 }
 
 /**
@@ -310,67 +411,69 @@ export async function generateAiInsightCard(
     generationSource: "llm",
   });
 
+  const fallbackCtx = {
+    today,
+    currentW,
+    goalWeight: ctx.goalWeight,
+    targetDate: ctx.targetDate,
+    nLogs: entriesAsc.length,
+    weekly: weeklyLoss,
+    reqWeekly,
+    entriesAsc,
+    mealTotals,
+  };
+
   if (!apiKey) {
-    const prose = fallbackProse({
-      today,
-      current: currentW,
-      target: ctx.goalWeight,
-      goalDate: ctx.targetDate,
-      nLogs: entriesAsc.length,
-      weekly: weeklyLoss,
-      reqWeekly: reqWeekly,
-    });
-    const card: LambdaInsightCard = {
-      ...baseCard(),
-      headline: prose,
-      generationSource: "rules",
-      generatedAt: new Date().toISOString(),
-    };
-    return [card];
+    const structured = buildFallbackStructured(fallbackCtx);
+    return [lambdaCardFromStructured(baseCard, structured, "rules")];
   }
 
   if (cacheTable) {
     const count = await incrementLlmUsage(ddb, cacheTable, ctx.userId);
     if (count > DAILY_LIMIT) {
-      const prose = fallbackProse({
-        today,
-        current: currentW,
-        target: ctx.goalWeight,
-        goalDate: ctx.targetDate,
-        nLogs: entriesAsc.length,
-        weekly: weeklyLoss,
-        reqWeekly: reqWeekly,
-      });
-      return [{ ...baseCard(), headline: prose, generationSource: "rules", generatedAt: new Date().toISOString() }];
+      const structured = buildFallbackStructured(fallbackCtx);
+      return [lambdaCardFromStructured(baseCard, structured, "rules")];
     }
   }
 
   try {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model,
-      max_tokens: 300,
-      temperature: 0,
-      system: OJAS_AI_INSIGHT_SYSTEM,
-      messages: [{ role: "user", content: userMsg }],
-    });
-    const text = response.content.find((part) => part.type === "text")?.text;
-    const prose = text ? stripLlmPreamble(text) : "";
-    const headline =
-      prose.length > 20
-        ? prose
-        : fallbackProse({
-            today,
-            current: currentW,
-            target: ctx.goalWeight,
-            goalDate: ctx.targetDate,
-            nLogs: entriesAsc.length,
-            weekly: weeklyLoss,
-            reqWeekly: reqWeekly,
-          });
-    const generatedAt = new Date().toISOString();
-    const card: LambdaInsightCard = { ...baseCard(), headline, generatedAt };
+    type Msg = { role: "user" | "assistant"; content: string };
+    const run = (messages: Msg[]) =>
+      client.messages.create({
+        model,
+        max_tokens: 300,
+        temperature: 0,
+        system: OJAS_AI_INSIGHT_SYSTEM,
+        messages,
+      });
+
+    let messages: Msg[] = [{ role: "user", content: userMsg }];
+    let response = await run(messages);
+    let text = response.content.find((part) => part.type === "text")?.text ?? "";
+    let parsed = parseAiInsightStructured(text);
+    if (!parsed.ok) {
+      messages = [
+        { role: "user", content: userMsg },
+        { role: "assistant", content: text },
+        {
+          role: "user",
+          content:
+            "Your previous reply was not valid JSON. Reply with ONLY one JSON object matching the schema from the system prompt. No markdown, no code fences, no extra text.",
+        },
+      ];
+      response = await run(messages);
+      text = response.content.find((part) => part.type === "text")?.text ?? "";
+      parsed = parseAiInsightStructured(text);
+    }
+
+    let card: LambdaInsightCard;
+    if (parsed.ok) {
+      card = lambdaCardFromStructured(baseCard, parsed.data, "llm");
+    } else {
+      card = lambdaCardFromStructured(baseCard, buildDegradedStructured(), "llm", true);
+    }
     if (cacheTable) {
       await putCachedCard(ddb, cacheTable, ctx.userId, fingerprint, card);
     }
@@ -382,15 +485,7 @@ export async function generateAiInsightCard(
         error: err instanceof Error ? err.message : String(err),
       }),
     );
-    const prose = fallbackProse({
-      today,
-      current: currentW,
-      target: ctx.goalWeight,
-      goalDate: ctx.targetDate,
-      nLogs: entriesAsc.length,
-      weekly: weeklyLoss,
-      reqWeekly: reqWeekly,
-    });
-    return [{ ...baseCard(), headline: prose, generationSource: "rules", generatedAt: new Date().toISOString() }];
+    const structured = buildFallbackStructured(fallbackCtx);
+    return [lambdaCardFromStructured(baseCard, structured, "rules")];
   }
 }

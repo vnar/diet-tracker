@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { AiInsightStructured } from "../../../lib/insights/aiInsightStructured";
 import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 import {
@@ -121,6 +122,9 @@ type InsightCard = {
   action: string;
   category: "sodium" | "alcohol" | "late_snack" | "workout" | "plateau" | "streak" | "trajectory";
   generationSource?: "llm" | "rules";
+  generatedAt?: string;
+  structured?: AiInsightStructured;
+  degraded?: boolean;
 };
 
 function json(statusCode: number, payload: unknown): HttpResult {
@@ -720,6 +724,12 @@ async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<Ht
   const insightId = typeof body.insightId === "string" ? body.insightId.trim() : "";
   const vote = body.vote === "up" || body.vote === "down" ? body.vote : null;
   if (!insightId || !vote) return json(400, { error: "Invalid insight feedback payload" });
+  const commentRaw = body.comment;
+  const comment =
+    typeof commentRaw === "string" && commentRaw.trim().length > 0
+      ? commentRaw.trim().slice(0, 2000)
+      : undefined;
+  const feedbackType = body.feedbackType === "negative" ? "negative" : undefined;
   const ts = new Date().toISOString();
   await ddb.send(
     new PutItemCommand({
@@ -730,6 +740,8 @@ async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<Ht
         insightId: { S: insightId },
         vote: { S: vote },
         ts: { S: ts },
+        ...(comment ? { comment: { S: comment } } : {}),
+        ...(feedbackType ? { feedbackType: { S: feedbackType } } : {}),
       },
     }),
   );

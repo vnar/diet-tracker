@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppFooter } from "@/components/AppFooter";
 import { FeedbackButton } from "@/components/FeedbackButton";
@@ -22,6 +22,13 @@ const fontMono = JetBrains_Mono({
   weight: ["400", "500", "600", "700"],
 });
 
+const fontInsightDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-insight-display",
+  display: "swap",
+  weight: ["600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Ojas-Health",
   description: "Daily awareness dashboard for weight and habits",
@@ -39,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fontSans.variable} ${fontMono.variable}`}
+      className={`${fontSans.variable} ${fontMono.variable} ${fontInsightDisplay.variable}`}
       suppressHydrationWarning
     >
       <body className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased`}>
