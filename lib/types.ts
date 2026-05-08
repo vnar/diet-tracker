@@ -40,6 +40,20 @@ export interface UserSettings {
   plateau?: PlateauUserSettings;
   /** Multiplier for activity-burn estimates (default 1.0). */
   activityCalibrationFactor?: number;
+  /** Explicit user consent gate for future AI body forecast features. */
+  optInForecast?: boolean;
+  forecastGeneratedAt?: string;
+  forecastDisclaimerAccepted?: boolean;
+}
+
+export interface ProgressPhoto {
+  photoId: string;
+  userId: string;
+  date: string;
+  imageUrl?: string;
+  storageKey?: string;
+  weightAtPhoto?: number;
+  createdAt: string;
 }
 
 export type InsightSeverity = "warning" | "success" | "info" | "neutral";

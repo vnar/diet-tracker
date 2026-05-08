@@ -5,7 +5,6 @@ import { Flame, Footprints, Loader2, Sparkles } from "lucide-react";
 import type { DailyEntry } from "@/lib/types";
 import {
   getEnergyWeeklySummary,
-  patchActivityCalibration,
   postActivityBurnEstimate,
   postActivityLog,
   type DayMealEntryRow,
@@ -118,14 +117,6 @@ export function EnergyBalanceCard(props: Props) {
     else void loadWeeklySummary();
   }
 
-  async function saveCalibration() {
-    const token = props.getAccessToken();
-    if (!token) return;
-    const res = await patchActivityCalibration(calibration, token);
-    if (!res.ok) setErr(res.error);
-    else void loadWeeklySummary();
-  }
-
   async function loadWeeklySummary() {
     const token = props.getAccessToken();
     if (!token) return;
@@ -164,6 +155,9 @@ export function EnergyBalanceCard(props: Props) {
         <span className="inline-flex items-center gap-1"><Footprints className="h-3 w-3" /> Steps {stepBurn}</span>
         <span>Activity {activityBurn}</span>
       </div>
+      <p className="mt-1 text-[10px] text-zinc-500">
+        Total burn = baseline ({baselineBurn}) + steps ({stepBurn}) + activities ({activityBurn})
+      </p>
       <div className="mt-2 flex gap-2">
         <input
           value={activityText}
@@ -180,32 +174,13 @@ export function EnergyBalanceCard(props: Props) {
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "AI estimate"}
         </button>
       </div>
-      <div className="mt-2 flex items-center gap-2">
-        <label className="text-[10px] text-zinc-500">Calibration</label>
-        <input
-          type="number"
-          min={0.6}
-          max={1.6}
-          step={0.05}
-          value={calibration}
-          onChange={(e) => setCalibration(Number(e.target.value))}
-          className="w-20 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[11px] text-zinc-100"
-        />
-        <button
-          type="button"
-          onClick={() => void saveCalibration()}
-          className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={() => void loadWeeklySummary()}
-          className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
-        >
-          Refresh 7d
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => void loadWeeklySummary()}
+        className="mt-2 rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
+      >
+        Refresh 7d
+      </button>
       {aiSummary ? (
         <p className="mt-1 text-[10px] text-zinc-400">
           {aiSummary}

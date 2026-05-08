@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "node:crypto";
 import type { AiInsightStructured } from "../../../lib/insights/aiInsightStructured";
 import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
@@ -48,6 +49,7 @@ const photoBucketName = process.env.PHOTO_BUCKET_NAME;
 const foodLogEntriesTableName = process.env.FOOD_LOG_ENTRIES_TABLE_NAME;
 const mealsTableName = process.env.MEALS_TABLE_NAME;
 const dayMealEntriesTableName = process.env.DAY_MEAL_ENTRIES_TABLE_NAME;
+const progressPhotosTableName = process.env.PROGRESS_PHOTOS_TABLE_NAME;
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
@@ -107,6 +109,9 @@ type SettingsPatch = {
   unit: "kg" | "lbs";
   tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
   activityCalibrationFactor?: number;
+  optInForecast?: boolean;
+  forecastGeneratedAt?: string;
+  forecastDisclaimerAccepted?: boolean;
 };
 
 type StoredEntry = DailyEntryUpsert & {
@@ -307,6 +312,21 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
   ) {
     return { ok: false, error: "Invalid tone" };
   }
+  if (body.optInForecast !== undefined && typeof body.optInForecast !== "boolean") {
+    return { ok: false, error: "Invalid optInForecast" };
+  }
+  if (
+    body.forecastGeneratedAt !== undefined &&
+    (typeof body.forecastGeneratedAt !== "string" || body.forecastGeneratedAt.length > 64)
+  ) {
+    return { ok: false, error: "Invalid forecastGeneratedAt" };
+  }
+  if (
+    body.forecastDisclaimerAccepted !== undefined &&
+    typeof body.forecastDisclaimerAccepted !== "boolean"
+  ) {
+    return { ok: false, error: "Invalid forecastDisclaimerAccepted" };
+  }
   return {
     ok: true,
     data: {
@@ -315,6 +335,9 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
       targetDate: body.targetDate,
       unit: body.unit,
       tone: body.tone as SettingsPatch["tone"],
+      optInForecast: body.optInForecast as boolean | undefined,
+      forecastGeneratedAt: body.forecastGeneratedAt as string | undefined,
+      forecastDisclaimerAccepted: body.forecastDisclaimerAccepted as boolean | undefined,
     },
   };
 }
@@ -1002,6 +1025,9 @@ async function getSettings(userId: string): Promise<HttpResult> {
           : "friendly",
       plateau: plateauSettingsFromItem(out.Item),
       activityCalibrationFactor: Number(out.Item.activityCalibrationFactor?.N ?? 1),
+      optInForecast: Number(out.Item.optInForecast?.N ?? "0") === 1,
+      forecastGeneratedAt: out.Item.forecastGeneratedAt?.S,
+      forecastDisclaimerAccepted: Number(out.Item.forecastDisclaimerAccepted?.N ?? "0") === 1,
     },
   });
 }
@@ -1030,6 +1056,10 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
       : undefined;
   const tone = data.tone ?? existingTone ?? "friendly";
   const existingCalibration = Number(existingOut.Item?.activityCalibrationFactor?.N ?? 1);
+  const existingOptInForecast = Number(existingOut.Item?.optInForecast?.N ?? "0") === 1;
+  const existingForecastGeneratedAt = existingOut.Item?.forecastGeneratedAt?.S;
+  const existingForecastDisclaimerAccepted =
+    Number(existingOut.Item?.forecastDisclaimerAccepted?.N ?? "0") === 1;
 
   let nextPlateau = plateauSettingsFromItem(existingOut.Item);
   if (Object.prototype.hasOwnProperty.call(body, "plateau")) {
@@ -1061,6 +1091,16 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
     item.plateauMaxMovementKg = { N: String(nextPlateau.maxAvgMovementKg) };
   }
   item.activityCalibrationFactor = { N: String(existingCalibration) };
+  item.optInForecast = {
+    N: (data.optInForecast ?? existingOptInForecast) ? "1" : "0",
+  };
+  const nextForecastGeneratedAt = data.forecastGeneratedAt ?? existingForecastGeneratedAt;
+  if (typeof nextForecastGeneratedAt === "string" && nextForecastGeneratedAt.length > 0) {
+    item.forecastGeneratedAt = { S: nextForecastGeneratedAt };
+  }
+  item.forecastDisclaimerAccepted = {
+    N: (data.forecastDisclaimerAccepted ?? existingForecastDisclaimerAccepted) ? "1" : "0",
+  };
 
   await ddb.send(
     new PutItemCommand({
@@ -1078,8 +1118,115 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
       tone,
       plateau: nextPlateau,
       activityCalibrationFactor: existingCalibration,
+      optInForecast: data.optInForecast ?? existingOptInForecast,
+      forecastGeneratedAt: data.forecastGeneratedAt ?? existingForecastGeneratedAt,
+      forecastDisclaimerAccepted:
+        data.forecastDisclaimerAccepted ?? existingForecastDisclaimerAccepted,
     },
   });
+}
+
+type ProgressPhotoItem = {
+  photoId: string;
+  userId: string;
+  date: string;
+  imageUrl?: string;
+  storageKey?: string;
+  weightAtPhoto?: number;
+  createdAt: string;
+};
+
+function parseProgressPhotoFromItem(item: Record<string, { S?: string; N?: string }>): ProgressPhotoItem | null {
+  const photoId = item.photoId?.S;
+  const userId = item.userId?.S;
+  const date = item.date?.S;
+  const createdAt = item.createdAt?.S;
+  if (!photoId || !userId || !date || !createdAt) return null;
+  const imageUrl = item.imageUrl?.S;
+  const storageKey = item.storageKey?.S;
+  const weightRaw = item.weightAtPhoto?.N;
+  const weightAtPhoto = weightRaw != null ? Number(weightRaw) : undefined;
+  return {
+    photoId,
+    userId,
+    date,
+    imageUrl: imageUrl || undefined,
+    storageKey: storageKey || undefined,
+    weightAtPhoto: Number.isFinite(weightAtPhoto ?? NaN) ? weightAtPhoto : undefined,
+    createdAt,
+  };
+}
+
+async function listProgressPhotos(userId: string): Promise<HttpResult> {
+  const table = getRequiredEnv("PROGRESS_PHOTOS_TABLE_NAME", progressPhotosTableName);
+  const out = await ddb.send(
+    new QueryCommand({
+      TableName: table,
+      KeyConditionExpression: "userId = :userId",
+      ExpressionAttributeValues: { ":userId": { S: userId } },
+      ConsistentRead: true,
+    }),
+  );
+  const items = (out.Items ?? [])
+    .map((item) => parseProgressPhotoFromItem(item as Record<string, { S?: string; N?: string }>))
+    .filter((row): row is ProgressPhotoItem => row !== null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return json(200, { items });
+}
+
+async function createProgressPhoto(userId: string, event: HttpEvent): Promise<HttpResult> {
+  const table = getRequiredEnv("PROGRESS_PHOTOS_TABLE_NAME", progressPhotosTableName);
+  const payload = parseJsonBody(event);
+  const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const date = isDateString(body.date) ? body.date : undefined;
+  const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+  const storageKey = typeof body.storageKey === "string" ? body.storageKey.trim() : "";
+  const weightAtPhoto = body.weightAtPhoto === undefined ? undefined : Number(body.weightAtPhoto);
+  if (!date) return json(400, { error: "Invalid date" });
+  if (!imageUrl && !storageKey) return json(400, { error: "Missing imageUrl or storageKey" });
+  if (
+    weightAtPhoto !== undefined &&
+    (!Number.isFinite(weightAtPhoto) || weightAtPhoto <= 0 || weightAtPhoto > 1000)
+  ) {
+    return json(400, { error: "Invalid weightAtPhoto" });
+  }
+  const photoId = randomUUID();
+  const createdAt = new Date().toISOString();
+  const item: Record<string, { S?: string; N?: string }> = {
+    userId: { S: userId },
+    photoId: { S: photoId },
+    date: { S: date },
+    createdAt: { S: createdAt },
+  };
+  if (imageUrl) item.imageUrl = { S: imageUrl };
+  if (storageKey) item.storageKey = { S: storageKey };
+  if (weightAtPhoto !== undefined) item.weightAtPhoto = { N: String(weightAtPhoto) };
+  await ddb.send(new PutItemCommand({ TableName: table, Item: item as never }));
+  return json(200, {
+    item: {
+      photoId,
+      userId,
+      date,
+      imageUrl: imageUrl || undefined,
+      storageKey: storageKey || undefined,
+      weightAtPhoto,
+      createdAt,
+    },
+  });
+}
+
+async function deleteProgressPhoto(userId: string, photoId: string): Promise<HttpResult> {
+  const table = getRequiredEnv("PROGRESS_PHOTOS_TABLE_NAME", progressPhotosTableName);
+  await ddb.send(
+    new DeleteItemCommand({
+      TableName: table,
+      Key: {
+        userId: { S: userId },
+        photoId: { S: photoId },
+      },
+    }),
+  );
+  return json(200, { ok: true });
 }
 
 async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpResult> {
@@ -1381,6 +1528,16 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
         dayMealsTableName: dT,
         settingsTableName: sT,
       });
+    }
+    if (event.rawPath === "/v2/progress-photos" && method === "GET") {
+      return listProgressPhotos(userId);
+    }
+    if (event.rawPath === "/v2/progress-photos" && method === "POST") {
+      return createProgressPhoto(userId, event);
+    }
+    const progressDelMatch = event.rawPath.match(/^\/v2\/progress-photos\/([^/]+)$/);
+    if (progressDelMatch && method === "DELETE") {
+      return deleteProgressPhoto(userId, decodeURIComponent(progressDelMatch[1] ?? ""));
     }
 
     if (event.rawPath === "/v2/food/meal-complete" && method === "POST") {

@@ -12,13 +12,17 @@ export function TodayActivityCard() {
   const unit = useHealthStore((s) => s.settings.unit);
   const today = useClientTodayKey();
   const entry = today ? getEntryForDate(entries, today) : undefined;
+  const stepBurn =
+    entry?.steps !== undefined && entry.steps > 0 ? Math.round(entry.steps * 0.04) : null;
 
   const rows = [
     {
       icon: Footprints,
       label: "Steps",
       value:
-        entry?.steps !== undefined ? entry.steps.toLocaleString() : "—",
+        entry?.steps !== undefined
+          ? `${entry.steps.toLocaleString()}${stepBurn != null ? ` (~${stepBurn} kcal)` : ""}`
+          : "—",
     },
     {
       icon: Moon,

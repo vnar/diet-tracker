@@ -151,6 +151,20 @@ export class BackendFoundationStack extends cdk.Stack {
       sortKey: { name: "mealHistorySk", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+    const progressPhotosTable = new dynamodb.Table(this, "ProgressPhotosTable", {
+      tableName: "ProgressPhotos",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "photoId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+    progressPhotosTable.addGlobalSecondaryIndex({
+      indexName: "UserDateIndex",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "date", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
 
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -206,6 +220,7 @@ export class BackendFoundationStack extends cdk.Stack {
     foodLogEntriesTable.grantReadWriteData(backendLambdaRole);
     mealsTable.grantReadWriteData(backendLambdaRole);
     dayMealEntriesTable.grantReadWriteData(backendLambdaRole);
+    progressPhotosTable.grantReadWriteData(backendLambdaRole);
 
     const mealNlParseLambdaRole = new iam.Role(this, "MealNlParseLambdaRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -283,6 +298,7 @@ export class BackendFoundationStack extends cdk.Stack {
         FOOD_LOG_ENTRIES_TABLE_NAME: foodLogEntriesTable.tableName,
         MEALS_TABLE_NAME: mealsTable.tableName,
         DAY_MEAL_ENTRIES_TABLE_NAME: dayMealEntriesTable.tableName,
+        PROGRESS_PHOTOS_TABLE_NAME: progressPhotosTable.tableName,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
@@ -350,6 +366,9 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "POST /v2/activity/log", id: "ActivityLogPostRoute" },
       { routeKey: "PATCH /v2/activity/calibration", id: "ActivityCalibrationPatchRoute" },
       { routeKey: "GET /v2/activity/energy-weekly-summary", id: "EnergyWeeklySummaryGetRoute" },
+      { routeKey: "GET /v2/progress-photos", id: "ProgressPhotosListGetRoute" },
+      { routeKey: "POST /v2/progress-photos", id: "ProgressPhotosCreatePostRoute" },
+      { routeKey: "DELETE /v2/progress-photos/{photoId}", id: "ProgressPhotosDeleteRoute" },
       { routeKey: "POST /v2/food/meal-complete", id: "FoodMealCompletePostRoute" },
       { routeKey: "GET /v2/meals", id: "MealsListGetRoute" },
       { routeKey: "POST /v2/meals", id: "MealsCreatePostRoute" },

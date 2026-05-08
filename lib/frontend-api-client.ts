@@ -1,6 +1,6 @@
 "use client";
 
-import type { DailyEntry, UserSettings } from "@/lib/types";
+import type { DailyEntry, ProgressPhoto, UserSettings } from "@/lib/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
 import type { MealType } from "@/lib/meals/mealTypes";
@@ -564,6 +564,45 @@ export async function getEnergyWeeklySummary(accessToken: string, endDate?: stri
       netKcal: number;
     }>;
   }>(`/v2/activity/energy-weekly-summary${qs}`, undefined, true, accessToken);
+}
+
+export async function getProgressPhotos(accessToken: string) {
+  return fetchJson<{ items: ProgressPhoto[] }>(
+    "/v2/progress-photos",
+    undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function postProgressPhoto(
+  body: {
+    date: string;
+    storageKey?: string;
+    imageUrl?: string;
+    weightAtPhoto?: number;
+  },
+  accessToken: string,
+) {
+  return fetchJson<{ item: ProgressPhoto }>(
+    "/v2/progress-photos",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function deleteProgressPhoto(photoId: string, accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    `/v2/progress-photos/${encodeURIComponent(photoId)}`,
+    { method: "DELETE" },
+    true,
+    accessToken,
+  );
 }
 
 export async function uploadPhotoFile(

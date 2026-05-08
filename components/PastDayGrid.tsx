@@ -30,36 +30,6 @@ import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
 
 const GRID_DAYS = 42;
 
-const LS_CALENDAR = "healthos-ui-pastdays-calendar-open";
-
-function usePersistentBool(
-  key: string,
-  defaultValue: boolean
-): [boolean, (next: boolean) => void] {
-  const [v, setV] = useState(defaultValue);
-
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem(key);
-      if (s === "1") setV(true);
-      else if (s === "0") setV(false);
-    } catch {
-      /* ignore */
-    }
-  }, [key]);
-
-  const set = (next: boolean) => {
-    setV(next);
-    try {
-      localStorage.setItem(key, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  };
-
-  return [v, set];
-}
-
 function weekdayShort(iso: string): string {
   return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
     weekday: "short",
@@ -89,10 +59,7 @@ export function PastDayGrid() {
   const refreshEntries = useRefreshEntries();
   const today = useClientTodayKey();
 
-  const [calendarOpen, setCalendarOpen] = usePersistentBool(
-    LS_CALENDAR,
-    false
-  );
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);

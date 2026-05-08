@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import { DailyInput } from "@/components/DailyInput";
 import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCaloriesAccessory";
 import { AddFromLibrarySheet } from "@/components/v2/meals/AddFromLibrarySheet";
@@ -23,7 +24,7 @@ import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { getDayMealEntries, getSettings, isAwsBackendEnabled, type DayMealEntryRow } from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
-import { Settings, Users } from "lucide-react";
+import { Settings, Users, Utensils } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
 import { isMealLibraryEnabled, isNlMealParseEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
@@ -60,6 +61,7 @@ export function HealthDashboard() {
   const showAdminUsers = isAppAdminViewer(user?.email);
   const [mealEntries, setMealEntries] = useState<DayMealEntryRow[]>([]);
   const [mealRefreshEpoch, setMealRefreshEpoch] = useState(0);
+  const [mealsOpen, setMealsOpen] = useState(false);
 
   const refreshMeals = useCallback(() => {
     setMealRefreshEpoch((n) => n + 1);
@@ -388,25 +390,6 @@ export function HealthDashboard() {
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
                 Logging + meals
               </p>
-              {status === "authenticated" &&
-              isAwsBackendEnabled() &&
-              user?.id &&
-              isMealLibraryEnabled(user.id) &&
-              todayKey ? (
-                <>
-                  <FrequentMealsCarousel
-                    day={todayKey}
-                    getAccessToken={getAccessToken}
-                    onLogged={refreshMeals}
-                  />
-                  <MealsTodayPanel
-                    day={todayKey}
-                    entries={mealEntries}
-                    getAccessToken={getAccessToken}
-                    onChanged={refreshMeals}
-                  />
-                </>
-              ) : null}
               <DailyInput
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
@@ -414,9 +397,21 @@ export function HealthDashboard() {
                   isAwsBackendEnabled() &&
                   user?.id &&
                   (isPhotoFoodLogEnabled(user.id) ||
-                    (isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id)))
+                    (isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id)) ||
+                    isMealLibraryEnabled(user.id))
                     ? (ctx) => (
                         <div className="flex shrink-0 items-center gap-1">
+                          {isMealLibraryEnabled(user.id) ? (
+                            <button
+                              type="button"
+                              onClick={() => setMealsOpen(true)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400"
+                              aria-label="Open daily meals"
+                              title="Open daily meals"
+                            >
+                              <Utensils className="h-4 w-4" />
+                            </button>
+                          ) : null}
                           {isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id) ? (
                             <NaturalMealSheet
                               day={ctx.todayKey}
@@ -432,12 +427,14 @@ export function HealthDashboard() {
                               onAdded={refreshMeals}
                             />
                           ) : null}
-                          <FoodPhotoCaloriesAccessory
-                            {...ctx}
-                            getAccessToken={getAccessToken}
-                            mealLibraryEnabled={isMealLibraryEnabled(user.id)}
-                            onMealsChanged={refreshMeals}
-                          />
+                          {isPhotoFoodLogEnabled(user.id) ? (
+                            <FoodPhotoCaloriesAccessory
+                              {...ctx}
+                              getAccessToken={getAccessToken}
+                              mealLibraryEnabled={isMealLibraryEnabled(user.id)}
+                              onMealsChanged={refreshMeals}
+                            />
+                          ) : null}
                         </div>
                       )
                     : undefined
@@ -482,6 +479,53 @@ export function HealthDashboard() {
       </div>
 
       <AdminUsersPanel open={adminUsersOpen} onClose={() => setAdminUsersOpen(false)} />
+
+      {mealsOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[170] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+              role="presentation"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setMealsOpen(false);
+              }}
+            >
+              <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl">
+                <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-2">
+                  <p className="text-sm font-semibold text-zinc-100">Meals</p>
+                  <button
+                    type="button"
+                    onClick={() => setMealsOpen(false)}
+                    className="rounded-md px-2 py-1 text-xs text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+                  >
+                    Close
+                  </button>
+                </div>
+                {status === "authenticated" &&
+                isAwsBackendEnabled() &&
+                user?.id &&
+                isMealLibraryEnabled(user.id) &&
+                todayKey ? (
+                  <>
+                    <FrequentMealsCarousel
+                      day={todayKey}
+                      getAccessToken={getAccessToken}
+                      onLogged={refreshMeals}
+                    />
+                    <MealsTodayPanel
+                      day={todayKey}
+                      entries={mealEntries}
+                      getAccessToken={getAccessToken}
+                      onChanged={refreshMeals}
+                    />
+                  </>
+                ) : (
+                  <p className="py-3 text-xs text-zinc-500">Meal tools are available when signed in with AWS backend.</p>
+                )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {settingsOpen ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4">
