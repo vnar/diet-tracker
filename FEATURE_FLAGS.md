@@ -53,3 +53,10 @@
 - **Requires:** `FF_MEAL_LIBRARY=true`, `ANTHROPIC_API_KEY` on the nl-parse Lambda, and deploy with `FF_NL_MEAL_PARSE=true`.
 - **Env keys:** `FF_NL_MEAL_PARSE`, `NEXT_PUBLIC_FF_NL_MEAL_PARSE`. Per-user overrides: `FF_NL_MEAL_PARSE` in `FeatureFlagOverrides`.
 - **Optional:** `ANTHROPIC_NL_MEAL_MODEL` at CDK deploy time for the nl-parse function.
+
+### `FF_BODY_COMPARE_AI`
+
+- **Default:** `false` in production by policy; test portal can set `true`.
+- **Scope:** AI visual assessment for progress-photo compare mode. Returns estimate-only body-composition trend commentary and confidence/disclaimer text. No diagnosis or medical claims.
+- **Requires:** progress photos enabled, AWS backend, `ANTHROPIC_API_KEY` on API Lambda.
+- **Env keys:** `FF_BODY_COMPARE_AI`, `NEXT_PUBLIC_FF_BODY_COMPARE_AI`. Per-user overrides: `FF_BODY_COMPARE_AI` in `FeatureFlagOverrides`.

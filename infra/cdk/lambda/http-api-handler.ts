@@ -15,6 +15,13 @@ import {
 import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "node:crypto";
+import {
+  bufferLooksLikeHeicOrHeif,
+  guessFoodImageMediaType,
+  isUnsupportedFoodImageFormat,
+  parseS3Uri,
+  s3KeyAllowedForUser,
+} from "../../../lib/food/s3Uri";
 import type { AiInsightStructured } from "../../../lib/insights/aiInsightStructured";
 import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
@@ -178,6 +185,10 @@ function envFlagTriState(name: string): boolean | undefined {
   if (v === "true") return true;
   if (v === "false") return false;
   return undefined;
+}
+
+function isBodyCompareAiEnabledLambda(): boolean {
+  return process.env.FF_BODY_COMPARE_AI !== "false";
 }
 
 function isPositiveNumber(value: unknown): value is number {
@@ -1229,6 +1240,245 @@ async function deleteProgressPhoto(userId: string, photoId: string): Promise<Htt
   return json(200, { ok: true });
 }
 
+type BodyCompareAssessmentResult = {
+  summary: string;
+  confidence: number;
+  estimated: boolean;
+  disclaimer: string;
+  highlights: Array<{
+    area: string;
+    assessment: string;
+    direction: "leaner" | "unchanged" | "uncertain";
+  }>;
+};
+
+function extractFirstJsonObject(raw: string): string | null {
+  const text = raw.trim();
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const c = text[i]!;
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (c === "{") depth += 1;
+      if (c === "}") {
+        depth -= 1;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+function parseBodyCompareAssessment(raw: string): BodyCompareAssessmentResult | null {
+  const jsonText = extractFirstJsonObject(raw);
+  if (!jsonText) return null;
+  try {
+    const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+    const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+    const confidence = Number(parsed.confidence);
+    const disclaimer = typeof parsed.disclaimer === "string" ? parsed.disclaimer.trim() : "";
+    if (!summary || !Number.isFinite(confidence) || !disclaimer) return null;
+    const highlightsRaw = Array.isArray(parsed.highlights) ? parsed.highlights : [];
+    const highlights = highlightsRaw
+      .map((entry) => {
+        const e = entry as Record<string, unknown>;
+        const area = typeof e.area === "string" ? e.area.trim() : "";
+        const assessment = typeof e.assessment === "string" ? e.assessment.trim() : "";
+        const directionRaw = typeof e.direction === "string" ? e.direction : "uncertain";
+        const direction =
+          directionRaw === "leaner" || directionRaw === "unchanged" || directionRaw === "uncertain"
+            ? directionRaw
+            : "uncertain";
+        if (!area || !assessment) return null;
+        return { area, assessment, direction };
+      })
+      .filter(
+        (v): v is { area: string; assessment: string; direction: "leaner" | "unchanged" | "uncertain" } =>
+          v !== null,
+      );
+    return {
+      summary,
+      confidence: Math.max(0, Math.min(100, Math.round(confidence))),
+      estimated: true,
+      disclaimer,
+      highlights,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function assessProgressPhotos(userId: string, event: HttpEvent): Promise<HttpResult> {
+  if (!isBodyCompareAiEnabledLambda()) {
+    return json(403, { error: "AI photo compare is disabled." });
+  }
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) return json(503, { error: "AI compare is not configured." });
+  const raw = parseJsonBody(event);
+  if (!raw || typeof raw !== "object") return json(400, { error: "Invalid body" });
+  const body = raw as Record<string, unknown>;
+  const photosRaw = Array.isArray(body.photos) ? body.photos : [];
+  const query = typeof body.query === "string" ? body.query.trim() : "";
+  type PhotoItem = {
+    date: string;
+    photoUrl: string;
+    imageBase64: string;
+    mediaType: string;
+  };
+  const photos: PhotoItem[] = [];
+  for (const raw of photosRaw) {
+    const p = raw as Record<string, unknown>;
+    const date = typeof p.date === "string" ? p.date : "";
+    const photoUrl = typeof p.photoUrl === "string" ? p.photoUrl.trim() : "";
+    const imageBase64 =
+      typeof p.imageBase64 === "string" ? p.imageBase64.replace(/\s/g, "") : "";
+    const mediaType = typeof p.mediaType === "string" ? p.mediaType.trim().toLowerCase() : "";
+    if (!isDateString(date)) continue;
+    if (photoUrl) {
+      photos.push({ date, photoUrl, imageBase64: "", mediaType: "" });
+    } else if (
+      imageBase64 &&
+      (mediaType === "image/jpeg" ||
+        mediaType === "image/png" ||
+        mediaType === "image/gif" ||
+        mediaType === "image/webp")
+    ) {
+      photos.push({ date, photoUrl: "", imageBase64, mediaType });
+    }
+  }
+  if (photos.length < 2) {
+    return json(400, { error: "At least two photos are required." });
+  }
+  const selected = photos.slice(0, 8).sort((a, b) => a.date.localeCompare(b.date));
+  type CompareContentBlock =
+    | { type: "text"; text: string }
+    | {
+        type: "image";
+        source: {
+          type: "base64";
+          media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+          data: string;
+        };
+      };
+  const content: CompareContentBlock[] = [];
+  for (const p of selected) {
+    let buf: Buffer;
+    let mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    if (p.photoUrl) {
+      const normalized = normalizePhotoReference(p.photoUrl);
+      if (!normalized) return json(400, { error: "Invalid photo reference." });
+      const ref = parseS3Uri(normalized);
+      if (!ref) return json(400, { error: "Only s3:// photo references are supported." });
+      if (!photoBucketName || ref.bucket !== photoBucketName) {
+        return json(400, { error: "Invalid photo bucket." });
+      }
+      if (!s3KeyAllowedForUser(ref.key, userId)) {
+        return json(403, { error: "Photo does not belong to this user." });
+      }
+      let bytes: Uint8Array | undefined;
+      let contentType: string | undefined;
+      try {
+        const out = await s3.send(new GetObjectCommand({ Bucket: ref.bucket, Key: ref.key }));
+        bytes = await out.Body?.transformToByteArray();
+        contentType = out.ContentType;
+      } catch {
+        return json(400, { error: "Could not read one of the photos." });
+      }
+      if (!bytes || bytes.length === 0) return json(400, { error: "Empty photo found." });
+      buf = Buffer.from(bytes);
+      if (bytes.length > 12 * 1024 * 1024) return json(400, { error: "A photo is too large." });
+      if (isUnsupportedFoodImageFormat(ref.key, contentType) || bufferLooksLikeHeicOrHeif(buf)) {
+        return json(400, { error: "HEIC/HEIF images are not supported. Use JPEG/PNG/WebP." });
+      }
+      mediaType = guessFoodImageMediaType(ref.key, contentType);
+    } else {
+      let decoded: Buffer;
+      try {
+        decoded = Buffer.from(p.imageBase64, "base64");
+      } catch {
+        return json(400, { error: "Invalid inline photo encoding." });
+      }
+      if (decoded.length === 0 || decoded.length > 12 * 1024 * 1024) {
+        return json(400, { error: "Inline photo empty or too large." });
+      }
+      if (bufferLooksLikeHeicOrHeif(decoded)) {
+        return json(400, { error: "HEIC/HEIF images are not supported. Use JPEG/PNG/WebP." });
+      }
+      buf = decoded;
+      mediaType = p.mediaType as typeof mediaType;
+    }
+    content.push({ type: "text", text: `Photo date: ${p.date}` });
+    content.push({
+      type: "image",
+      source: { type: "base64", media_type: mediaType, data: buf.toString("base64") },
+    });
+  }
+  const system = `You are an assistant for a fitness app. Compare user progress photos and provide a careful ESTIMATE only.
+Rules:
+- Do NOT provide diagnosis, disease claims, or medical advice.
+- If angle, lighting, clothing, or posture differ, explicitly mention uncertainty.
+- Focus on visible trend cues only (midsection, waistline, face fullness, posture consistency).
+- Return ONLY JSON:
+{
+  "summary": "2-4 sentence plain-language estimate",
+  "confidence": 0-100,
+  "disclaimer": "One sentence: estimate only, not medical advice.",
+  "highlights": [
+    { "area": "string", "assessment": "string", "direction": "leaner|unchanged|uncertain" }
+  ]
+}`;
+  const model = process.env.ANTHROPIC_BODY_COMPARE_MODEL?.trim() || "claude-sonnet-4-20250514";
+  try {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const client = new Anthropic({ apiKey });
+    const resp = await client.messages.create({
+      model,
+      max_tokens: 700,
+      temperature: 0.2,
+      system,
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...content,
+            {
+              type: "text",
+              text:
+                query ||
+                "Compare these photos from oldest to newest and summarize visible change trends and uncertainty.",
+            },
+          ],
+        },
+      ],
+    });
+    const text = resp.content.find((p) => p.type === "text")?.text ?? "";
+    const parsed = parseBodyCompareAssessment(text);
+    if (!parsed) return json(502, { error: "Could not parse AI compare result." });
+    return json(200, {
+      ...parsed,
+      timeframe: { from: selected[0]?.date, to: selected[selected.length - 1]?.date },
+    });
+  } catch (e) {
+    console.error(JSON.stringify({ msg: "progress_photo_assessment_failed", err: String(e) }));
+    return json(502, { error: "AI compare failed. Please try again." });
+  }
+}
+
 async function createUploadUrl(userId: string, event: HttpEvent): Promise<HttpResult> {
   const bucket = getRequiredEnv("PHOTO_BUCKET_NAME", photoBucketName);
   const payload = parseJsonBody(event);
@@ -1385,6 +1635,8 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
   serverDefaults.FF_MEAL_LIBRARY = mealLibrary !== false;
   const nlMealParse = envFlagTriState("FF_NL_MEAL_PARSE");
   serverDefaults.FF_NL_MEAL_PARSE = nlMealParse !== false;
+  const bodyCompareAi = envFlagTriState("FF_BODY_COMPARE_AI");
+  serverDefaults.FF_BODY_COMPARE_AI = bodyCompareAi !== false;
 
   const overrides = { ...serverDefaults, ...fromDb };
   return json(200, { userId, overrides });
@@ -1534,6 +1786,9 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
     }
     if (event.rawPath === "/v2/progress-photos" && method === "POST") {
       return createProgressPhoto(userId, event);
+    }
+    if (event.rawPath === "/v2/progress-photos/assessment" && method === "POST") {
+      return assessProgressPhotos(userId, event);
     }
     const progressDelMatch = event.rawPath.match(/^\/v2\/progress-photos\/([^/]+)$/);
     if (progressDelMatch && method === "DELETE") {

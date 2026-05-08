@@ -9,6 +9,15 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from "node:path";
 
+/** Comma-separated https origins allowed to PUT/GET progress/food photos via presigned URLs (e.g. Amplify https://main.d123.amplifyapp.com). */
+function photoCorsExtraOriginsFromEnv(): string[] {
+  const raw = process.env.PHOTO_CORS_EXTRA_ORIGINS ?? "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 export class BackendFoundationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -179,6 +188,9 @@ export class BackendFoundationStack extends cdk.Stack {
             "https://www.ojas-health.com",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            "https://localhost:3000",
+            "https://127.0.0.1:3000",
+            ...photoCorsExtraOriginsFromEnv(),
           ],
           allowedHeaders: ["*"],
           exposedHeaders: ["ETag", "x-amz-request-id", "x-amz-id-2"],
@@ -250,6 +262,7 @@ export class BackendFoundationStack extends cdk.Stack {
     const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "false" ? "false" : "true";
     const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "false" ? "false" : "true";
     const nlMealParseEnv = process.env.FF_NL_MEAL_PARSE === "false" ? "false" : "true";
+    const bodyCompareAiEnv = process.env.FF_BODY_COMPARE_AI === "false" ? "false" : "true";
     /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
@@ -308,6 +321,7 @@ export class BackendFoundationStack extends cdk.Stack {
         FF_PHOTO_FOOD_LOG: photoFoodLogEnv,
         FF_MEAL_LIBRARY: mealLibraryEnv,
         FF_NL_MEAL_PARSE: nlMealParseEnv,
+        FF_BODY_COMPARE_AI: bodyCompareAiEnv,
         ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
         ...(anthropicFoodVisionModel
           ? { ANTHROPIC_FOOD_VISION_MODEL: anthropicFoodVisionModel }
@@ -369,6 +383,7 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "GET /v2/progress-photos", id: "ProgressPhotosListGetRoute" },
       { routeKey: "POST /v2/progress-photos", id: "ProgressPhotosCreatePostRoute" },
       { routeKey: "DELETE /v2/progress-photos/{photoId}", id: "ProgressPhotosDeleteRoute" },
+      { routeKey: "POST /v2/progress-photos/assessment", id: "ProgressPhotosAssessmentPostRoute" },
       { routeKey: "POST /v2/food/meal-complete", id: "FoodMealCompletePostRoute" },
       { routeKey: "GET /v2/meals", id: "MealsListGetRoute" },
       { routeKey: "POST /v2/meals", id: "MealsCreatePostRoute" },

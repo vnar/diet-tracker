@@ -4,6 +4,8 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        # Fail fast if the static export would embed an empty API URL (common cause of "Couldn't reach the server").
+        - node scripts/assert-next-public-aws.mjs
     build:
       commands:
         - npm run build

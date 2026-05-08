@@ -20,6 +20,10 @@ Set:
 
 The frontend then uses AWS API endpoints for entries/settings/photos.
 
+**Amplify:** those variables must be set in the **Amplify Console** (build env), then redeploy — see [docs/AMPLIFY_DEPLOY.md](docs/AMPLIFY_DEPLOY.md). Run `npm run diag:aws` to verify API reachability.
+
+**Amplify build guard:** `amplify.yml` runs `scripts/assert-next-public-aws.mjs` so a missing `NEXT_PUBLIC_AWS_API_URL` fails the build instead of producing a silent “Couldn’t reach the server” site.
+
 ### Photo food log + meal library (P1.3 / P1.3.1)
 
 After sign-in, the app loads `GET /feature-flags` and caches those booleans. **Lambda defaults** can keep flags off while you still enable the UI locally:

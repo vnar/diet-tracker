@@ -1,7 +1,15 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   output: "export",
+  turbopack: {
+    root: repoRoot,
+  },
   allowedDevOrigins: ["127.0.0.1"],
   images: {
     unoptimized: true,

@@ -106,3 +106,8 @@ export function isMealLibraryEnabled(userId?: string): boolean {
 export function isNlMealParseEnabled(userId?: string): boolean {
   return isEnabled("NL_MEAL_PARSE", userId);
 }
+
+/** AI visual compare assessment for progress photos (estimate-only; no medical claims). */
+export function isBodyCompareAiEnabled(userId?: string): boolean {
+  return isEnabled("BODY_COMPARE_AI", userId);
+}

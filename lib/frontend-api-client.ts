@@ -15,18 +15,25 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
+/** Normalized API base (trim, default https:// if scheme missing). Safe for execute-api URLs pasted without https. */
+export function getAwsApiBaseUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_AWS_API_URL ?? "").trim();
+  if (!raw) return "";
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+  return trimTrailingSlash(withScheme);
+}
+
 export function isAwsBackendEnabled(): boolean {
   const enabled = parseBoolEnv(process.env.NEXT_PUBLIC_USE_AWS_BACKEND);
-  const apiUrl = process.env.NEXT_PUBLIC_AWS_API_URL;
-  return enabled && typeof apiUrl === "string" && apiUrl.length > 0;
+  return enabled && getAwsApiBaseUrl().length > 0;
 }
 
 function buildAwsUrl(path: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_AWS_API_URL;
+  const baseUrl = getAwsApiBaseUrl();
   if (!baseUrl) {
     throw new Error("Missing NEXT_PUBLIC_AWS_API_URL");
   }
-  return `${trimTrailingSlash(baseUrl)}${path}`;
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 async function readJsonSafe<T>(res: Response): Promise<T | undefined> {
@@ -45,6 +52,18 @@ async function fetchJson<T>(
   timeoutMs = 15000
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
+    if (
+      useAws &&
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:" &&
+      getAwsApiBaseUrl().startsWith("http://")
+    ) {
+      return {
+        ok: false,
+        error:
+          "API URL is http:// but this page is https. Browsers block that. Set NEXT_PUBLIC_AWS_API_URL to the https API Gateway URL and rebuild.",
+      };
+    }
     const url = useAws ? buildAwsUrl(path) : path;
     const headers = new Headers(init?.headers);
     if (accessToken) {
@@ -70,6 +89,42 @@ async function fetchJson<T>(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return { ok: false, error: "Request timed out. Please try again." };
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return { ok: false, error: "You're offline. Reconnect and try again." };
+    }
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) {
+      try {
+        const attempted = useAws ? buildAwsUrl(path) : path;
+        let apiHost = "(n/a)";
+        if (useAws) {
+          try {
+            apiHost = new URL(getAwsApiBaseUrl()).hostname;
+          } catch {
+            apiHost = "(invalid NEXT_PUBLIC_AWS_API_URL)";
+          }
+        }
+        console.warn("[diet-tracker] fetch failed before HTTP response", {
+          path,
+          useAws,
+          requestUrl: typeof attempted === "string" ? attempted : String(attempted),
+          apiHost,
+          hint: useAws
+            ? "Run: npm run diag:aws (same machine). If that passes but the browser fails, the deployed JS may embed a different API URL — set NEXT_PUBLIC_* on Amplify and rebuild."
+            : "Relative fetch failed (same-origin or Next route).",
+        });
+      } catch {
+        console.warn("[diet-tracker] fetch failed (could not log URL)", { path });
+      }
+      const amplifyHint =
+        typeof window !== "undefined" && /\.amplifyapp\.com$/i.test(window.location.hostname)
+          ? " Amplify: confirm NEXT_PUBLIC_* vars are set in the Amplify Console (not only .env.local) so the build embeds the API URL."
+          : "";
+      return {
+        ok: false,
+        error: `Couldn't reach the server. Check your connection or VPN and try again.${amplifyHint}`,
+      };
     }
     return { ok: false, error: "Network error. Please try again." };
   }
@@ -605,6 +660,44 @@ export async function deleteProgressPhoto(photoId: string, accessToken: string) 
   );
 }
 
+export async function postProgressPhotoAssessment(
+  body: {
+    photos: Array<
+      | { date: string; photoUrl: string }
+      | {
+          date: string;
+          imageBase64: string;
+          mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+        }
+    >;
+    query?: string;
+  },
+  accessToken: string,
+) {
+  return fetchJson<{
+    summary: string;
+    confidence: number;
+    estimated: boolean;
+    disclaimer: string;
+    highlights: Array<{
+      area: string;
+      assessment: string;
+      direction: "leaner" | "unchanged" | "uncertain";
+    }>;
+    timeframe: { from: string; to: string };
+  }>(
+    "/v2/progress-photos/assessment",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+    60000,
+  );
+}
+
 export async function uploadPhotoFile(
   file: File,
   accessToken?: string,
@@ -646,13 +739,26 @@ export async function uploadPhotoFile(
     return { ok: false, error: uploadInit.error };
   }
 
-  const putRes = await fetch(uploadInit.data.uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    body: file,
-  });
+  let putRes: Response;
+  try {
+    putRes = await fetch(uploadInit.data.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+      return {
+        ok: false,
+        error:
+          "Could not upload to photo storage (network or CORS). If this site is not ojas-health.com or localhost, add its full https origin to the S3 bucket CORS via PHOTO_CORS_EXTRA_ORIGINS and redeploy the CDK stack.",
+      };
+    }
+    return { ok: false, error: "Photo upload failed. Please try again." };
+  }
 
   if (!putRes.ok) {
     return { ok: false, error: `Photo upload failed (${putRes.status})` };
