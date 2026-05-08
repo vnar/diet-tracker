@@ -394,9 +394,6 @@ export function HealthDashboard() {
               isMealLibraryEnabled(user.id) &&
               todayKey ? (
                 <>
-                  {isNlMealParseEnabled(user.id) ? (
-                    <NaturalMealSheet day={todayKey} getAccessToken={getAccessToken} onLogged={refreshMeals} />
-                  ) : null}
                   <FrequentMealsCarousel
                     day={todayKey}
                     getAccessToken={getAccessToken}
@@ -416,9 +413,18 @@ export function HealthDashboard() {
                   status === "authenticated" &&
                   isAwsBackendEnabled() &&
                   user?.id &&
-                  isPhotoFoodLogEnabled(user.id)
+                  (isPhotoFoodLogEnabled(user.id) ||
+                    (isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id)))
                     ? (ctx) => (
                         <div className="flex shrink-0 items-center gap-1">
+                          {isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id) ? (
+                            <NaturalMealSheet
+                              day={ctx.todayKey}
+                              getAccessToken={getAccessToken}
+                              onLogged={refreshMeals}
+                              compact
+                            />
+                          ) : null}
                           {isMealLibraryEnabled(user.id) ? (
                             <AddFromLibrarySheet
                               day={ctx.todayKey}

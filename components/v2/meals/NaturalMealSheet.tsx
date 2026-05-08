@@ -9,6 +9,7 @@ type Props = {
   day: string;
   getAccessToken: () => string | null;
   onLogged: () => void;
+  compact?: boolean;
 };
 
 export function NaturalMealSheet(props: Props) {
@@ -25,15 +26,26 @@ export function NaturalMealSheet(props: Props) {
 
   return (
     <>
-      <div className="mb-3">
+      <div className={props.compact ? "group relative" : "mb-3"}>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-200 hover:bg-violet-500/20"
+          className={
+            props.compact
+              ? "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+              : "inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-200 hover:bg-violet-500/20"
+          }
+          aria-label="Log meal with AI"
+          title={props.compact ? "Log meal with AI" : undefined}
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Log meal with AI
+          {props.compact ? null : "Log meal with AI"}
         </button>
+        {props.compact ? (
+          <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            Log meal with AI
+          </span>
+        ) : null}
       </div>
       {open && typeof document !== "undefined"
         ? createPortal(
