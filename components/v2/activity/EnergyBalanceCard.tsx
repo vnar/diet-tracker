@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Flame, Footprints, Loader2, Sparkles } from "lucide-react";
 import type { DailyEntry } from "@/lib/types";
 import {
@@ -67,8 +67,6 @@ export function EnergyBalanceCard(props: Props) {
   const [aiMet, setAiMet] = useState<number>(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [weeklyAvgNet, setWeeklyAvgNet] = useState<number | null>(null);
-  const [trend, setTrend] = useState<"deficit" | "surplus" | "near_maintenance" | null>(null);
   const [calibration, setCalibration] = useState<number>(props.initialCalibrationFactor ?? 1);
 
   const activityBurnRaw = aiBurn ?? estimateActivityBurn(activityText, weightKg);
@@ -122,15 +120,8 @@ export function EnergyBalanceCard(props: Props) {
     if (!token) return;
     const res = await getEnergyWeeklySummary(token, props.day);
     if (!res.ok) return;
-    setWeeklyAvgNet(res.data.avgNetKcal);
-    setTrend(res.data.trend);
     setCalibration(res.data.calibrationFactor);
   }
-
-  useEffect(() => {
-    void loadWeeklySummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.day]);
 
   return (
     <div className="rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20">
@@ -162,25 +153,18 @@ export function EnergyBalanceCard(props: Props) {
         <input
           value={activityText}
           onChange={(e) => setActivityText(e.target.value)}
-          className="flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-100"
+          className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-100"
           placeholder='Activity text (e.g. "45 min bike", "30 min lawn mowing")'
         />
         <button
           type="button"
           onClick={() => void runAiEstimate()}
           disabled={busy || !activityText.trim()}
-          className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 disabled:opacity-50"
+          className="shrink-0 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "AI estimate"}
         </button>
       </div>
-      <button
-        type="button"
-        onClick={() => void loadWeeklySummary()}
-        className="mt-2 rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
-      >
-        Refresh 7d
-      </button>
       {aiSummary ? (
         <p className="mt-1 text-[10px] text-zinc-400">
           {aiSummary}
@@ -188,13 +172,6 @@ export function EnergyBalanceCard(props: Props) {
         </p>
       ) : null}
       {err ? <p className="mt-1 text-[10px] text-rose-300">{err}</p> : null}
-      <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-500">
-        <span>
-          7d avg net: {weeklyAvgNet == null ? "—" : `${weeklyAvgNet} kcal/day`}
-        </span>
-        <span>·</span>
-        <span>{trend == null ? "—" : trend.replace("_", " ")}</span>
-      </div>
       <p className={`mt-2 text-xs ${net <= 0 ? "text-emerald-300" : "text-amber-300"}`}>
         Net calories: {Math.round(net)} kcal
       </p>
@@ -207,9 +184,6 @@ export function EnergyBalanceCard(props: Props) {
           Save activity to today
         </button>
       ) : null}
-      <p className="mt-1 text-[10px] text-zinc-500">
-        Add activity words in today notes (e.g. "45 min bike", "30 min lawn mowing") to include extra burn.
-      </p>
     </div>
   );
 }

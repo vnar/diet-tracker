@@ -385,11 +385,9 @@ export function HealthDashboard() {
             <WeightChart />
           </motion.section>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-[1.06fr_1fr_1fr]">
-            <motion.section {...fadeInUp} className="min-w-0">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Logging + meals
-              </p>
+          <div className="ui-dashboard-grid-3">
+            <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
+              <p className="ui-label mb-0 min-h-[1.25rem]">Logging + meals</p>
               <DailyInput
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
@@ -400,7 +398,7 @@ export function HealthDashboard() {
                     (isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id)) ||
                     isMealLibraryEnabled(user.id))
                     ? (ctx) => (
-                        <div className="flex shrink-0 items-center gap-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1">
                           {isMealLibraryEnabled(user.id) ? (
                             <button
                               type="button"
@@ -441,10 +439,8 @@ export function HealthDashboard() {
                 }
               />
             </motion.section>
-            <motion.section {...fadeInUp} className="flex min-w-0 flex-col gap-3">
-              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Activity + insights
-              </p>
+            <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
+              <p className="ui-label mb-0 min-h-[1.25rem]">Activity + insights</p>
               <TodayActivityCard />
               <EnergyBalanceCard
                 day={todayKey ?? new Date().toISOString().slice(0, 10)}
@@ -455,18 +451,16 @@ export function HealthDashboard() {
               />
               <AIInsights />
             </motion.section>
-            <motion.section {...fadeInUp} className="min-w-0">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Photos
-              </p>
-              <PhotoTracker />
+            <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
+              <p className="ui-label mb-0 min-h-[1.25rem]">Photos</p>
+              <div className="min-h-0 min-w-0 flex-1">
+                <PhotoTracker />
+              </div>
             </motion.section>
           </div>
 
           <motion.section {...fadeInUp} id="dashboard-history">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-              Review + history
-            </p>
+            <p className="ui-label mb-2">Review + history</p>
             <PastDayGrid />
           </motion.section>
 

@@ -10,8 +10,9 @@ import {
   isAwsBackendEnabled,
 } from "@/lib/frontend-api-client";
 import { clearUserFlagOverrides, setUserFlagOverrides } from "@/lib/featureFlags";
+import { setHealthStorageMode, useHealthStore } from "@/lib/store";
 
-/** NEXT_PUBLIC_* wins over `/feature-flags` so local `.env.local` can turn on gated UI without redeploying Lambda. */
+/** NEXT_PUBLIC_* wins over `/feature-flags` so Amplify / `.env.local` can turn on gated UI without redeploying Lambda. */
 function mergeNextPublicFeatureFlags(
   overrides: Record<string, boolean>,
 ): Record<string, boolean> {
@@ -28,9 +29,11 @@ function mergeNextPublicFeatureFlags(
   const bill = process.env.NEXT_PUBLIC_FF_BILLING_ENABLED;
   if (bill === "true") out.FF_BILLING_ENABLED = true;
   if (bill === "false") out.FF_BILLING_ENABLED = false;
+  const bodyAi = process.env.NEXT_PUBLIC_FF_BODY_COMPARE_AI;
+  if (bodyAi === "true") out.FF_BODY_COMPARE_AI = true;
+  if (bodyAi === "false") out.FF_BODY_COMPARE_AI = false;
   return out;
 }
-import { setHealthStorageMode, useHealthStore } from "@/lib/store";
 
 export function HealthBootstrap({ children }: { children: React.ReactNode }) {
   const { status, getAccessToken, user } = useCognitoAuth();
@@ -96,8 +99,9 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (flagResult.ok && user?.id) {
-        setUserFlagOverrides(user.id, mergeNextPublicFeatureFlags(flagResult.data.overrides));
+      if (user?.id) {
+        const base = flagResult.ok ? flagResult.data.overrides : {};
+        setUserFlagOverrides(user.id, mergeNextPublicFeatureFlags(base));
       }
     })();
   }, [getAccessToken, status, user?.id]);

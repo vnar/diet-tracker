@@ -36,11 +36,11 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           ? `w-full min-w-0 flex-1 border-0 bg-transparent py-0.5 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none ${className}`
           : `w-full min-w-0 flex-1 border-0 bg-transparent py-0.5 font-mono text-sm text-zinc-900 outline-none dark:text-zinc-100 ${className}`;
       return (
-        <div className="block">
-          <label htmlFor={id} className="block">
+        <div className="block min-w-0">
+          <label htmlFor={id} className="block min-w-0">
             <span className={labelClass}>{label}</span>
           </label>
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <div className={inputRowClass}>
               <input
                 ref={ref}
@@ -50,7 +50,9 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
               />
               {unit ? <span className={unitClass}>{unit}</span> : null}
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-1.5">{trailingAccessory}</div>
+            <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-start gap-1.5">
+              {trailingAccessory}
+            </div>
           </div>
         </div>
       );

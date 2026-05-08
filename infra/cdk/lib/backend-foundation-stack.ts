@@ -18,6 +18,11 @@ function photoCorsExtraOriginsFromEnv(): string[] {
     .filter((s) => s.length > 0);
 }
 
+/** Test / internal portals: S3 allows any Origin for presigned PUT/GET (never use in production). */
+function photoCorsAllowAllOrigins(): boolean {
+  return process.env.PHOTO_CORS_ALLOW_ALL_ORIGINS?.trim().toLowerCase() === "true";
+}
+
 export class BackendFoundationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -175,6 +180,18 @@ export class BackendFoundationStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    const photoCorsOrigins = photoCorsAllowAllOrigins()
+      ? ["*"]
+      : [
+          "https://ojas-health.com",
+          "https://www.ojas-health.com",
+          "http://localhost:3000",
+          "http://127.0.0.1:3000",
+          "https://localhost:3000",
+          "https://127.0.0.1:3000",
+          ...photoCorsExtraOriginsFromEnv(),
+        ];
+
     const photosBucket = new s3.Bucket(this, "PhotosBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -183,15 +200,7 @@ export class BackendFoundationStack extends cdk.Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD],
-          allowedOrigins: [
-            "https://ojas-health.com",
-            "https://www.ojas-health.com",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "https://localhost:3000",
-            "https://127.0.0.1:3000",
-            ...photoCorsExtraOriginsFromEnv(),
-          ],
+          allowedOrigins: photoCorsOrigins,
           allowedHeaders: ["*"],
           exposedHeaders: ["ETag", "x-amz-request-id", "x-amz-id-2"],
           maxAge: 3600,

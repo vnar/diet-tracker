@@ -15,7 +15,7 @@ export function AIInsights() {
     v2Enabled && isAwsBackendEnabled() && status === "authenticated" && typeof token === "string";
 
   return (
-    <Card title="Insights" variant="surface">
+    <Card title="Insights" variant="surface" className="flex min-h-0 flex-1 flex-col">
       {!canRenderPanel ? (
         <p className="text-[15px] font-medium leading-relaxed text-slate-400">
           No nudges right now — keep logging.
