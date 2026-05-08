@@ -489,6 +489,83 @@ export async function postInsightCacheInvalidateAfterMeals(accessToken: string) 
   );
 }
 
+export async function postActivityBurnEstimate(
+  body: { activityText: string; weightKg: number },
+  accessToken: string,
+) {
+  return fetchJson<{
+    activitySummary: string;
+    minutes: number;
+    met: number;
+    kcalBurn: number;
+    confidence: number;
+  }>(
+    "/v2/activity/estimate-burn",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function postActivityLog(
+  body: {
+    day: string;
+    activityText: string;
+    activitySummary: string;
+    kcalBurn: number;
+    met: number;
+    minutes: number;
+    confidence: number;
+  },
+  accessToken: string,
+) {
+  return fetchJson<{ ok: true }>(
+    "/v2/activity/log",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function patchActivityCalibration(factor: number, accessToken: string) {
+  return fetchJson<{ ok: true; factor: number }>(
+    "/v2/activity/calibration",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ factor }),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function getEnergyWeeklySummary(accessToken: string, endDate?: string) {
+  const qs = endDate ? `?endDate=${encodeURIComponent(endDate)}` : "";
+  return fetchJson<{
+    calibrationFactor: number;
+    avgNetKcal: number;
+    trend: "deficit" | "surplus" | "near_maintenance";
+    rows: Array<{
+      day: string;
+      consumedKcal: number;
+      baselineKcal: number;
+      stepsKcal: number;
+      activityKcal: number;
+      burnKcal: number;
+      netKcal: number;
+    }>;
+  }>(`/v2/activity/energy-weekly-summary${qs}`, undefined, true, accessToken);
+}
+
 export async function uploadPhotoFile(
   file: File,
   accessToken?: string,

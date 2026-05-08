@@ -96,6 +96,7 @@ type Props = {
   day: string;
   getAccessToken: () => string | null;
   onLogged: () => void;
+  className?: string;
 };
 
 export function NaturalMealInput(props: Props) {
@@ -293,7 +294,9 @@ export function NaturalMealInput(props: Props) {
   }
 
   return (
-    <div className="mb-3 rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20">
+    <div
+      className={`rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20 ${props.className ?? ""}`}
+    >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[13px] font-semibold text-zinc-100">Log a meal</p>
         <span

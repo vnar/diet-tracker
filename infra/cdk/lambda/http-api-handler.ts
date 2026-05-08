@@ -18,6 +18,12 @@ import type { AiInsightStructured } from "../../../lib/insights/aiInsightStructu
 import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 import {
+  handleV2ActivityCalibrationPatch,
+  handleV2ActivityEstimateBurn,
+  handleV2ActivityLog,
+  handleV2EnergyWeeklySummary,
+} from "./activity-api";
+import {
   handleV2DayMealEntriesCreate,
   handleV2DayMealEntriesList,
   handleV2DayMealEntryDelete,
@@ -86,6 +92,12 @@ type DailyEntryUpsert = {
   alcohol: boolean;
   photoUrl?: string | null;
   notes?: string | null;
+  activityText?: string;
+  activitySummary?: string;
+  activityBurnKcal?: number;
+  activityMet?: number;
+  activityMinutes?: number;
+  activityConfidence?: number;
 };
 
 type SettingsPatch = {
@@ -94,6 +106,7 @@ type SettingsPatch = {
   targetDate: string;
   unit: "kg" | "lbs";
   tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
+  activityCalibrationFactor?: number;
 };
 
 type StoredEntry = DailyEntryUpsert & {
@@ -222,6 +235,33 @@ function validateEntry(input: unknown): { ok: true; data: DailyEntryUpsert } | {
   ) {
     return { ok: false, error: "Invalid notes" };
   }
+  if (
+    body.activityText !== undefined &&
+    (typeof body.activityText !== "string" || body.activityText.length > 500)
+  ) {
+    return { ok: false, error: "Invalid activityText" };
+  }
+  if (
+    body.activitySummary !== undefined &&
+    (typeof body.activitySummary !== "string" || body.activitySummary.length > 500)
+  ) {
+    return { ok: false, error: "Invalid activitySummary" };
+  }
+  if (body.activityBurnKcal !== undefined && !isIntNonNegative(body.activityBurnKcal)) {
+    return { ok: false, error: "Invalid activityBurnKcal" };
+  }
+  if (body.activityMinutes !== undefined && !isIntNonNegative(body.activityMinutes)) {
+    return { ok: false, error: "Invalid activityMinutes" };
+  }
+  if (body.activityMet !== undefined && !isPositiveNumber(body.activityMet)) {
+    return { ok: false, error: "Invalid activityMet" };
+  }
+  if (
+    body.activityConfidence !== undefined &&
+    (!isNonNegativeNumber(body.activityConfidence) || body.activityConfidence > 100)
+  ) {
+    return { ok: false, error: "Invalid activityConfidence" };
+  }
 
   return {
     ok: true,
@@ -239,6 +279,12 @@ function validateEntry(input: unknown): { ok: true; data: DailyEntryUpsert } | {
       alcohol: body.alcohol as boolean,
       photoUrl: (body.photoUrl as string | null | undefined) ?? undefined,
       notes: (body.notes as string | null | undefined) ?? undefined,
+      activityText: body.activityText as string | undefined,
+      activitySummary: body.activitySummary as string | undefined,
+      activityBurnKcal: body.activityBurnKcal as number | undefined,
+      activityMet: body.activityMet as number | undefined,
+      activityMinutes: body.activityMinutes as number | undefined,
+      activityConfidence: body.activityConfidence as number | undefined,
     },
   };
 }
@@ -799,6 +845,12 @@ async function getEntries(userId: string, query: Record<string, string | undefin
     alcohol: item.alcohol?.BOOL ?? false,
     photoUrl: item.photoUrl?.S ?? undefined,
     notes: item.notes?.S ?? undefined,
+    activityText: item.activityText?.S ?? undefined,
+    activitySummary: item.activitySummary?.S ?? undefined,
+    activityBurnKcal: item.activityBurnKcal?.N ? Number(item.activityBurnKcal.N) : undefined,
+    activityMet: item.activityMet?.N ? Number(item.activityMet.N) : undefined,
+    activityMinutes: item.activityMinutes?.N ? Number(item.activityMinutes.N) : undefined,
+    activityConfidence: item.activityConfidence?.N ? Number(item.activityConfidence.N) : undefined,
     }),
   );
 
@@ -857,6 +909,12 @@ async function upsertEntry(userId: string, event: HttpEvent): Promise<HttpResult
   const normalizedPhotoReference = normalizePhotoReference(data.photoUrl);
   if (normalizedPhotoReference) item.photoUrl = { S: normalizedPhotoReference };
   if (typeof data.notes === "string") item.notes = { S: data.notes };
+  if (typeof data.activityText === "string") item.activityText = { S: data.activityText };
+  if (typeof data.activitySummary === "string") item.activitySummary = { S: data.activitySummary };
+  if (data.activityBurnKcal !== undefined) item.activityBurnKcal = { N: String(data.activityBurnKcal) };
+  if (data.activityMet !== undefined) item.activityMet = { N: String(data.activityMet) };
+  if (data.activityMinutes !== undefined) item.activityMinutes = { N: String(data.activityMinutes) };
+  if (data.activityConfidence !== undefined) item.activityConfidence = { N: String(data.activityConfidence) };
 
   await ddb.send(
     new PutItemCommand({
@@ -925,6 +983,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
         unit: settings.unit,
         tone: settings.tone,
         plateau: undefined,
+        activityCalibrationFactor: settings.activityCalibrationFactor ?? 1,
       },
     });
   }
@@ -942,6 +1001,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
           ? out.Item.tone.S
           : "friendly",
       plateau: plateauSettingsFromItem(out.Item),
+      activityCalibrationFactor: Number(out.Item.activityCalibrationFactor?.N ?? 1),
     },
   });
 }
@@ -969,6 +1029,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
       ? existingOut.Item.tone.S
       : undefined;
   const tone = data.tone ?? existingTone ?? "friendly";
+  const existingCalibration = Number(existingOut.Item?.activityCalibrationFactor?.N ?? 1);
 
   let nextPlateau = plateauSettingsFromItem(existingOut.Item);
   if (Object.prototype.hasOwnProperty.call(body, "plateau")) {
@@ -999,6 +1060,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
   if (nextPlateau?.maxAvgMovementKg != null) {
     item.plateauMaxMovementKg = { N: String(nextPlateau.maxAvgMovementKg) };
   }
+  item.activityCalibrationFactor = { N: String(existingCalibration) };
 
   await ddb.send(
     new PutItemCommand({
@@ -1015,6 +1077,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
       unit: data.unit,
       tone,
       plateau: nextPlateau,
+      activityCalibrationFactor: existingCalibration,
     },
   });
 }
@@ -1295,6 +1358,29 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       const table = foodLogEntriesTableName;
       if (!table) return json(500, { error: "Food log storage is not configured." });
       return handleV2FoodLogConfirm(userId, event, { ddb, foodLogTableName: table });
+    }
+
+    if (event.rawPath === "/v2/activity/estimate-burn" && method === "POST") {
+      return handleV2ActivityEstimateBurn(event);
+    }
+    if (event.rawPath === "/v2/activity/log" && method === "POST") {
+      const table = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
+      return handleV2ActivityLog(userId, event, { ddb, entriesTableName: table });
+    }
+    if (event.rawPath === "/v2/activity/calibration" && method === "PATCH") {
+      const table = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+      return handleV2ActivityCalibrationPatch(userId, event, { ddb, settingsTableName: table });
+    }
+    if (event.rawPath === "/v2/activity/energy-weekly-summary" && method === "GET") {
+      const eT = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);
+      const dT = getRequiredEnv("DAY_MEAL_ENTRIES_TABLE_NAME", dayMealEntriesTableName);
+      const sT = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
+      return handleV2EnergyWeeklySummary(userId, event, {
+        ddb,
+        entriesTableName: eT,
+        dayMealsTableName: dT,
+        settingsTableName: sT,
+      });
     }
 
     if (event.rawPath === "/v2/food/meal-complete" && method === "POST") {

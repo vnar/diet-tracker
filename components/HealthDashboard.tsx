@@ -8,7 +8,8 @@ import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCalori
 import { AddFromLibrarySheet } from "@/components/v2/meals/AddFromLibrarySheet";
 import { FrequentMealsCarousel } from "@/components/v2/meals/FrequentMealsCarousel";
 import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
-import { NaturalMealInput } from "@/components/v2/meals/NaturalMealInput";
+import { NaturalMealSheet } from "@/components/v2/meals/NaturalMealSheet";
+import { EnergyBalanceCard } from "@/components/v2/activity/EnergyBalanceCard";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
 import { WeightChart } from "@/components/WeightChart";
 import { AIInsights } from "@/components/AIInsights";
@@ -394,7 +395,7 @@ export function HealthDashboard() {
               todayKey ? (
                 <>
                   {isNlMealParseEnabled(user.id) ? (
-                    <NaturalMealInput day={todayKey} getAccessToken={getAccessToken} onLogged={refreshMeals} />
+                    <NaturalMealSheet day={todayKey} getAccessToken={getAccessToken} onLogged={refreshMeals} />
                   ) : null}
                   <FrequentMealsCarousel
                     day={todayKey}
@@ -442,6 +443,13 @@ export function HealthDashboard() {
                 Activity + insights
               </p>
               <TodayActivityCard />
+              <EnergyBalanceCard
+                day={todayKey ?? new Date().toISOString().slice(0, 10)}
+                todayEntry={todayEntry}
+                mealEntries={mealEntries}
+                getAccessToken={getAccessToken}
+                initialCalibrationFactor={settings.activityCalibrationFactor}
+              />
               <AIInsights />
             </motion.section>
             <motion.section {...fadeInUp} className="min-w-0">
