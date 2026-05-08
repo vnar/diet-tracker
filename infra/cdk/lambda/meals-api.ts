@@ -76,7 +76,7 @@ type MealRow = {
   estProteinG: number;
   estCarbsG?: number;
   estFatG?: number;
-  source: "photo" | "manual" | "imported";
+  source: "photo" | "manual" | "imported" | "ai_parse";
   timesLogged: number;
   lastLoggedAt?: string;
   createdAt: string;
@@ -99,7 +99,7 @@ function mealFromAttrs(it: Record<string, AttributeValue>): MealRow | null {
   if (!Number.isFinite(estKcal) || !Number.isFinite(estProteinG) || !Number.isFinite(timesLogged))
     return null;
   if (!createdAt || !updatedAt) return null;
-  if (source !== "photo" && source !== "manual" && source !== "imported") return null;
+  if (source !== "photo" && source !== "manual" && source !== "imported" && source !== "ai_parse") return null;
   const row: MealRow = {
     id: stripMealPrefix(mealId),
     userId,
@@ -133,8 +133,11 @@ type DayMealRow = {
   proteinG: number | null;
   carbsG?: number | null;
   fatG?: number | null;
+  fiberG?: number | null;
   loggedAt: string;
   notes?: string;
+  source?: string;
+  rawInput?: string;
   deletedAt?: string;
 };
 
@@ -161,7 +164,11 @@ function dayEntryFromAttrs(it: Record<string, AttributeValue>, day: string): Day
     row.carbsG = Math.round(Number(it.carbsG.N) * 10) / 10;
   if (it.fatG?.N != null && Number.isFinite(Number(it.fatG.N)))
     row.fatG = Math.round(Number(it.fatG.N) * 10) / 10;
+  if (it.fiberG?.N != null && Number.isFinite(Number(it.fiberG.N)))
+    row.fiberG = Math.round(Number(it.fiberG.N) * 10) / 10;
   if (it.notes?.S) row.notes = it.notes.S;
+  if (it.source?.S) row.source = it.source.S;
+  if (it.rawInput?.S) row.rawInput = it.rawInput.S;
   if (it.deletedAt?.S) row.deletedAt = it.deletedAt.S;
   return row;
 }
@@ -260,7 +267,9 @@ export async function handleV2MealsCreate(
     return json(400, { error: "Expected name, meal_type, kcal, protein_g." });
   }
   const source =
-    sourceRaw === "photo" || sourceRaw === "manual" || sourceRaw === "imported" ? sourceRaw : "manual";
+    sourceRaw === "photo" || sourceRaw === "manual" || sourceRaw === "imported" || sourceRaw === "ai_parse"
+      ? sourceRaw
+      : "manual";
   const nlKey = nameLookupKey(userId, name);
   const existing = await deps.ddb.send(
     new QueryCommand({
@@ -549,6 +558,8 @@ export async function handleV2DayMealEntriesCreate(
   }
   const photoKey = typeof body.photo_key === "string" ? body.photo_key.trim() : "";
   const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+  const rawInput = typeof body.raw_input === "string" ? body.raw_input.trim() : "";
+  const entrySource = typeof body.source === "string" ? body.source.trim() : "";
   const item: Record<string, AttributeValue> = {
     dayKey: { S: dayKey },
     entryId: { S: eSk },
@@ -562,10 +573,14 @@ export async function handleV2DayMealEntriesCreate(
   };
   if (photoKey) item.photoKey = { S: photoKey };
   if (notes) item.notes = { S: notes.slice(0, 2000) };
+  if (rawInput) item.rawInput = { S: rawInput.slice(0, 2000) };
+  if (entrySource) item.source = { S: entrySource.slice(0, 32) };
   const cg = body.carbs_g !== undefined ? Number(body.carbs_g) : NaN;
   const fg = body.fat_g !== undefined ? Number(body.fat_g) : NaN;
+  const fib = body.fiber_g !== undefined ? Number(body.fiber_g) : NaN;
   if (Number.isFinite(cg)) item.carbsG = numAttr(Math.round(cg * 10) / 10);
   if (Number.isFinite(fg)) item.fatG = numAttr(Math.round(fg * 10) / 10);
+  if (Number.isFinite(fib)) item.fiberG = numAttr(Math.round(fib * 10) / 10);
 
   await deps.ddb.send(new PutItemCommand({ TableName: deps.dayMealsTableName, Item: item }));
   const row = dayEntryFromAttrs(item as Record<string, AttributeValue>, day);

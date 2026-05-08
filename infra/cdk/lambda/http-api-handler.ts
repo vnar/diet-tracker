@@ -1170,13 +1170,11 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
 
   const serverDefaults: Record<string, boolean> = {};
   const photoFood = envFlagTriState("FF_PHOTO_FOOD_LOG");
-  if (typeof photoFood === "boolean") {
-    serverDefaults.FF_PHOTO_FOOD_LOG = photoFood;
-  }
+  serverDefaults.FF_PHOTO_FOOD_LOG = photoFood !== false;
   const mealLibrary = envFlagTriState("FF_MEAL_LIBRARY");
-  if (typeof mealLibrary === "boolean") {
-    serverDefaults.FF_MEAL_LIBRARY = mealLibrary;
-  }
+  serverDefaults.FF_MEAL_LIBRARY = mealLibrary !== false;
+  const nlMealParse = envFlagTriState("FF_NL_MEAL_PARSE");
+  serverDefaults.FF_NL_MEAL_PARSE = nlMealParse !== false;
 
   const overrides = { ...serverDefaults, ...fromDb };
   return json(200, { userId, overrides });

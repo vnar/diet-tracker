@@ -206,6 +206,16 @@ export class BackendFoundationStack extends cdk.Stack {
     foodLogEntriesTable.grantReadWriteData(backendLambdaRole);
     mealsTable.grantReadWriteData(backendLambdaRole);
     dayMealEntriesTable.grantReadWriteData(backendLambdaRole);
+
+    const mealNlParseLambdaRole = new iam.Role(this, "MealNlParseLambdaRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      description: "Natural-language meal parse (read library, invalidate insight cache)",
+    });
+    mealNlParseLambdaRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+    );
+    mealsTable.grantReadData(mealNlParseLambdaRole);
+    insightCacheTable.grantReadWriteData(mealNlParseLambdaRole);
     photosBucket.grantReadWrite(backendLambdaRole);
     photosBucket.grantReadWrite(presignLambdaRole);
 
@@ -221,11 +231,39 @@ export class BackendFoundationStack extends cdk.Stack {
       process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
     /** Set to "false" on deploy machine to ship Lambda with LLM refine disabled. Key must be set on the function in AWS (not here) so it never appears in CloudFormation. */
     const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
-    const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "true" ? "true" : "false";
-    const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "true" ? "true" : "false";
+    /** Opt-out: enabled unless deploy explicitly sets FF_* to "false" (test portal friendly). */
+    const photoFoodLogEnv = process.env.FF_PHOTO_FOOD_LOG === "false" ? "false" : "true";
+    const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "false" ? "false" : "true";
+    const nlMealParseEnv = process.env.FF_NL_MEAL_PARSE === "false" ? "false" : "true";
     /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
+    const mealNlParseLambda = new NodejsFunction(this, "MealNlParseLambda", {
+      functionName: `${this.stackName}-meal-nl-parse`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: path.join(__dirname, "..", "lambda", "meal-nl-parse.ts"),
+      handler: "handler",
+      role: mealNlParseLambdaRole,
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 256,
+      environment: {
+        MEALS_TABLE_NAME: mealsTable.tableName,
+        INSIGHT_CACHE_TABLE_NAME: insightCacheTable.tableName,
+        FF_MEAL_LIBRARY: mealLibraryEnv,
+        FF_NL_MEAL_PARSE: nlMealParseEnv,
+        ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
+        ...(process.env.ANTHROPIC_NL_MEAL_MODEL?.trim()
+          ? { ANTHROPIC_NL_MEAL_MODEL: process.env.ANTHROPIC_NL_MEAL_MODEL.trim() }
+          : {}),
+      },
+      bundling: {
+        minify: true,
+        sourceMap: false,
+        target: "node20",
+        forceDockerBundling: false,
+      },
+    });
+
     const apiLambda = new NodejsFunction(this, "BackendApiLambda", {
       functionName: `${this.stackName}-backend-api`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -253,6 +291,7 @@ export class BackendFoundationStack extends cdk.Stack {
         INSIGHTS_LLM_REFINE: insightsLlmRefineEnv,
         FF_PHOTO_FOOD_LOG: photoFoodLogEnv,
         FF_MEAL_LIBRARY: mealLibraryEnv,
+        FF_NL_MEAL_PARSE: nlMealParseEnv,
         ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
         ...(anthropicFoodVisionModel
           ? { ANTHROPIC_FOOD_VISION_MODEL: anthropicFoodVisionModel }
@@ -270,6 +309,14 @@ export class BackendFoundationStack extends cdk.Stack {
       apiId: httpApi.apiId,
       integrationType: "AWS_PROXY",
       integrationUri: apiLambda.functionArn,
+      integrationMethod: "POST",
+      payloadFormatVersion: "2.0",
+    });
+
+    const mealNlParseIntegration = new apigwv2.CfnIntegration(this, "MealNlParseLambdaIntegration", {
+      apiId: httpApi.apiId,
+      integrationType: "AWS_PROXY",
+      integrationUri: mealNlParseLambda.functionArn,
       integrationMethod: "POST",
       payloadFormatVersion: "2.0",
     });
@@ -327,9 +374,32 @@ export class BackendFoundationStack extends cdk.Stack {
       });
     }
 
+    new apigwv2.CfnRoute(this, "MealNlParsePostRoute", {
+      apiId: httpApi.apiId,
+      routeKey: "POST /v2/meals/nl-parse",
+      target: `integrations/${mealNlParseIntegration.ref}`,
+      authorizationType: "JWT",
+      authorizerId: jwtAuthorizer.ref,
+    });
+
+    new apigwv2.CfnRoute(this, "MealNlParseInvalidatePostRoute", {
+      apiId: httpApi.apiId,
+      routeKey: "POST /v2/meals/nl-parse/invalidate-insights",
+      target: `integrations/${mealNlParseIntegration.ref}`,
+      authorizationType: "JWT",
+      authorizerId: jwtAuthorizer.ref,
+    });
+
     new lambda.CfnPermission(this, "ApiGatewayInvokePermission", {
       action: "lambda:InvokeFunction",
       functionName: apiLambda.functionName,
+      principal: "apigateway.amazonaws.com",
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${httpApi.apiId}/*/*/*`,
+    });
+
+    new lambda.CfnPermission(this, "ApiGatewayInvokeMealNlParsePermission", {
+      action: "lambda:InvokeFunction",
+      functionName: mealNlParseLambda.functionName,
       principal: "apigateway.amazonaws.com",
       sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${httpApi.apiId}/*/*/*`,
     });

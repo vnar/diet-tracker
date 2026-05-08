@@ -272,6 +272,30 @@ export type DayMealEntryRow = {
   proteinG: number | null;
   loggedAt: string;
   notes?: string;
+  fiberG?: number | null;
+  rawInput?: string;
+  source?: string;
+};
+
+/** Response from POST /v2/meals/nl-parse */
+export type NlMealParseApiResponse = {
+  title: string;
+  confidence: number;
+  items: Array<{
+    name: string;
+    quantity_description: string;
+    quantity_grams: number;
+    kcal: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    icon_hint: string;
+    isInLibrary?: boolean;
+    libraryId?: string | null;
+  }>;
+  meal_type_guess: MealType;
+  notes: string | null;
 };
 
 export async function postFoodMealComplete(
@@ -303,6 +327,30 @@ export async function getMealsSuggestMatch(query: string, accessToken: string) {
   return fetchJson<{ match: MealLibraryRow | null; similarity: number }>(
     `/v2/meals/suggest-match?query=${encodeURIComponent(query)}`,
     undefined,
+    true,
+    accessToken,
+  );
+}
+
+export async function postMealLibraryCreate(
+  body: {
+    name: string;
+    meal_type: MealType;
+    kcal: number;
+    protein_g: number;
+    carbs_g?: number;
+    fat_g?: number;
+    source?: string;
+  },
+  accessToken: string,
+) {
+  return fetchJson<{ meal: MealLibraryRow; created: boolean }>(
+    "/v2/meals",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
     true,
     accessToken,
   );
@@ -386,7 +434,10 @@ export async function postDayMealEntry(
         photo_key?: string;
         carbs_g?: number;
         fat_g?: number;
+        fiber_g?: number;
         notes?: string;
+        raw_input?: string;
+        source?: string;
       },
   accessToken: string,
 ) {
@@ -406,6 +457,33 @@ export async function deleteDayMealEntry(day: string, entryId: string, accessTok
   return fetchJson<{ ok: true }>(
     `/v2/days/${encodeURIComponent(day)}/meal-entries/${encodeURIComponent(entryId)}`,
     { method: "DELETE" },
+    true,
+    accessToken,
+  );
+}
+
+export async function postMealNlParse(text: string, accessToken: string) {
+  return fetchJson<NlMealParseApiResponse>(
+    "/v2/meals/nl-parse",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    },
+    true,
+    accessToken,
+    60000,
+  );
+}
+
+export async function postInsightCacheInvalidateAfterMeals(accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    "/v2/meals/nl-parse/invalidate-insights",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    },
     true,
     accessToken,
   );

@@ -31,8 +31,8 @@ describe("feature flag evaluation", () => {
     expect(isEnabled("FF_INSIGHTS_V2", "u1")).toBe(false);
   });
 
-  it("returns false for missing flag by default", () => {
-    expect(isEnabled("FF_DOES_NOT_EXIST", "u1")).toBe(false);
+  it("returns true for missing flag when no env (test-portal default)", () => {
+    expect(isEnabled("FF_DOES_NOT_EXIST", "u1")).toBe(true);
   });
 });
 

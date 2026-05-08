@@ -62,7 +62,8 @@ export function isEnabled(flag: string, userId?: string): boolean {
   }
   const envValue = readEnvFlag(normalized);
   if (typeof envValue === "boolean") return envValue;
-  return false;
+  /** Test / internal portal default: flags are ON unless env explicitly disables them. */
+  return true;
 }
 
 // Backward-compatible wrappers for existing insights wiring.
@@ -99,4 +100,9 @@ export function isPhotoFoodLogEnabled(userId?: string): boolean {
 /** P1.3.1 meal library + daily meal log (extends photo flow when also enabled). Default OFF. */
 export function isMealLibraryEnabled(userId?: string): boolean {
   return isEnabled("MEAL_LIBRARY", userId);
+}
+
+/** Natural-language "Log a meal" AI parse (requires MEAL_LIBRARY). Default OFF. */
+export function isNlMealParseEnabled(userId?: string): boolean {
+  return isEnabled("NL_MEAL_PARSE", userId);
 }

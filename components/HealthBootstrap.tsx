@@ -22,6 +22,12 @@ function mergeNextPublicFeatureFlags(
   const photo = process.env.NEXT_PUBLIC_FF_PHOTO_FOOD_LOG;
   if (photo === "true") out.FF_PHOTO_FOOD_LOG = true;
   if (photo === "false") out.FF_PHOTO_FOOD_LOG = false;
+  const nl = process.env.NEXT_PUBLIC_FF_NL_MEAL_PARSE;
+  if (nl === "true") out.FF_NL_MEAL_PARSE = true;
+  if (nl === "false") out.FF_NL_MEAL_PARSE = false;
+  const bill = process.env.NEXT_PUBLIC_FF_BILLING_ENABLED;
+  if (bill === "true") out.FF_BILLING_ENABLED = true;
+  if (bill === "false") out.FF_BILLING_ENABLED = false;
   return out;
 }
 import { setHealthStorageMode, useHealthStore } from "@/lib/store";

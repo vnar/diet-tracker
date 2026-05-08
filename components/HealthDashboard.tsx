@@ -8,6 +8,7 @@ import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCalori
 import { AddFromLibrarySheet } from "@/components/v2/meals/AddFromLibrarySheet";
 import { FrequentMealsCarousel } from "@/components/v2/meals/FrequentMealsCarousel";
 import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
+import { NaturalMealInput } from "@/components/v2/meals/NaturalMealInput";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
 import { WeightChart } from "@/components/WeightChart";
 import { AIInsights } from "@/components/AIInsights";
@@ -24,7 +25,7 @@ import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings, Users } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
-import { isMealLibraryEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
+import { isMealLibraryEnabled, isNlMealParseEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { getEntryForDate } from "@/lib/calculations";
@@ -392,6 +393,9 @@ export function HealthDashboard() {
               isMealLibraryEnabled(user.id) &&
               todayKey ? (
                 <>
+                  {isNlMealParseEnabled(user.id) ? (
+                    <NaturalMealInput day={todayKey} getAccessToken={getAccessToken} onLogged={refreshMeals} />
+                  ) : null}
                   <FrequentMealsCarousel
                     day={todayKey}
                     getAccessToken={getAccessToken}
