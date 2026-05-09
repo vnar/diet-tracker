@@ -20,6 +20,10 @@ Set:
 
 The frontend then uses AWS API endpoints for entries/settings/photos.
 
+## Native mobile (Expo)
+
+The [mobile/](mobile/) app is an iOS/Android shell that reuses the **same Cognito user pool and HTTP API** as the web app (`EXPO_PUBLIC_*` mirrors `NEXT_PUBLIC_*`). See [mobile/README.md](mobile/README.md).
+
 **Amplify:** those variables must be set in the **Amplify Console** (build env), then redeploy — see [docs/AMPLIFY_DEPLOY.md](docs/AMPLIFY_DEPLOY.md). Run `npm run diag:aws` to verify API reachability.
 
 **Amplify build guard:** `amplify.yml` runs `scripts/assert-next-public-aws.mjs` so a missing `NEXT_PUBLIC_AWS_API_URL` fails the build instead of producing a silent “Couldn’t reach the server” site.

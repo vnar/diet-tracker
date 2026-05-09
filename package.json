@@ -23,8 +23,11 @@
     "infra:cdk:deploy": "npm --prefix infra/cdk run deploy",
     "stage6:cutover": "node scripts/stage6-validate-cutover.mjs",
     "env:from-stack": "node scripts/print-dotenv-local-from-stack.mjs",
+    "env:mobile-from-stack": "node scripts/print-mobile-dotenv-from-stack.mjs > mobile/.env",
     "diag:aws": "node scripts/diag-aws-api.mjs",
-    "assert:aws-env": "node scripts/assert-next-public-aws.mjs"
+    "assert:aws-env": "node scripts/assert-next-public-aws.mjs",
+    "mobile:start": "npm --prefix mobile run start",
+    "mobile:typecheck": "npm --prefix mobile run typecheck"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.93.0",

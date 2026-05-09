@@ -12,7 +12,15 @@ Secrets belong in `.env.local` (Next.js), your shell session (CDK deploy), or th
 node scripts/print-dotenv-local-from-stack.mjs >> .env.local
 ```
 
-Defaults: `CDK_STACK_NAME=DietTrackerBackendFoundation`, `AWS_REGION=us-east-1` (override with env vars).
+### Expo mobile (`mobile/.env`)
+
+Use the same deployed stack with `EXPO_PUBLIC_*` names (file is gitignored):
+
+```bash
+npm run env:mobile-from-stack
+```
+
+Defaults: `CDK_STACK_NAME=DietTrackerBackendFoundation`, `AWS_REGION=us-east-1` (override with env vars; same as the `.env.local` stack script).
 
 Stack outputs used: `ApiUrl`, `UserPoolId`, `UserPoolClientId`, `Region`, `BucketName` (from `infra/cdk/lib/backend-foundation-stack.ts`).
 
