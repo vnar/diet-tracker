@@ -3,6 +3,7 @@ import {
   clearUserFlagOverrides,
   isEnabled,
   isInsightsSourceLabelEnabled,
+  isPersonalizedAiCoachingEnabled,
   setUserFlagOverrides,
 } from "@/lib/featureFlags";
 
@@ -51,5 +52,22 @@ describe("insights source label flag", () => {
   it("respects explicit false", () => {
     process.env.FF_INSIGHTS_SOURCE_LABEL = "false";
     expect(isInsightsSourceLabelEnabled()).toBe(false);
+  });
+});
+
+describe("personalized AI coaching flag", () => {
+  beforeEach(() => {
+    delete process.env.FF_PERSONALIZED_AI_COACHING;
+    delete process.env.NEXT_PUBLIC_FF_PERSONALIZED_AI_COACHING;
+    clearUserFlagOverrides();
+  });
+
+  it("defaults to true when unset (opt-out)", () => {
+    expect(isPersonalizedAiCoachingEnabled()).toBe(true);
+  });
+
+  it("respects explicit false", () => {
+    process.env.FF_PERSONALIZED_AI_COACHING = "false";
+    expect(isPersonalizedAiCoachingEnabled()).toBe(false);
   });
 });

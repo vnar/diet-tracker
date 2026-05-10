@@ -60,3 +60,10 @@
 - **Scope:** AI visual assessment for progress-photo compare mode. Returns estimate-only body-composition trend commentary and confidence/disclaimer text. No diagnosis or medical claims.
 - **Requires:** progress photos enabled, AWS backend, `ANTHROPIC_API_KEY` on API Lambda.
 - **Env keys:** `FF_BODY_COMPARE_AI`, `NEXT_PUBLIC_FF_BODY_COMPARE_AI`. Per-user overrides: `FF_BODY_COMPARE_AI` in `FeatureFlagOverrides`.
+
+### `FF_PERSONALIZED_AI_COACHING`
+
+- **Default:** `true` (CDK sets Lambda `FF_PERSONALIZED_AI_COACHING` to `true` unless deploy uses `FF_PERSONALIZED_AI_COACHING=false` — opt-out like `FF_MEAL_LIBRARY`).
+- **Scope:** Adds `personalizedCoaching` to `GET /v2/insights`: rule-based nudges from normalized entry/settings data (weight, calories, sleep, habits, goals), explainability strings, safety copy, and Pro gating (paid active/trialing plans only). Feedback supports `helpful` / `not_helpful` / `dismiss` (stored on `INSIGHT_FEEDBACK`); analytics: `ai_nudge_generated`, `ai_nudge_viewed`, `ai_nudge_helpful`, `ai_nudge_dismissed`, `ai_nudge_upgrade_clicked`.
+- **Env keys:** `FF_PERSONALIZED_AI_COACHING`, `NEXT_PUBLIC_FF_PERSONALIZED_AI_COACHING`. Per-user overrides: `FF_PERSONALIZED_AI_COACHING` in `FeatureFlagOverrides` (client) and `isPersonalizedAiCoachingEnabled` for Next attachment when env is unset.
+- **Future:** `LlmNudgeProvider` stub in `lib/aiNudges/providers.ts` for optional LLM-backed nudges without changing the API envelope.

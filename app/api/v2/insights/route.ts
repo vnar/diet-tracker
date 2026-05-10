@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPersonalizedCoachingAttachment } from "@/lib/aiNudges/ddbCoaching";
 import { getAuthenticatedUserId } from "@/lib/server/cognito-auth";
 import { getInsightsForUser } from "@/lib/insights/server";
 
@@ -10,6 +11,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const firstName = req.headers.get("x-user-first-name") ?? undefined;
-  const insights = await getInsightsForUser({ userId, firstName });
-  return NextResponse.json({ insights });
+  const [insights, personalizedCoaching] = await Promise.all([
+    getInsightsForUser({ userId, firstName }),
+    getPersonalizedCoachingAttachment(userId).catch(() => undefined),
+  ]);
+  return NextResponse.json({
+    insights,
+    ...(personalizedCoaching ? { personalizedCoaching } : {}),
+  });
 }

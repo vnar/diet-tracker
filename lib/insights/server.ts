@@ -111,7 +111,7 @@ export async function getInsightsForUser(input: {
 export async function storeInsightFeedback(input: {
   userId: string;
   insightId: string;
-  vote: "up" | "down";
+  vote: "up" | "down" | "helpful" | "not_helpful" | "dismiss";
   comment?: string;
   feedbackType?: "negative";
 }) {

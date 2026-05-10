@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
+import { PersonalCoachingNudges } from "@/components/v2/insights/PersonalCoachingNudges";
 import { track } from "@/lib/analytics";
+import type { PersonalizedCoachingApiPayload } from "@/lib/aiNudges/types";
 import {
   getInsightsV2,
   submitInsightFeedback,
@@ -33,6 +35,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
     [user?.id],
   );
   const [insights, setInsights] = useState<Insight[]>([]);
+  const [personalizedCoaching, setPersonalizedCoaching] = useState<
+    PersonalizedCoachingApiPayload | undefined
+  >();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -49,6 +54,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
         setError(null);
       }
       const next = result.ok ? result.data.insights : [];
+      setPersonalizedCoaching(result.ok ? result.data.personalizedCoaching : undefined);
       setInsights(next);
       setLoading(false);
       next.forEach((insight) => {
@@ -74,6 +80,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
   async function handleVote(insightId: string, vote: InsightVote) {
     setVoted((prev) => ({ ...prev, [insightId]: vote }));
     track("insight_voted", { insight_id: insightId, vote });
+    if (vote === "helpful" || vote === "not_helpful") {
+      track("ai_nudge_helpful", { insight_id: insightId, helpful: vote === "helpful" });
+    }
     await submitInsightFeedback({ insightId, vote }, accessToken);
   }
 
@@ -81,7 +90,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
     return <p className="text-[15px] font-medium text-slate-400">Loading…</p>;
   }
 
-  if (insights.length === 0) {
+  if (insights.length === 0 && !personalizedCoaching) {
     return (
       <div className="space-y-2">
         <p className="text-[15px] font-medium leading-relaxed text-slate-400">
@@ -97,6 +106,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
   }
 
   return (
+    <div className="flex flex-col gap-2.5">
     <ul className="flex flex-col gap-2.5">
       {insights.map((ins) => {
         const generationSource = ins.generationSource ?? "rules";
@@ -178,9 +188,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
             ) : null}
             <button
               type="button"
-              onClick={() => void handleVote(ins.id, "up")}
+              onClick={() => void handleVote(ins.id, "helpful")}
               className={`inline-flex items-center gap-1 ${
-                voted[ins.id] === "up"
+                voted[ins.id] === "helpful" || voted[ins.id] === "up"
                   ? "text-emerald-300"
                   : "text-slate-400 hover:text-slate-300"
               }`}
@@ -190,9 +200,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
             </button>
             <button
               type="button"
-              onClick={() => void handleVote(ins.id, "down")}
+              onClick={() => void handleVote(ins.id, "not_helpful")}
               className={`inline-flex items-center gap-1 ${
-                voted[ins.id] === "down"
+                voted[ins.id] === "not_helpful" || voted[ins.id] === "down"
                   ? "text-rose-300"
                   : "text-slate-400 hover:text-slate-300"
               }`}
@@ -212,5 +222,9 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
         );
       })}
     </ul>
+    {personalizedCoaching ? (
+      <PersonalCoachingNudges accessToken={accessToken} coaching={personalizedCoaching} />
+    ) : null}
+    </div>
   );
 }

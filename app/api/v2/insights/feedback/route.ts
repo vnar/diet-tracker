@@ -6,10 +6,12 @@ export const dynamic = "force-static";
 
 type Body = {
   insightId?: string;
-  vote?: "up" | "down";
+  vote?: "up" | "down" | "helpful" | "not_helpful" | "dismiss";
   comment?: string;
   feedbackType?: "negative";
 };
+
+const ALLOWED = new Set(["up", "down", "helpful", "not_helpful", "dismiss"]);
 
 export async function POST(req: Request) {
   const userId = await getAuthenticatedUserId(req);
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = (await req.json()) as Body;
-  if (!body.insightId || (body.vote !== "up" && body.vote !== "down")) {
+  if (!body.insightId || !body.vote || !ALLOWED.has(body.vote)) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
   const comment =

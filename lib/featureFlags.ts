@@ -111,3 +111,17 @@ export function isNlMealParseEnabled(userId?: string): boolean {
 export function isBodyCompareAiEnabled(userId?: string): boolean {
   return isEnabled("BODY_COMPARE_AI", userId);
 }
+
+/**
+ * Personalized AI coaching nudges (rule-based; optional LLM later). Defaults ON when unset (opt-out:
+ * set `FF_PERSONALIZED_AI_COACHING=false` / `NEXT_PUBLIC_FF_PERSONALIZED_AI_COACHING=false` to disable).
+ */
+export function isPersonalizedAiCoachingEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_PERSONALIZED_AI_COACHING"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("PERSONALIZED_AI_COACHING");
+  if (explicit === false) return false;
+  return true;
+}

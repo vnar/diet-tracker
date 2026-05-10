@@ -138,19 +138,24 @@ export function AiInsightCardV2({
 
   const submitFeedback = useCallback(
     async (v: InsightVote, comment?: string) => {
-      track("insight_voted", { insight_id: insight.id, vote: v });
+      const apiVote: InsightVote =
+        v === "up" ? "helpful" : v === "down" ? "not_helpful" : v;
+      track("insight_voted", { insight_id: insight.id, vote: apiVote });
+      if (apiVote === "helpful" || apiVote === "not_helpful") {
+        track("ai_nudge_helpful", { insight_id: insight.id, helpful: apiVote === "helpful" });
+      }
       await submitInsightFeedback(
         {
           insightId: insight.id,
-          vote: v,
-          ...(v === "down" && comment?.trim()
+          vote: apiVote,
+          ...(apiVote === "not_helpful" && comment?.trim()
             ? { comment: comment.trim(), feedbackType: "negative" as const }
             : {}),
         },
         accessToken,
       );
-      setVote(v);
-      if (v === "up") setNegOpen(false);
+      setVote(apiVote);
+      if (apiVote === "helpful") setNegOpen(false);
     },
     [accessToken, insight.id],
   );
@@ -376,7 +381,7 @@ export function AiInsightCardV2({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => void submitFeedback("up")}
+            onClick={() => void submitFeedback("helpful")}
             disabled={vote !== undefined}
             className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] px-2.5 py-1 text-[11px] transition hover:border-[rgba(61,219,122,0.3)] hover:text-[#3DDB7A] disabled:opacity-50"
             style={{ color: MU }}
@@ -410,7 +415,7 @@ export function AiInsightCardV2({
           </label>
           <button
             type="button"
-            onClick={() => void submitFeedback("down", negText)}
+            onClick={() => void submitFeedback("not_helpful", negText)}
             className="mt-2 text-[11px] font-medium text-sky-400 hover:text-sky-300"
           >
             Send feedback

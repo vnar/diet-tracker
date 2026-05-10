@@ -272,6 +272,9 @@ export class BackendFoundationStack extends cdk.Stack {
     const mealLibraryEnv = process.env.FF_MEAL_LIBRARY === "false" ? "false" : "true";
     const nlMealParseEnv = process.env.FF_NL_MEAL_PARSE === "false" ? "false" : "true";
     const bodyCompareAiEnv = process.env.FF_BODY_COMPARE_AI === "false" ? "false" : "true";
+    /** Opt-out: personalized coaching nudges + Pro gate on `/v2/insights` (same pattern as other FF_*). */
+    const personalizedAiCoachingEnv =
+      process.env.FF_PERSONALIZED_AI_COACHING === "false" ? "false" : "true";
     /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
@@ -331,6 +334,7 @@ export class BackendFoundationStack extends cdk.Stack {
         FF_MEAL_LIBRARY: mealLibraryEnv,
         FF_NL_MEAL_PARSE: nlMealParseEnv,
         FF_BODY_COMPARE_AI: bodyCompareAiEnv,
+        FF_PERSONALIZED_AI_COACHING: personalizedAiCoachingEnv,
         ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
         ...(anthropicFoodVisionModel
           ? { ANTHROPIC_FOOD_VISION_MODEL: anthropicFoodVisionModel }

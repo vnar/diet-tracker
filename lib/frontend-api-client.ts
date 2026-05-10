@@ -1,6 +1,7 @@
 "use client";
 
 import type { DailyEntry, ProgressPhoto, UserSettings } from "@/lib/types";
+import type { PersonalizedCoachingApiPayload } from "@/lib/aiNudges/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
 import type { MealType } from "@/lib/meals/mealTypes";
@@ -210,12 +211,10 @@ export async function trackPageView(accessToken?: string) {
 }
 
 export async function getInsightsV2(accessToken?: string) {
-  return fetchJson<{ insights: Insight[] }>(
-    "/v2/insights",
-    undefined,
-    true,
-    accessToken,
-  );
+  return fetchJson<{
+    insights: Insight[];
+    personalizedCoaching?: PersonalizedCoachingApiPayload;
+  }>("/v2/insights", undefined, true, accessToken);
 }
 
 export async function getFeatureFlagOverrides(accessToken?: string) {

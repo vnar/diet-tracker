@@ -1,7 +1,7 @@
 import type { DailyEntry, PlateauUserSettings } from "@/lib/types";
 import type { AiInsightStructured } from "@/lib/insights/aiInsightStructured";
 
-export type InsightVote = "up" | "down";
+export type InsightVote = "up" | "down" | "helpful" | "not_helpful" | "dismiss";
 export type InsightCategory =
   | "sodium"
   | "alcohol"

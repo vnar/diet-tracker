@@ -23,6 +23,7 @@ import {
   s3KeyAllowedForUser,
 } from "../../../lib/food/s3Uri";
 import type { AiInsightStructured } from "../../../lib/insights/aiInsightStructured";
+import { buildPersonalizedCoachingPayload } from "../../../lib/aiNudges/index";
 import { generateAiInsightCard } from "./insights-ai-card";
 import { handleV2FoodEstimate, handleV2FoodLogConfirm } from "./food-log-api";
 import {
@@ -793,7 +794,45 @@ async function getInsightsV2(userId: string, _event: HttpEvent): Promise<HttpRes
     targetDate,
     dayMealsTableName: dayMealEntriesTableName,
   });
-  return json(200, { insights });
+
+  const bodyOut: Record<string, unknown> = { insights };
+  if (process.env.FF_PERSONALIZED_AI_COACHING !== "false") {
+    const subsTable = process.env.SUBSCRIPTIONS_TABLE_NAME;
+    let plan: string | undefined;
+    let subscriptionStatus: string | undefined;
+    if (subsTable) {
+      try {
+        const subOut = await ddb.send(
+          new GetItemCommand({
+            TableName: subsTable,
+            Key: { userId: { S: userId } },
+            ConsistentRead: true,
+          }),
+        );
+        plan = subOut.Item?.plan?.S ?? "free";
+        subscriptionStatus = subOut.Item?.status?.S ?? "inactive";
+      } catch {
+        plan = "free";
+        subscriptionStatus = "inactive";
+      }
+    }
+    const sorted = [...entriesRaw].sort((a, b) => a.date.localeCompare(b.date));
+    const last7 = sorted.slice(-7);
+    const kcals = last7.map((e) => e.calories).filter((c): c is number => typeof c === "number" && c > 0);
+    const recentAvgDailyCalories =
+      kcals.length >= 2 ? kcals.reduce((a, b) => a + b, 0) / kcals.length : null;
+    bodyOut.personalizedCoaching = buildPersonalizedCoachingPayload({
+      entriesRaw,
+      goalWeight,
+      startWeight,
+      targetDate,
+      asOfDate: to,
+      plan,
+      subscriptionStatus,
+      recentAvgDailyCalories,
+    });
+  }
+  return json(200, bodyOut);
 }
 
 async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<HttpResult> {
@@ -802,7 +841,12 @@ async function saveInsightFeedback(userId: string, event: HttpEvent): Promise<Ht
   if (!payload || typeof payload !== "object") return json(400, { error: "Body must be an object" });
   const body = payload as Record<string, unknown>;
   const insightId = typeof body.insightId === "string" ? body.insightId.trim() : "";
-  const vote = body.vote === "up" || body.vote === "down" ? body.vote : null;
+  const voteRaw = body.vote;
+  const allowedVotes = new Set(["up", "down", "helpful", "not_helpful", "dismiss"]);
+  const vote =
+    typeof voteRaw === "string" && allowedVotes.has(voteRaw)
+      ? (voteRaw as "up" | "down" | "helpful" | "not_helpful" | "dismiss")
+      : null;
   if (!insightId || !vote) return json(400, { error: "Invalid insight feedback payload" });
   const commentRaw = body.comment;
   const comment =
@@ -1637,6 +1681,8 @@ async function getFeatureFlagsForUser(userId: string): Promise<HttpResult> {
   serverDefaults.FF_NL_MEAL_PARSE = nlMealParse !== false;
   const bodyCompareAi = envFlagTriState("FF_BODY_COMPARE_AI");
   serverDefaults.FF_BODY_COMPARE_AI = bodyCompareAi !== false;
+  const personalizedCoaching = envFlagTriState("FF_PERSONALIZED_AI_COACHING");
+  serverDefaults.FF_PERSONALIZED_AI_COACHING = personalizedCoaching !== false;
 
   const overrides = { ...serverDefaults, ...fromDb };
   return json(200, { userId, overrides });

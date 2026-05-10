@@ -32,6 +32,9 @@ function mergeNextPublicFeatureFlags(
   const bodyAi = process.env.NEXT_PUBLIC_FF_BODY_COMPARE_AI;
   if (bodyAi === "true") out.FF_BODY_COMPARE_AI = true;
   if (bodyAi === "false") out.FF_BODY_COMPARE_AI = false;
+  const coach = process.env.NEXT_PUBLIC_FF_PERSONALIZED_AI_COACHING;
+  if (coach === "true") out.FF_PERSONALIZED_AI_COACHING = true;
+  if (coach === "false") out.FF_PERSONALIZED_AI_COACHING = false;
   return out;
 }
 
