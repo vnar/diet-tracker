@@ -165,7 +165,7 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
               })}
             </p>
           ) : null}
-          <div className="mt-2 flex items-center gap-4 text-xs">
+          <div className="mt-3 flex min-h-10 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
             {ins.why.length > 0 ? (
             <button
               type="button"
@@ -222,6 +222,12 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
         );
       })}
     </ul>
+    {insights.length > 0 && personalizedCoaching ? (
+      <div
+        className="my-1 h-px w-full bg-gradient-to-r from-transparent via-slate-600/50 to-transparent"
+        aria-hidden
+      />
+    ) : null}
     {personalizedCoaching ? (
       <PersonalCoachingNudges accessToken={accessToken} coaching={personalizedCoaching} />
     ) : null}
