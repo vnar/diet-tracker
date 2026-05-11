@@ -95,48 +95,56 @@ export function OjasMarketingShell({ children }: Props) {
       </header>
 
       <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10">
-        <section id="sign-in" className="scroll-mt-28 sm:scroll-mt-32">
-          <div className="mx-auto max-w-[19rem] sm:ml-auto sm:mr-0 sm:max-w-xs">
-            <h2 className="text-center text-base font-semibold text-zinc-900 sm:text-right dark:text-zinc-50">
-              Sign in or create an account
-            </h2>
-            <p className="mt-1 text-center text-[11px] leading-snug text-zinc-500 sm:text-right dark:text-zinc-400">
-              AWS Cognito · free core logging included
-            </p>
-            <div className="mt-3">{children}</div>
-          </div>
-        </section>
+        <section className="scroll-mt-28 sm:scroll-mt-32">
+          <div className="overflow-hidden rounded-3xl border border-zinc-200/90 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/30 shadow-2xl shadow-zinc-900/[0.08] ring-1 ring-zinc-900/[0.04] dark:border-zinc-700/90 dark:from-zinc-950 dark:via-zinc-950 dark:to-emerald-950/20 dark:shadow-black/50 dark:ring-white/10">
+            <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-12 lg:items-center lg:gap-0 lg:p-0">
+              <div className="text-center lg:col-span-7 lg:p-10 lg:pr-8 lg:text-left xl:p-12">
+                <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 lg:mx-0">
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  Freemium · upgrade when you want depth
+                </p>
+                <h1 className="mx-auto max-w-3xl text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl md:text-[2.65rem] md:leading-[1.12] dark:text-zinc-50 lg:mx-0 lg:max-w-none">
+                  Calm tracking for weight, meals, and progress—
+                  <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent dark:from-emerald-400 dark:to-teal-400">
+                    {" "}
+                    with AI that respects your data
+                  </span>
+                </h1>
+                <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 lg:mx-0 lg:max-w-xl">
+                  Start free with logging and history.{" "}
+                  <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Pro</strong> adds personalized
+                  coaching, smarter meal shortcuts, and generous voice check-ins—like unlocking a sharper layer on top of
+                  what you already built, not a penalty for staying free.
+                </p>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                  <a
+                    href="#sign-in"
+                    className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-500"
+                  >
+                    Get started free
+                  </a>
+                  <a
+                    href="#pricing"
+                    className="inline-flex items-center justify-center rounded-xl border border-zinc-300/90 bg-white/90 px-5 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-white dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    Compare plans
+                  </a>
+                </div>
+              </div>
 
-        <section className="mt-10 text-center sm:mt-14 sm:pt-2">
-          <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-            <Sparkles className="h-3 w-3" aria-hidden />
-            Freemium · upgrade when you want depth
-          </p>
-          <h1 className="mx-auto max-w-3xl text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl md:text-[2.75rem] md:leading-[1.1] dark:text-zinc-50">
-            Calm tracking for weight, meals, and progress—
-            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent dark:from-emerald-400 dark:to-teal-400">
-              {" "}
-              with AI that respects your data
-            </span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Start free with logging and history. <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Pro</strong>{" "}
-            adds personalized coaching, smarter meal shortcuts, and generous voice check-ins—like unlocking a
-            sharper layer on top of what you already built, not a penalty for staying free.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="#sign-in"
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-500"
-            >
-              Get started free
-            </a>
-            <a
-              href="#pricing"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Compare plans
-            </a>
+              <div
+                id="sign-in"
+                className="flex flex-col justify-center border-t border-zinc-200/80 bg-zinc-50/60 p-6 sm:p-8 dark:border-zinc-700/80 dark:bg-zinc-900/40 lg:col-span-5 lg:border-l lg:border-t-0 lg:p-10 lg:pl-8 xl:p-12"
+              >
+                <h2 className="text-center text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-left">
+                  Sign in or create an account
+                </h2>
+                <p className="mt-1 text-center text-[11px] leading-snug text-zinc-500 dark:text-zinc-400 lg:text-left">
+                  AWS Cognito · free core logging included
+                </p>
+                <div className="mt-4">{children}</div>
+              </div>
+            </div>
           </div>
         </section>
 
