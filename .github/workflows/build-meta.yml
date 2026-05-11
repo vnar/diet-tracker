@@ -1,0 +1,30 @@
+# Ensures generate-build-meta.mjs works on every push (same git metadata Amplify uses).
+name: Build meta
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Write lib/buildMeta.generated.json
+        env:
+          GITHUB_REF_NAME: ${{ github.head_ref || github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/generate-build-meta.mjs
+
+      - name: Verify JSON
+        run: node -e "const m=require('./lib/buildMeta.generated.json'); if(!m.versionLabel||!m.commitShort) process.exit(1); console.log(m);"

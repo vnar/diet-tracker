@@ -52,6 +52,26 @@ Use the **exact** origin from the browser address bar (no trailing slash). Comma
 
 `amplify.yml` runs `node scripts/assert-next-public-aws.mjs` before `npm run build`. If `NEXT_PUBLIC_USE_AWS_BACKEND=true` but required vars are missing, the **Amplify build fails** with a clear message instead of shipping a broken site.
 
+## 5b) Version labels from GitHub (every push)
+
+Amplify **preBuild** runs `node scripts/generate-build-meta.mjs`, which writes `lib/buildMeta.generated.json` from the checked-out repo:
+
+- **`versionLabel`**: exact tag when `HEAD` is tagged (e.g. `v1.2.0`), otherwise `git describe --tags --always --long` (e.g. `v1.1.0-5-gabc1234`).
+- **`commitShort`**, **`branch`** (`AWS_BRANCH` on Amplify), **last commit subject** (`git log -1`).
+
+The footer **version chip** and the **top “This build”** changelog row read that file at **Next build** time, so each **successful deploy from GitHub** shows the right revision without hand-editing `lib/productVersion.ts`.
+
+**Release semver (optional):** when you want a clean `v1.2.0` label instead of a describe string, tag the commit GitHub already built and redeploy (or push an empty commit):
+
+```bash
+git tag -a v1.2.0 -m "Weekly digest + email insights"
+git push origin v1.2.0
+```
+
+Then either merge to `main` or trigger an Amplify redeploy on that commit so `HEAD` matches the tag.
+
+**Local:** run `npm run gen:build-meta` after cloning (optional); otherwise the UI shows `v0.1.0-dev` and the static changelog history only.
+
 ## 6) Test portal: same experience for every host / preview branch
 
 Photo uploads use **presigned S3 PUT**; the bucket CORS `AllowedOrigins` must include each site origin. For a **shared test portal** (Amplify `main`, PR previews, extra domains), either:

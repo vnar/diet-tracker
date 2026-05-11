@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronUp, FileText } from "lucide-react";
-import { AWS_SERVICES, CHANGELOG, type AWSService } from "@/lib/aws-services";
-import { OJAS_PRODUCT_VERSION_LABEL } from "@/lib/productVersion";
+import { AWS_SERVICES, type AWSService } from "@/lib/aws-services";
+import { buildChangelogForFooter, OJAS_PRODUCT_VERSION_LABEL } from "@/lib/productVersion";
 import { getFooterStats, isAwsBackendEnabled, trackPageView } from "@/lib/frontend-api-client";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { AboutButton } from "@/components/AboutButton";
@@ -125,7 +125,7 @@ export function AppFooter() {
       {changelogOpen ? (
         <div className="border-t border-zinc-800/60">
           <div className="mx-auto flex max-w-5xl flex-col gap-2 px-5 py-3">
-            {CHANGELOG.map((entry) => (
+            {buildChangelogForFooter().map((entry) => (
               <div key={entry.version} className="flex items-start gap-3">
                 <span className="w-14 flex-shrink-0 text-[10px] font-mono text-zinc-600">
                   {entry.version}
