@@ -43,7 +43,28 @@ function getSpeechRecognitionCtor(): SpeechRecCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-type VoiceError = "mic_denied" | "no_speech" | "parse_failed" | "not_supported" | "unclear" | "no_auth";
+type VoiceError =
+  | "mic_denied"
+  | "no_speech"
+  | "parse_failed"
+  | "parse_network"
+  | "parse_route"
+  | "not_supported"
+  | "unclear"
+  | "no_auth";
+
+function classifyVoiceParseFailure(errorText: string): VoiceError {
+  const low = errorText.toLowerCase();
+  if (low.includes("unauthorized") || errorText.includes("Request failed (401)")) return "no_auth";
+  if (low.includes("couldn't reach") || low.includes("couldn't reach")) return "parse_network";
+  if (low.includes("network error")) return "parse_network";
+  if (low.includes("you're offline")) return "parse_network";
+  if (low.includes("timed out")) return "parse_network";
+  if (low.includes("request failed (502)") || low.includes("request failed (403)")) return "parse_network";
+  if (low.includes("api url is http://") && low.includes("https")) return "parse_network";
+  if (low.includes("request failed (404)")) return "parse_route";
+  return "parse_failed";
+}
 
 function errorCopy(code: VoiceError | null): string | null {
   if (!code) return null;
@@ -54,6 +75,10 @@ function errorCopy(code: VoiceError | null): string | null {
       return "We did not catch any speech. Move closer to the mic, speak clearly, or type your update below.";
     case "parse_failed":
       return "We could not turn that into check-in fields. Edit what you said and try Parse again.";
+    case "parse_network":
+      return "Could not reach your health API from this browser. Check connection, VPN, and ad blockers. If saving today’s log still works, wait a moment and try Parse again.";
+    case "parse_route":
+      return "Voice parsing is not wired on this API yet. Deploy the latest CDK backend so API Gateway includes POST /v2/voice-daily-log/parse (same stack as food photos), then hard-refresh.";
     case "not_supported":
       return "Voice capture is not available in this browser. Try Chrome on desktop, or type your update below.";
     case "unclear":
@@ -276,8 +301,11 @@ export function VoiceDailyLogSheet(props: Props) {
     const res = await postVoiceDailyLogParse(text, token);
     setParsing(false);
     if (!res.ok) {
-      setParseDetail(res.error);
-      setError("parse_failed");
+      const kind = classifyVoiceParseFailure(res.error);
+      setError(kind);
+      const showRawDetail =
+        kind === "parse_failed" || (kind === "no_auth" && res.error.trim().length > 0);
+      setParseDetail(showRawDetail ? res.error : null);
       return;
     }
     const p = res.data.parsed;

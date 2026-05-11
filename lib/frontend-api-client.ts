@@ -550,10 +550,33 @@ export function voiceParseAwsFailureMayRetryWithNext(awsError: string): boolean 
 }
 
 /**
+ * `next dev` serves `/api/v2/...`. Static export (Amplify `out/`) does not — same-origin fallback
+ * only makes sense on localhost unless explicitly opted in (e.g. a full Node host).
+ */
+export function isVoiceParseNextOriginFallbackAllowed(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  if (h === "localhost" || h === "127.0.0.1") return true;
+  return process.env.NEXT_PUBLIC_VOICE_PARSE_ALLOW_NEXT_FALLBACK === "true";
+}
+
+/** One extra AWS attempt after flaky transport (not used for HTTP 4xx/5xx — those need config/deploy fixes). */
+function awsVoiceParseShouldRetryOnce(awsError: string): boolean {
+  const e = awsError.toLowerCase();
+  if (e.includes("request failed (")) return false;
+  if (e.includes("you're offline")) return false;
+  if (e.includes("couldn't reach") || e.includes("couldn’t reach")) return true;
+  if (e.includes("network error")) return true;
+  if (e.includes("timed out")) return true;
+  if (/failed to fetch|load failed|network request failed/i.test(awsError)) return true;
+  return false;
+}
+
+/**
  * Voice transcript → structured check-in.
- * When AWS is enabled, calls API Gateway first (same key as food vision). If that fails with a
- * transport/missing-route style error, retries the Next.js `/api/v2/...` route (helps local dev).
- * On Amplify static hosting only, ensure CDK deployed `POST /v2/voice-daily-log/parse`.
+ * When AWS is enabled, calls API Gateway first (same key as food vision). On localhost only, a
+ * transport/missing-route style failure can fall back to the Next.js `/api/v2/...` route (`next dev`).
+ * Amplify uses static export — there is no Next API; fix connectivity or deploy POST /v2/voice-daily-log/parse on API GW.
  */
 export async function postVoiceDailyLogParse(
   transcript: string,
@@ -566,15 +589,29 @@ export async function postVoiceDailyLogParse(
   };
 
   if (isAwsBackendEnabled()) {
-    const awsRes = await fetchJson<VoiceDailyParseApiResponse>(
+    let awsRes = await fetchJson<VoiceDailyParseApiResponse>(
       "/v2/voice-daily-log/parse",
       init,
       true,
       accessToken,
       60000,
     );
+    if (!awsRes.ok && awsVoiceParseShouldRetryOnce(awsRes.error)) {
+      await new Promise((r) => setTimeout(r, 450));
+      const second = await fetchJson<VoiceDailyParseApiResponse>(
+        "/v2/voice-daily-log/parse",
+        init,
+        true,
+        accessToken,
+        60000,
+      );
+      if (second.ok) return second;
+      awsRes = second;
+    }
+
     if (awsRes.ok) return awsRes;
-    if (voiceParseAwsFailureMayRetryWithNext(awsRes.error)) {
+
+    if (voiceParseAwsFailureMayRetryWithNext(awsRes.error) && isVoiceParseNextOriginFallbackAllowed()) {
       const nextRes = await fetchJson<VoiceDailyParseApiResponse>(
         "/api/v2/voice-daily-log/parse",
         init,
@@ -588,6 +625,7 @@ export async function postVoiceDailyLogParse(
         error: `${awsRes.error}\n\nStill failing after same-origin fallback. Deploy CDK so API Gateway includes POST /v2/voice-daily-log/parse (same stack as photo food). Fallback error: ${nextRes.error}`,
       };
     }
+
     return awsRes;
   }
 
