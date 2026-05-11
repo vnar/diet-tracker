@@ -26,5 +26,14 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: node scripts/generate-build-meta.mjs
 
+      - name: Fetch recent commits (GitHub API)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.head_ref || github.ref_name }}
+        run: node scripts/fetch-github-changelog.mjs
+
       - name: Verify JSON
-        run: node -e "const m=require('./lib/buildMeta.generated.json'); if(!m.versionLabel||!m.commitShort) process.exit(1); console.log(m);"
+        run: |
+          node -e "const m=require('./lib/buildMeta.generated.json'); if(!m.versionLabel||!m.commitShort) process.exit(1); console.log(m);"
+          node -e "const g=require('./lib/githubChangelog.generated.json'); if(!Array.isArray(g.commits)) process.exit(1); console.log('github commits', g.commits.length, g.repoFullName||'');"

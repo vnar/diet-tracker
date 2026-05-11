@@ -126,7 +126,7 @@ export function AppFooter() {
         <div className="border-t border-zinc-800/60">
           <div className="mx-auto flex max-w-5xl flex-col gap-2 px-5 py-3">
             {buildChangelogForFooter().map((entry) => (
-              <div key={entry.version} className="flex items-start gap-3">
+              <div key={entry.rowKey ?? entry.version} className="flex items-start gap-3">
                 <span className="w-14 flex-shrink-0 text-[10px] font-mono text-zinc-600">
                   {entry.version}
                 </span>

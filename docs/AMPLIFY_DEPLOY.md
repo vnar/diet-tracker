@@ -72,6 +72,14 @@ Then either merge to `main` or trigger an Amplify redeploy on that commit so `HE
 
 **Local:** run `npm run gen:build-meta` after cloning (optional); otherwise the UI shows `v0.1.0-dev` and the static changelog history only.
 
+## 5c) Footer: recent commits from GitHub (not only 3 milestone lines)
+
+`amplify.yml` runs `node scripts/fetch-github-changelog.mjs`, which calls the public **GitHub REST API** (`GET /repos/{owner}/{repo}/commits`) for the current branch and writes `lib/githubChangelog.generated.json`. The footer then shows **this build**, up to **50 recent commits** (subject + link), then the static milestone list.
+
+- **Repo detection:** `GITHUB_REPOSITORY` (GitHub Actions), `OJAS_GITHUB_REPO` (e.g. `owner/repo` in Amplify env), `package.json` `repository.url`, or `git remote get-url origin`.
+- **Private repos or rate limits:** add a **fine-grained PAT** or `GITHUB_TOKEN` / `GH_TOKEN` in Amplify **Environment variables** (never commit it). Unauthenticated access works for public repos with a modest per-IP limit.
+- **Local:** `npm run gen:github-changelog` or `npm run gen:footer-data` (build meta + GitHub). Without a network run, the committed **empty** `lib/githubChangelog.generated.json` stub leaves only milestones under “this build”.
+
 ## 6) Test portal: same experience for every host / preview branch
 
 Photo uploads use **presigned S3 PUT**; the bucket CORS `AllowedOrigins` must include each site origin. For a **shared test portal** (Amplify `main`, PR previews, extra domains), either:
