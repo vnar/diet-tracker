@@ -27,9 +27,18 @@ type ConfirmSignUpResult =
   | { ok: true }
   | { ok: false; error: string };
 
+export type IdentityEmailMismatch = {
+  /** Normalized email/username used at InitiateAuth. */
+  signInWith: string;
+  /** Email claim shown on the ID token after sign-in (Cognito primary / linked identity). */
+  idTokenEmail: string;
+};
+
 type AuthContextValue = {
   status: AuthStatus;
   user: CognitoUserProfile | null;
+  /** Set when the email you typed at sign-in does not match the ID token email (check Cognito aliases / linked accounts). */
+  identityEmailMismatch: IdentityEmailMismatch | null;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (args: { email: string; password: string; name?: string }) => Promise<SignUpResult>;
   confirmSignUp: (args: { email: string; code: string }) => Promise<ConfirmSignUpResult>;
@@ -83,31 +92,45 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<CognitoSessionTokens | null>(null);
   const [user, setUser] = useState<CognitoUserProfile | null>(null);
+  /** Last username/email used for InitiateAuth (normalized). Hydrated sessions seed from ID token email so we do not false-alarm. */
+  const [lastAuthUsernameNorm, setLastAuthUsernameNorm] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = readStoredSession();
     if (!stored) {
       setStatus("unauthenticated");
+      setLastAuthUsernameNorm(null);
       return;
     }
     const base = userFromIdToken(stored.idToken);
     if (!base) {
       window.localStorage.removeItem(STORAGE_KEY);
       setStatus("unauthenticated");
+      setLastAuthUsernameNorm(null);
       return;
     }
     const profile = enrichProfileWithAccessToken(base, stored.accessToken);
     setSession(stored);
     setUser(profile);
+    setLastAuthUsernameNorm(profile.email?.trim().toLowerCase() ?? null);
     setStatus("authenticated");
   }, []);
+
+  const identityEmailMismatch = useMemo((): IdentityEmailMismatch | null => {
+    if (status !== "authenticated" || !user?.email?.trim()) return null;
+    const tokenEmail = user.email.trim().toLowerCase();
+    if (!lastAuthUsernameNorm || lastAuthUsernameNorm === tokenEmail) return null;
+    return { signInWith: lastAuthUsernameNorm, idTokenEmail: tokenEmail };
+  }, [status, user?.email, lastAuthUsernameNorm]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
+      identityEmailMismatch,
       async signIn(email, password) {
         try {
+          const requested = email.trim().toLowerCase();
           const response = await signInWithCognito(email, password);
           const next = sessionFromAuthResult(response.AuthenticationResult ?? {});
           if (!next) {
@@ -121,6 +144,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
           const profile = enrichProfileWithAccessToken(base, next.accessToken);
 
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          setLastAuthUsernameNorm(requested);
           setSession(next);
           setUser(profile);
           setStatus("authenticated");
@@ -160,6 +184,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
         window.localStorage.removeItem(STORAGE_KEY);
         setSession(null);
         setUser(null);
+        setLastAuthUsernameNorm(null);
         setStatus("unauthenticated");
       },
       getAccessToken() {
@@ -167,7 +192,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
         return session.accessToken;
       },
     }),
-    [session, status, user]
+    [identityEmailMismatch, session, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

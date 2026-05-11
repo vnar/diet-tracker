@@ -6,6 +6,7 @@ vi.mock("@/components/CognitoAuthProvider", () => ({
   useCognitoAuth: () => ({
     status: "unauthenticated",
     user: null,
+    identityEmailMismatch: null,
     signOut: vi.fn(),
   }),
 }));

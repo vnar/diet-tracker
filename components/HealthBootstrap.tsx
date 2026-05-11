@@ -56,6 +56,7 @@ function HealthBootstrapInner({ children }: { children: React.ReactNode }) {
     if (status !== "authenticated") {
       setHealthStorageMode(false);
       setSubscription(null);
+      useHealthStore.setState({ entries: [] });
       if (user?.id) clearUserFlagOverrides(user.id);
       return;
     }

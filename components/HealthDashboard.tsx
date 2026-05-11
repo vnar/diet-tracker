@@ -72,7 +72,7 @@ export function HealthDashboard() {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const { status, getAccessToken, user } = useCognitoAuth();
+  const { status, getAccessToken, user, identityEmailMismatch } = useCognitoAuth();
   const proMonetizationOn = Boolean(user?.id && isProMonetizationEnabled(user.id));
   const gateProSurfaceFeatures = useMemo(
     () => shouldGateProFeature(proMonetizationOn, subscription),
@@ -291,6 +291,18 @@ export function HealthDashboard() {
 
   return (
     <main className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
+      {identityEmailMismatch ? (
+        <div
+          className="border-b border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-center text-[11px] leading-snug text-amber-950 dark:border-amber-400/30 dark:bg-amber-950/50 dark:text-amber-100"
+          role="status"
+        >
+          You signed in as <span className="font-mono font-semibold">{identityEmailMismatch.signInWith}</span> but
+          this session&apos;s profile email is{" "}
+          <span className="font-mono font-semibold">{identityEmailMismatch.idTokenEmail}</span>. Your data in Ojas is
+          scoped to your Cognito account (not the label here). If that is wrong, sign out and check your Amazon Cognito
+          user (aliases, linked identities, or which email is primary).
+        </div>
+      ) : null}
       <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-950/90">
         <div className="mx-auto max-w-6xl px-5 py-2">
           <div className="flex items-center justify-between sm:hidden">

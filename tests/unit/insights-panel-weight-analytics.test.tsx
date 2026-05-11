@@ -15,7 +15,7 @@ vi.mock("@/lib/analytics", () => ({
 }));
 
 vi.mock("@/components/CognitoAuthProvider", () => ({
-  useCognitoAuth: () => ({ user: { id: "user-1", email: "a@b.com" } }),
+  useCognitoAuth: () => ({ user: { id: "user-1", email: "a@b.com" }, identityEmailMismatch: null }),
 }));
 
 vi.mock("@/lib/featureFlags", () => ({
