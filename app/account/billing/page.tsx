@@ -119,7 +119,9 @@ function BillingPageContent() {
   const cancelQuery = params.get("checkout") === "cancel";
 
   return (
-    <main className="mx-auto max-w-3xl space-y-8 p-6 text-zinc-200">
+    /** Full dark surface: page text is tuned for dark bg; root layout defaults to light mode. */
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="mx-auto max-w-3xl space-y-8 p-6 pb-16 text-zinc-200">
       <div>
         <h1 className="text-2xl font-semibold text-zinc-50">Ojas Pro</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
@@ -239,12 +241,13 @@ function BillingPageContent() {
         </table>
       </section>
 
-      <p className="text-center text-xs text-zinc-600">
-        <Link href="/" className="text-sky-400/90 hover:text-sky-300">
+      <p className="text-center text-xs text-zinc-500">
+        <Link href="/" className="text-sky-400 hover:text-sky-300">
           ← Back to dashboard
         </Link>
       </p>
     </main>
+    </div>
   );
 }
 
@@ -252,9 +255,11 @@ export default function BillingPage() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto max-w-3xl p-6 text-zinc-400">
-          <p className="text-sm">Loading…</p>
-        </main>
+        <div className="min-h-screen bg-zinc-950 text-zinc-200">
+          <main className="mx-auto max-w-3xl p-6">
+            <p className="text-sm">Loading…</p>
+          </main>
+        </div>
       }
     >
       <BillingPageContent />
