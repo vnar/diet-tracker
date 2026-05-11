@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -20,7 +19,7 @@ import {
 } from "@/lib/frontend-api-client";
 import { track } from "@/lib/analytics";
 import { isBodyCompareAiEnabled } from "@/lib/featureFlags";
-import { isPhotoAiAssessable, uiPhotoToAssessmentPayload } from "@/lib/progressPhotoAssessmentPayload";
+import { uiPhotoToAssessmentPayload } from "@/lib/progressPhotoAssessmentPayload";
 import type { BodyCompareAssessment } from "@/lib/photos/bodyCompareAssessmentCardModel";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
@@ -51,14 +50,8 @@ export type ProgressPhotoTrackerContextValue = {
   syncNotice: string | null;
   setError: (v: string | null) => void;
   displayPhotos: ProgressUiPhoto[];
-  photosInRange: ProgressUiPhoto[];
-  aiReadyInRange: ProgressUiPhoto[];
   comparePhotos: ProgressUiPhoto[];
   compareSelection: string[];
-  filterDateFrom: string;
-  filterDateTo: string;
-  setFilterDateFrom: (v: string) => void;
-  setFilterDateTo: (v: string) => void;
   setCompareSelection: Dispatch<SetStateAction<string[]>>;
   compareAssessment: BodyCompareAssessment | null;
   assessing: boolean;
@@ -67,7 +60,6 @@ export type ProgressPhotoTrackerContextValue = {
   onDeletePhoto: (photoId: string) => Promise<void>;
   toggleCompare: (photoId: string) => void;
   runAssessment: (photosToAssess: ProgressUiPhoto[], query: string) => Promise<boolean>;
-  runRangeEndpointsAssessment: () => Promise<boolean>;
 };
 
 const ProgressPhotoTrackerContext = createContext<ProgressPhotoTrackerContextValue | null>(null);
@@ -96,9 +88,6 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
 
   const canUseCloud = isAwsBackendEnabled() && status === "authenticated";
   const aiCompareEnabled = isBodyCompareAiEnabled(user?.id);
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
-  const rangeDefaultsApplied = useRef(false);
 
   useEffect(() => {
     if (!canUseCloud) return;
@@ -156,30 +145,6 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
     }
     return merged.sort((a, b) => b.date.localeCompare(a.date));
   }, [photos, legacyPhotos]);
-
-  useEffect(() => {
-    if (!today || rangeDefaultsApplied.current) return;
-    rangeDefaultsApplied.current = true;
-    setFilterDateTo(today);
-    const y = new Date(today + "T12:00:00").getFullYear();
-    setFilterDateFrom(`${y}-01-01`);
-  }, [today]);
-
-  const photosInRange = useMemo(() => {
-    const from = filterDateFrom.trim();
-    const to = filterDateTo.trim();
-    if (!from && !to) return displayPhotos;
-    return displayPhotos.filter((p) => {
-      if (from && p.date < from) return false;
-      if (to && p.date > to) return false;
-      return true;
-    });
-  }, [displayPhotos, filterDateFrom, filterDateTo]);
-
-  const aiReadyInRange = useMemo(
-    () => photosInRange.filter((p) => isPhotoAiAssessable(p)),
-    [photosInRange],
-  );
 
   const comparePhotos = useMemo(() => {
     const selected = displayPhotos.filter((p) => compareSelection.includes(p.photoId));
@@ -269,30 +234,6 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
     [getAccessToken],
   );
 
-  const runRangeEndpointsAssessment = useCallback(async (): Promise<boolean> => {
-    if (aiReadyInRange.length < 2) {
-      setError("Need at least two analyzable photos in this date range (see note under the button).");
-      return false;
-    }
-    const sorted = [...aiReadyInRange].sort((a, b) => a.date.localeCompare(b.date));
-    const pair = [sorted[0], sorted[sorted.length - 1]] as [ProgressUiPhoto, ProgressUiPhoto];
-    setCompareSelection(pair.map((p) => p.photoId));
-    return runAssessment(
-      pair,
-      `Compare my progress photos from ${pair[0].date} to ${pair[1].date}. Estimate visible body-composition trends, which areas look leaner or fuller, and call out uncertainty from pose, lighting, clothing, or mixing face vs torso shots.`,
-    );
-  }, [aiReadyInRange, runAssessment]);
-
-  const onFilterDateFromChange = useCallback((v: string) => {
-    setFilterDateFrom(v);
-    setCompareAssessment(null);
-  }, []);
-
-  const onFilterDateToChange = useCallback((v: string) => {
-    setFilterDateTo(v);
-    setCompareAssessment(null);
-  }, []);
-
   const value = useMemo<ProgressPhotoTrackerContextValue>(
     () => ({
       today,
@@ -306,14 +247,8 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       syncNotice,
       setError,
       displayPhotos,
-      photosInRange,
-      aiReadyInRange,
       comparePhotos,
       compareSelection,
-      filterDateFrom,
-      filterDateTo,
-      setFilterDateFrom: onFilterDateFromChange,
-      setFilterDateTo: onFilterDateToChange,
       compareAssessment,
       assessing,
       previewPhoto,
@@ -322,7 +257,6 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       toggleCompare,
       setCompareSelection,
       runAssessment,
-      runRangeEndpointsAssessment,
     }),
     [
       today,
@@ -335,14 +269,8 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       error,
       syncNotice,
       displayPhotos,
-      photosInRange,
-      aiReadyInRange,
       comparePhotos,
       compareSelection,
-      filterDateFrom,
-      filterDateTo,
-      onFilterDateFromChange,
-      onFilterDateToChange,
       compareAssessment,
       assessing,
       previewPhoto,
@@ -350,7 +278,6 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       toggleCompare,
       setCompareSelection,
       runAssessment,
-      runRangeEndpointsAssessment,
     ],
   );
 

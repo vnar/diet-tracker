@@ -23,7 +23,6 @@ export function PhotoTrackerGallery() {
   const {
     loadingPhotos,
     displayPhotos,
-    photosInRange,
     compareSelection,
     comparePhotos,
     previewPhoto,
@@ -71,7 +70,8 @@ export function PhotoTrackerGallery() {
             Select
           </span>{" "}
           on two thumbnails — a bar appears here to run it, or open{" "}
-          <span className="text-zinc-300">AI insights → Photo compare</span> for date-range tools.
+          <span className="text-zinc-300">AI insights → Photo compare</span> to review the write-up or pick a different
+          pair.
         </p>
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Gallery</p>
@@ -86,10 +86,7 @@ export function PhotoTrackerGallery() {
       </div>
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-2">
         <div className="flex snap-x snap-mandatory gap-2.5">
-          {photosInRange.length === 0 ? (
-            <p className="py-4 text-sm text-slate-500">No photos in this date range — widen dates in AI insights.</p>
-          ) : null}
-          {photosInRange.map((e) => {
+          {displayPhotos.map((e) => {
             const selected = compareSelection.includes(e.photoId);
             return (
               <div
