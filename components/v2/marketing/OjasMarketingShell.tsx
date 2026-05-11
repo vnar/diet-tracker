@@ -94,8 +94,20 @@ export function OjasMarketingShell({ children }: Props) {
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-        <section className="text-center sm:pt-4">
+      <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10">
+        <section id="sign-in" className="scroll-mt-28 sm:scroll-mt-32">
+          <div className="mx-auto max-w-[19rem] sm:ml-auto sm:mr-0 sm:max-w-xs">
+            <h2 className="text-center text-base font-semibold text-zinc-900 sm:text-right dark:text-zinc-50">
+              Sign in or create an account
+            </h2>
+            <p className="mt-1 text-center text-[11px] leading-snug text-zinc-500 sm:text-right dark:text-zinc-400">
+              AWS Cognito · free core logging included
+            </p>
+            <div className="mt-3">{children}</div>
+          </div>
+        </section>
+
+        <section className="mt-10 text-center sm:mt-14 sm:pt-2">
           <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
             <Sparkles className="h-3 w-3" aria-hidden />
             Freemium · upgrade when you want depth
@@ -258,14 +270,6 @@ export function OjasMarketingShell({ children }: Props) {
               </div>
             </div>
           </div>
-        </section>
-
-        <section id="sign-in" className="mx-auto mt-24 max-w-lg scroll-mt-24">
-          <h2 className="text-center text-xl font-semibold text-zinc-900 dark:text-zinc-50">Sign in or create an account</h2>
-          <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-            Sync across devices with AWS Cognito. Free tier includes full core logging.
-          </p>
-          <div className="mt-8">{children}</div>
         </section>
       </div>
     </main>
