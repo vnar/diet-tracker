@@ -61,4 +61,22 @@ describe("MealsTodayPanel", () => {
     expect(screen.getByText("Meals for this day")).toBeInTheDocument();
     expect(screen.getByText("Apple")).toBeInTheDocument();
   });
+
+  it("renders empty shell when showWhenEmpty and no entries", () => {
+    render(
+      <MealsTodayPanel
+        day="2026-05-06"
+        heading="Meals for this day"
+        entries={[]}
+        getAccessToken={() => "t"}
+        onChanged={() => {}}
+        showWhenEmpty
+      />,
+    );
+    expect(screen.getByText("Meals for this day")).toBeInTheDocument();
+    expect(screen.getByText(/No meals for this day yet/i)).toBeInTheDocument();
+    const panel = screen.getByText("Meals for this day").closest(".shadow-inner");
+    expect(panel).toHaveTextContent("0");
+    expect(panel).toHaveTextContent("kcal");
+  });
 });

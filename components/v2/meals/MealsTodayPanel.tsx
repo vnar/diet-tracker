@@ -13,13 +13,16 @@ type Props = {
   onChanged: () => void;
   /** Section title; default keeps the main dashboard wording unchanged. */
   heading?: string;
+  /** When true, show totals shell + hint even if there are no meal rows (e.g. past-day browse modal). */
+  showWhenEmpty?: boolean;
 };
 
 export function MealsTodayPanel(props: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DayMealEntryRow | null>(null);
 
-  if (props.entries.length === 0) return null;
+  const showEmptyShell = props.entries.length === 0 && props.showWhenEmpty;
+  if (props.entries.length === 0 && !showEmptyShell) return null;
 
   const totalKcal = props.entries.reduce((s, e) => s + (Number(e.kcal) || 0), 0);
   const totalProtein = props.entries.reduce((s, e) => s + (Number(e.proteinG) || 0), 0);
@@ -48,37 +51,44 @@ export function MealsTodayPanel(props: Props) {
           <span className="font-mono text-zinc-100">{Math.round(totalProtein)}</span> g protein
         </p>
       </div>
-      <ul className="space-y-2">
-        {props.entries.map((e) => (
-          <li
-            key={e.id}
-            className="flex items-center gap-2 rounded-lg border border-zinc-700/50 bg-zinc-900/40 px-2.5 py-2 transition-colors hover:border-emerald-800/40 hover:bg-zinc-900/70"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/90 text-zinc-400 ring-1 ring-zinc-700/50">
-              <Utensils className="h-4 w-4" aria-hidden />
-            </div>
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left"
-              onClick={() => setDetail(e)}
+      {props.entries.length > 0 ? (
+        <ul className="space-y-2">
+          {props.entries.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-center gap-2 rounded-lg border border-zinc-700/50 bg-zinc-900/40 px-2.5 py-2 transition-colors hover:border-emerald-800/40 hover:bg-zinc-900/70"
             >
-              <p className="truncate text-xs font-medium text-zinc-100">{e.nameSnapshot}</p>
-              <p className="text-[10px] capitalize text-zinc-500">
-                {e.mealType} · {e.kcal ?? "—"} kcal · {e.proteinG ?? "—"}g protein
-              </p>
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-rose-950/60 hover:text-rose-200 disabled:opacity-40"
-              aria-label={`Remove ${e.nameSnapshot}`}
-              disabled={busyId === e.id}
-              onClick={() => void remove(e.id)}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </li>
-        ))}
-      </ul>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/90 text-zinc-400 ring-1 ring-zinc-700/50">
+                <Utensils className="h-4 w-4" aria-hidden />
+              </div>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => setDetail(e)}
+              >
+                <p className="truncate text-xs font-medium text-zinc-100">{e.nameSnapshot}</p>
+                <p className="text-[10px] capitalize text-zinc-500">
+                  {e.mealType} · {e.kcal ?? "—"} kcal · {e.proteinG ?? "—"}g protein
+                </p>
+              </button>
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-rose-950/60 hover:text-rose-200 disabled:opacity-40"
+                aria-label={`Remove ${e.nameSnapshot}`}
+                disabled={busyId === e.id}
+                onClick={() => void remove(e.id)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[11px] leading-snug text-zinc-500">
+          No meals for this day yet. Add from frequent picks above, the library / photo / AI buttons beside Calories, or
+          log manually when no meals are present.
+        </p>
+      )}
 
       {detail ? (
         <div

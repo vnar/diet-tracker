@@ -25,9 +25,13 @@ type Props = DailyInputCaloriesAccessoryContext & {
   /** IANA timezone for meal-type suggestion when vision returns null. */
   clientTimezone?: string;
   onMealsChanged?: () => void;
+  /** When two instances mount (e.g. today + past days), pass unique ids to avoid duplicate DOM ids. */
+  fileInputId?: string;
+  errorElementId?: string;
 };
 
-const FOOD_PHOTO_INPUT_ID = "food-photo-meal-file";
+const DEFAULT_FOOD_PHOTO_INPUT_ID = "food-photo-meal-file";
+const DEFAULT_FOOD_PHOTO_ERR_ID = "food-photo-meal-err";
 
 type DialogState = {
   estimate: FoodVisionEstimate;
@@ -45,6 +49,8 @@ function normalizeFoodName(value: string): string {
 }
 
 export function FoodPhotoCaloriesAccessory(props: Props) {
+  const fileInputId = props.fileInputId ?? DEFAULT_FOOD_PHOTO_INPUT_ID;
+  const errorElementId = props.errorElementId ?? DEFAULT_FOOD_PHOTO_ERR_ID;
   const tz =
     props.clientTimezone ?? (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -374,7 +380,7 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
       <div className="relative flex shrink-0">
         <input
           ref={inputRef}
-          id={FOOD_PHOTO_INPUT_ID}
+          id={fileInputId}
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
           className="sr-only"
@@ -383,17 +389,17 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
           aria-hidden
         />
         <label
-          htmlFor={FOOD_PHOTO_INPUT_ID}
+          htmlFor={fileInputId}
           className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy || saving ? "pointer-events-none opacity-50" : ""}`}
           aria-label="Log food from photo"
           aria-busy={busy || saving}
-          aria-describedby={err ? "food-photo-meal-err" : undefined}
+          aria-describedby={err ? errorElementId : undefined}
         >
           <Camera className="h-4 w-4" aria-hidden />
         </label>
         {err ? (
           <span
-            id="food-photo-meal-err"
+            id={errorElementId}
             role="status"
             className="absolute left-1/2 top-full z-20 mt-1 w-max max-w-[14rem] -translate-x-1/2 rounded-md border border-rose-500/30 bg-rose-950/95 px-2 py-1 text-center text-[10px] leading-snug text-rose-200 shadow-lg"
           >

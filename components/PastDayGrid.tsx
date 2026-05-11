@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import { motion } from "framer-motion";
-import { ChevronDown, Trash2, Upload } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Trash2, Upload, Utensils } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Toggle } from "@/components/ui/Toggle";
@@ -23,10 +24,14 @@ import {
   uploadPhotoFile,
   type DayMealEntryRow,
 } from "@/lib/frontend-api-client";
-import { isMealLibraryEnabled } from "@/lib/featureFlags";
+import { isMealLibraryEnabled, isNlMealParseEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { getDayTotals } from "@/lib/meals/dayTotals";
+import { FoodPhotoCaloriesAccessory } from "@/components/v2/food/FoodPhotoCaloriesAccessory";
+import { AddFromLibrarySheet } from "@/components/v2/meals/AddFromLibrarySheet";
+import { FrequentMealsCarousel } from "@/components/v2/meals/FrequentMealsCarousel";
 import { MealsTodayPanel } from "@/components/v2/meals/MealsTodayPanel";
+import { NaturalMealSheet } from "@/components/v2/meals/NaturalMealSheet";
 
 const GRID_DAYS = 42;
 
@@ -94,10 +99,15 @@ export function PastDayGrid() {
 
   const [pastMealEntries, setPastMealEntries] = useState<DayMealEntryRow[]>([]);
   const [pastMealsEpoch, setPastMealsEpoch] = useState(0);
+  const [pastMealsBrowseOpen, setPastMealsBrowseOpen] = useState(false);
 
   const refreshPastMeals = useCallback(() => {
     setPastMealsEpoch((n) => n + 1);
   }, []);
+
+  useEffect(() => {
+    setPastMealsBrowseOpen(false);
+  }, [selected]);
 
   useEffect(() => {
     if (
@@ -476,6 +486,61 @@ export function PastDayGrid() {
                   {pastDayCaloriesProteinAggregate.caption}
                 </p>
               ) : null}
+              {selected &&
+              status === "authenticated" &&
+              isAwsBackendEnabled() &&
+              user?.id &&
+              (isPhotoFoodLogEnabled(user.id) ||
+                (isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id)) ||
+                isMealLibraryEnabled(user.id)) ? (
+                <div className="sm:col-span-2 rounded-lg border border-zinc-800/80 bg-zinc-950/30 px-2.5 py-2">
+                  <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                    Meals for this date
+                  </p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-1">
+                    {isMealLibraryEnabled(user.id) ? (
+                      <button
+                        type="button"
+                        onClick={() => setPastMealsBrowseOpen(true)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400"
+                        aria-label="Browse meals and frequent picks for this day"
+                        title="Browse meals for this day"
+                      >
+                        <Utensils className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                    {isMealLibraryEnabled(user.id) && isNlMealParseEnabled(user.id) ? (
+                      <NaturalMealSheet
+                        day={selected}
+                        getAccessToken={getAccessToken}
+                        onLogged={refreshPastMeals}
+                        compact
+                      />
+                    ) : null}
+                    {isMealLibraryEnabled(user.id) ? (
+                      <AddFromLibrarySheet
+                        day={selected}
+                        getAccessToken={getAccessToken}
+                        onAdded={refreshPastMeals}
+                      />
+                    ) : null}
+                    {isPhotoFoodLogEnabled(user.id) ? (
+                      <FoodPhotoCaloriesAccessory
+                        todayKey={selected}
+                        calories={calories}
+                        protein={protein}
+                        setCalories={setCalories}
+                        setProtein={setProtein}
+                        getAccessToken={getAccessToken}
+                        mealLibraryEnabled={isMealLibraryEnabled(user.id)}
+                        onMealsChanged={refreshPastMeals}
+                        fileInputId="food-photo-past-day-file"
+                        errorElementId="food-photo-past-day-err"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               <InputField
                 id="pastSteps"
                 label="Steps"
@@ -641,6 +706,53 @@ export function PastDayGrid() {
             </div>
           </div>
             ) : null}
+          {pastMealsBrowseOpen && selected && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  className="fixed inset-0 z-[170] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+                  role="presentation"
+                  onMouseDown={(e) => {
+                    if (e.target === e.currentTarget) setPastMealsBrowseOpen(false);
+                  }}
+                >
+                  <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl">
+                    <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-2">
+                      <p className="text-sm font-semibold text-zinc-100">Meals · {formatLong(selected)}</p>
+                      <button
+                        type="button"
+                        onClick={() => setPastMealsBrowseOpen(false)}
+                        className="rounded-md px-2 py-1 text-xs text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {status === "authenticated" &&
+                    isAwsBackendEnabled() &&
+                    user?.id &&
+                    isMealLibraryEnabled(user.id) ? (
+                      <>
+                        <FrequentMealsCarousel
+                          day={selected}
+                          getAccessToken={getAccessToken}
+                          onLogged={refreshPastMeals}
+                        />
+                        <MealsTodayPanel
+                          day={selected}
+                          entries={pastMealEntries}
+                          getAccessToken={getAccessToken}
+                          onChanged={refreshPastMeals}
+                          heading="Meals for this day"
+                          showWhenEmpty
+                        />
+                      </>
+                    ) : (
+                      <p className="py-3 text-xs text-zinc-500">Meal tools are available when signed in with AWS backend.</p>
+                    )}
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null}
           {previewPhoto ? (
             <div
               className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
