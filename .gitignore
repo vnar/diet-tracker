@@ -12,3 +12,6 @@ prisma/prisma/
 coverage
 infra/cdk/cdk.out
 infra/cdk/node_modules
+# Accidental tsc emit next to sources (breaks Vitest / Node resolution)
+lib/aiNudges/index.js
+lib/aiNudges/index.d.ts

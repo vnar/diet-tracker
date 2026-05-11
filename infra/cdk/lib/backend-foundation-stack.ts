@@ -32,6 +32,12 @@ export class BackendFoundationStack extends cdk.Stack {
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
+      /** Branded verification email (subject line). From-address still Cognito default unless SES is configured. */
+      userVerification: {
+        emailSubject: "Ojas Health — verify your email",
+        emailBody:
+          "Welcome to Ojas Health.\n\nYour verification code is {####}\n\nOjas Health helps you log weight and habits for personal awareness. This is not medical advice.\n",
+      },
       passwordPolicy: {
         minLength: 8,
         requireDigits: true,

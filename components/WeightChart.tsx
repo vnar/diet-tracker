@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/Card";
 import {
+  formatDateKeyLocal,
   sortEntriesByDateAsc,
   sevenDayMovingAverageSeries,
 } from "@/lib/calculations";
@@ -72,7 +73,7 @@ export function WeightChart() {
         const daysFromToday = Math.max(0, Math.round((d.getTime() - today.getTime()) / msPerDay));
         const t = Math.min(1, daysFromToday / totalDays);
         const expected = lastLoggedWeight + (goalWeight - lastLoggedWeight) * t;
-        const dateKey = d.toISOString().slice(0, 10);
+        const dateKey = formatDateKeyLocal(d);
         const existing = rowByDate.get(dateKey);
         if (existing) {
           existing.targetPath = expected;

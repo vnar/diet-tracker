@@ -60,6 +60,9 @@ export function useSaveEntry() {
       }
 
       const data = result.data as { entry: DailyEntry };
+      /** Apply server-normalized entry immediately so KPIs / chart update even if GET lags briefly. */
+      addEntry(data.entry);
+
       const maxVerifyAttempts = 4;
       let verifiedEntries: DailyEntry[] | undefined;
 

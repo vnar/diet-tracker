@@ -81,6 +81,7 @@ export function DashboardKpiRow() {
   const daysLeft = today
     ? daysUntilTarget(settings.targetDate, today)
     : null;
+  const hasValidTarget = /^\d{4}-\d{2}-\d{2}$/.test(settings.targetDate.trim());
 
   const kpis: Array<{
     title: string;
@@ -96,11 +97,15 @@ export function DashboardKpiRow() {
           ? `${displayWeight(currentKg, u)} ${u}`
           : "—",
       sub:
-        dayDelta !== null
-          ? yesterdayEntry
-            ? `${fmtDelta(dayDelta, u)} since yesterday`
-            : `${fmtDelta(dayDelta, u)} vs prior weigh-in`
-          : "Log morning weight",
+        today === null
+          ? "Syncing date…"
+          : dayDelta !== null
+            ? yesterdayEntry
+              ? `${fmtDelta(dayDelta, u)} since yesterday`
+              : `${fmtDelta(dayDelta, u)} vs prior weigh-in`
+            : currentKg === undefined
+              ? "Use Today's log below → enter weight → Save today"
+              : "Weigh in again tomorrow for a day-over-day change",
       subClass: deltaClass(dayDelta),
     },
     {
@@ -141,7 +146,11 @@ export function DashboardKpiRow() {
           ? `Target: ${formatGoalDate(settings.targetDate)}`
           : daysLeft !== null && daysLeft < 0
             ? `Was ${formatGoalDate(settings.targetDate)} — update target in settings`
-            : "Log today and set a target date in settings",
+            : today === null
+              ? "Syncing date…"
+              : hasValidTarget
+                ? `Target: ${formatGoalDate(settings.targetDate)}`
+                : "Set a goal date in settings",
       subClass:
         daysLeft !== null && daysLeft >= 0
           ? "text-emerald-400"

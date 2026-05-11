@@ -316,8 +316,17 @@ export function PastDayGrid() {
     >
       <Card variant="surface">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold tracking-tight text-zinc-100">Past days</h2>
-          <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-zinc-100">Past days</h2>
+            <p className="mt-1 max-w-[min(100%,18rem)] text-[10px] leading-snug text-zinc-500">
+              For <span className="font-medium text-zinc-400">today</span>, use{" "}
+              <a href="#todays-log" className="text-sky-400 underline-offset-2 hover:underline">
+                Today&apos;s log
+              </a>{" "}
+              above, then <span className="font-medium text-zinc-400">Save today</span>.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <input
               type="date"
               max={today}

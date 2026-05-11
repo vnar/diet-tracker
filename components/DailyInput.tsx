@@ -231,8 +231,10 @@ export function DailyInput({
 
   return (
     <motion.div
+      id="todays-log"
       animate={pulse ? { scale: [1, 1.01, 1] } : undefined}
       transition={{ duration: 0.35 }}
+      className="scroll-mt-28"
     >
       <Card title="Today's log" variant="surface">
         <div className="mb-2 flex items-center justify-end">
@@ -240,6 +242,13 @@ export function DailyInput({
             {todayEntry ? "Saved" : "New"}
           </span>
         </div>
+        {!todayEntry ? (
+          <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+            Enter your <span className="font-medium text-zinc-400">morning weight</span>, then tap{" "}
+            <span className="font-medium text-emerald-400/90">Save today</span> at the bottom. The
+            weight summary above updates after a successful save.
+          </p>
+        ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
           <InputField
             id="morningWeight"

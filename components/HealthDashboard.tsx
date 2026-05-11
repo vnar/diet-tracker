@@ -30,7 +30,7 @@ import { isAppAdminViewer } from "@/lib/admin";
 import { isMealLibraryEnabled, isNlMealParseEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
-import { getEntryForDate } from "@/lib/calculations";
+import { formatDateKeyLocal, getEntryForDate } from "@/lib/calculations";
 import { getDayTotals } from "@/lib/meals/dayTotals";
 import { track } from "@/lib/analytics";
 import { goalEditedFieldNames } from "@/lib/weightTrendAnalytics";
@@ -443,7 +443,7 @@ export function HealthDashboard() {
               <p className="ui-label mb-0 min-h-[1.25rem]">Activity + insights</p>
               <TodayActivityCard />
               <EnergyBalanceCard
-                day={todayKey ?? new Date().toISOString().slice(0, 10)}
+                day={todayKey ?? formatDateKeyLocal(new Date())}
                 todayEntry={todayEntry}
                 mealEntries={mealEntries}
                 getAccessToken={getAccessToken}
@@ -458,6 +458,10 @@ export function HealthDashboard() {
               </div>
             </motion.section>
           </div>
+
+          <motion.section {...fadeInUp}>
+            <WeightChart />
+          </motion.section>
 
           <motion.section {...fadeInUp} id="dashboard-history">
             <p className="ui-label mb-2">Review + history</p>
