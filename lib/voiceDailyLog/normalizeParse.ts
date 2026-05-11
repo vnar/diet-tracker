@@ -1,4 +1,4 @@
-import type { VoiceDailyParsedFields } from "@/lib/voiceDailyLog/types";
+import type { VoiceDailyParsedFields, VoiceSpokenFoodItem } from "./types";
 
 function num(v: unknown): number | null {
   if (v === null || v === undefined) return null;
@@ -33,6 +33,21 @@ function str(v: unknown): string | null {
   return null;
 }
 
+function normalizeFoodItems(raw: unknown): VoiceSpokenFoodItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: VoiceSpokenFoodItem[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object" || Array.isArray(it)) continue;
+    const o = it as Record<string, unknown>;
+    const description = str(o.description);
+    if (!description) continue;
+    const estKcal = intish(o.est_kcal ?? o.estKcal);
+    const estProteinG = intish(o.est_protein_g ?? o.estProteinG);
+    out.push({ description, estKcal, estProteinG });
+  }
+  return out;
+}
+
 /**
  * Normalize LLM JSON object into strict VoiceDailyParsedFields.
  * Accepts snake_case keys from the model contract.
@@ -60,6 +75,8 @@ export function normalizeVoiceDailyParseRecord(raw: unknown): VoiceDailyParsedFi
     lateSnack: bool(o.late_snack ?? o.lateSnack),
     highSodium: bool(o.high_sodium ?? o.highSodium),
     mealsSummary: str(o.meals_summary ?? o.mealsSummary),
+    foodItems: normalizeFoodItems(o.food_items ?? o.foodItems),
+    activityBurnHint: str(o.activity_burn_hint ?? o.activityBurnHint),
     confidence,
     unclearParts,
   };

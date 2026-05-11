@@ -1,8 +1,8 @@
-import { extractJsonObjectFromNlText } from "@/lib/meals/nlMealParseResult";
-import { getAnthropicApiKeyForServer } from "@/lib/server/anthropic-api-key";
-import { VOICE_DAILY_LOG_SYSTEM } from "@/lib/voiceDailyLog/prompt";
-import { normalizeVoiceDailyParseRecord } from "@/lib/voiceDailyLog/normalizeParse";
-import type { VoiceDailyParsedFields } from "@/lib/voiceDailyLog/types";
+import { extractJsonObjectFromNlText } from "../meals/nlMealParseResult";
+import { getAnthropicApiKeyForServer } from "../server/anthropic-api-key";
+import { VOICE_DAILY_LOG_SYSTEM } from "./prompt";
+import { normalizeVoiceDailyParseRecord } from "./normalizeParse";
+import type { VoiceDailyParsedFields } from "./types";
 
 export type VoiceDailyParseResult =
   | { ok: true; parsed: VoiceDailyParsedFields }

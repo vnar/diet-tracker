@@ -32,6 +32,25 @@ describe("normalizeVoiceDailyParseRecord", () => {
     expect(r!.mealsSummary).toBe("Oatmeal, salad, chicken");
     expect(r!.confidence).toBe(0.88);
     expect(r!.unclearParts).toEqual([]);
+    expect(r!.foodItems).toEqual([]);
+    expect(r!.activityBurnHint).toBeNull();
+  });
+
+  it("normalizes food_items and activity_burn_hint", () => {
+    const r = normalizeVoiceDailyParseRecord({
+      morning_weight_kg: null,
+      food_items: [
+        { description: "Two coffees", est_kcal: 40, est_protein_g: 2 },
+        { description: "Bagel", est_kcal: 280, est_protein_g: null },
+      ],
+      activity_burn_hint: "biked 35 minutes",
+      confidence: 0.7,
+      unclear_parts: [],
+    });
+    expect(r!.foodItems).toHaveLength(2);
+    expect(r!.foodItems[0]!.description).toBe("Two coffees");
+    expect(r!.foodItems[0]!.estKcal).toBe(40);
+    expect(r!.activityBurnHint).toBe("biked 35 minutes");
   });
 
   it("returns null for non-objects", () => {

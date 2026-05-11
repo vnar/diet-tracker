@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Mic, MicOff, Sparkles, X } from "lucide-react";
 import { postVoiceDailyLogParse } from "@/lib/frontend-api-client";
 import { inputToKg, kgToInput } from "@/lib/units";
-import type { VoiceDailyFormApply, VoiceDailyParsedFields } from "@/lib/voiceDailyLog/types";
+import type { VoiceDailyFormApply, VoiceDailyParsedFields, VoiceSpokenFoodItem } from "@/lib/voiceDailyLog/types";
 import { track } from "@/lib/analytics";
 
 /** Minimal Web Speech API surface (DOM lib typings omit `SpeechRecognition` in this toolchain). */
@@ -43,7 +43,7 @@ function getSpeechRecognitionCtor(): SpeechRecCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-type VoiceError = "mic_denied" | "no_speech" | "parse_failed" | "not_supported" | "unclear";
+type VoiceError = "mic_denied" | "no_speech" | "parse_failed" | "not_supported" | "unclear" | "no_auth";
 
 function errorCopy(code: VoiceError | null): string | null {
   if (!code) return null;
@@ -58,10 +58,34 @@ function errorCopy(code: VoiceError | null): string | null {
       return "Voice capture is not available in this browser. Try Chrome on desktop, or type your update below.";
     case "unclear":
       return "Add a bit more detail (for example weight and steps), then tap Parse.";
+    case "no_auth":
+      return "You need to be signed in (with the AWS backend enabled) to parse voice on this portal.";
     default:
       return null;
   }
 }
+
+type VoiceReviewState = {
+  morning: string;
+  night: string;
+  calories: string;
+  protein: string;
+  steps: string;
+  sleep: string;
+  workout: boolean;
+  alcohol: boolean;
+  lateSnack: boolean;
+  highSodium: boolean;
+  mealsSummary: string;
+  activityBurnHint: string;
+  syncActivityToEnergy: boolean;
+  foodRows: Array<{
+    description: string;
+    estKcal: string;
+    estProteinG: string;
+    includeInDaily: boolean;
+  }>;
+};
 
 type Props = {
   open: boolean;
@@ -72,7 +96,18 @@ type Props = {
   onApply: (draft: VoiceDailyFormApply) => void;
 };
 
-function parsedToReviewStrings(p: VoiceDailyParsedFields, unit: "kg" | "lbs") {
+function foodItemsToRows(items: VoiceSpokenFoodItem[]): VoiceReviewState["foodRows"] {
+  return items.map((it) => ({
+    description: it.description,
+    estKcal: it.estKcal != null && it.estKcal > 0 ? String(it.estKcal) : "",
+    estProteinG: it.estProteinG != null && it.estProteinG > 0 ? String(it.estProteinG) : "",
+    includeInDaily: it.estKcal != null && it.estKcal > 0,
+  }));
+}
+
+function parsedToReviewStrings(p: VoiceDailyParsedFields, unit: "kg" | "lbs"): VoiceReviewState {
+  const foodRows =
+    p.foodItems.length > 0 ? foodItemsToRows(p.foodItems) : foodItemsToRows([]);
   return {
     morning:
       p.morningWeightKg != null
@@ -91,6 +126,9 @@ function parsedToReviewStrings(p: VoiceDailyParsedFields, unit: "kg" | "lbs") {
     lateSnack: p.lateSnack === true,
     highSodium: p.highSodium === true,
     mealsSummary: p.mealsSummary ?? "",
+    activityBurnHint: p.activityBurnHint?.trim() ?? "",
+    syncActivityToEnergy: Boolean(p.activityBurnHint?.trim()),
+    foodRows,
   };
 }
 
@@ -100,8 +138,9 @@ export function VoiceDailyLogSheet(props: Props) {
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<VoiceDailyParsedFields | null>(null);
-  const [review, setReview] = useState<ReturnType<typeof parsedToReviewStrings> | null>(null);
+  const [review, setReview] = useState<VoiceReviewState | null>(null);
   const [error, setError] = useState<VoiceError | null>(null);
+  const [parseDetail, setParseDetail] = useState<string | null>(null);
   const [appendTranscript, setAppendTranscript] = useState(false);
   const [appendMeals, setAppendMeals] = useState(false);
 
@@ -117,6 +156,7 @@ export function VoiceDailyLogSheet(props: Props) {
     setParsed(null);
     setReview(null);
     setError(null);
+    setParseDetail(null);
     setAppendTranscript(false);
     setAppendMeals(false);
     transcribedTrackedRef.current = false;
@@ -222,7 +262,8 @@ export function VoiceDailyLogSheet(props: Props) {
     }
     const token = getAccessToken();
     if (!token) {
-      setError("parse_failed");
+      setParseDetail(null);
+      setError("no_auth");
       return;
     }
     if (!transcribedTrackedRef.current) {
@@ -231,9 +272,11 @@ export function VoiceDailyLogSheet(props: Props) {
     }
     setParsing(true);
     setError(null);
+    setParseDetail(null);
     const res = await postVoiceDailyLogParse(text, token);
     setParsing(false);
     if (!res.ok) {
+      setParseDetail(res.error);
       setError("parse_failed");
       return;
     }
@@ -250,6 +293,16 @@ export function VoiceDailyLogSheet(props: Props) {
     if (!review) return;
     const morningNum = review.morning.trim() === "" ? NaN : parseFloat(review.morning);
     const nightNum = review.night.trim() === "" ? NaN : parseFloat(review.night);
+    let foodKcalDelta = 0;
+    let foodProteinDeltaG = 0;
+    for (const row of review.foodRows) {
+      if (!row.includeInDaily) continue;
+      const k = row.estKcal.trim() === "" ? NaN : parseFloat(row.estKcal);
+      const pr = row.estProteinG.trim() === "" ? NaN : parseFloat(row.estProteinG);
+      if (!Number.isNaN(k) && k > 0) foodKcalDelta += Math.round(k);
+      if (!Number.isNaN(pr) && pr > 0) foodProteinDeltaG += Math.round(pr);
+    }
+
     const draft: VoiceDailyFormApply = {
       morningWeightKg:
         !Number.isNaN(morningNum) && morningNum > 0 ? inputToKg(morningNum, unit) : null,
@@ -275,6 +328,12 @@ export function VoiceDailyLogSheet(props: Props) {
       transcript: transcript.trim(),
       appendTranscriptToNotes: appendTranscript,
       appendMealsSummaryToNotes: appendMeals,
+      foodKcalDelta:
+        !caloriesProteinReadOnly && foodKcalDelta > 0 ? foodKcalDelta : null,
+      foodProteinDeltaG:
+        !caloriesProteinReadOnly && foodProteinDeltaG > 0 ? foodProteinDeltaG : null,
+      activityBurnHint: review.activityBurnHint.trim() || null,
+      syncActivityToEnergyCard: review.syncActivityToEnergy && Boolean(review.activityBurnHint.trim()),
     };
     appliedRef.current = true;
     track("voice_log_saved");
@@ -287,6 +346,7 @@ export function VoiceDailyLogSheet(props: Props) {
     transcript,
     appendTranscript,
     appendMeals,
+    transcript,
     onApply,
     handleClose,
   ]);
@@ -326,14 +386,18 @@ export function VoiceDailyLogSheet(props: Props) {
         </div>
 
         <p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
-          Speak or type your update. We only send text to the server for parsing — not audio. Review
-          every field before applying; nothing is saved until you use{" "}
-          <span className="font-medium text-zinc-400">Save today</span> on the dashboard.
+          Speak or type your update (e.g. what you ate, a bike ride). Only text is sent for parsing — not audio.
+          On the test portal, parsing uses the same AWS API and Anthropic key as food photo estimates. Review
+          everything before applying; nothing is saved until{" "}
+          <span className="font-medium text-zinc-400">Save today</span>.
         </p>
 
-        {error ? (
+        {error || parseDetail ? (
           <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
-            {errorCopy(error)}
+            {error ? errorCopy(error) : null}
+            {parseDetail ? (
+              <span className="mt-1 block font-mono text-[10px] text-rose-100/90">{parseDetail}</span>
+            ) : null}
           </p>
         ) : null}
 
@@ -458,6 +522,108 @@ export function VoiceDailyLogSheet(props: Props) {
                 />
               </label>
             </div>
+
+            {!caloriesProteinReadOnly && review.foodRows.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-200/90">
+                  Food & drink (adds to Today calories)
+                </p>
+                <ul className="space-y-2">
+                  {review.foodRows.map((row, idx) => (
+                    <li
+                      key={`${row.description}-${idx}`}
+                      className="flex flex-wrap items-start gap-2 rounded-md border border-zinc-800 bg-zinc-900/80 p-2"
+                    >
+                      <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={row.includeInDaily}
+                          onChange={(e) => {
+                            const v = e.target.checked;
+                            setReview({
+                              ...review,
+                              foodRows: review.foodRows.map((r, i) =>
+                                i === idx ? { ...r, includeInDaily: v } : r,
+                              ),
+                            });
+                          }}
+                          className="rounded border-zinc-600"
+                        />
+                        <span className="max-w-[10rem] truncate" title={row.description}>
+                          {row.description}
+                        </span>
+                      </label>
+                      <label className="text-[10px] text-zinc-500">
+                        kcal
+                        <input
+                          className="ml-1 w-16 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[11px] text-zinc-100"
+                          value={row.estKcal}
+                          onChange={(e) => {
+                            const t = e.target.value;
+                            setReview({
+                              ...review,
+                              foodRows: review.foodRows.map((r, i) =>
+                                i === idx ? { ...r, estKcal: t } : r,
+                              ),
+                            });
+                          }}
+                          inputMode="numeric"
+                        />
+                      </label>
+                      <label className="text-[10px] text-zinc-500">
+                        protein g
+                        <input
+                          className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[11px] text-zinc-100"
+                          value={row.estProteinG}
+                          onChange={(e) => {
+                            const t = e.target.value;
+                            setReview({
+                              ...review,
+                              foodRows: review.foodRows.map((r, i) =>
+                                i === idx ? { ...r, estProteinG: t } : r,
+                              ),
+                            });
+                          }}
+                          inputMode="numeric"
+                        />
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1.5 text-[9px] text-zinc-500">
+                  Checked rows add kcal / protein on top of the calories & protein fields above when you apply.
+                </p>
+              </div>
+            ) : caloriesProteinReadOnly && review.foodRows.length > 0 ? (
+              <p className="mt-3 text-[10px] text-zinc-500">
+                Calories are driven by logged meals today — food voice lines are for your notes only (use meal
+                logging for structured kcal).
+              </p>
+            ) : null}
+
+            <div className="mt-3 rounded-lg border border-violet-500/20 bg-violet-500/5 p-2">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-violet-200/90">
+                Activity (energy balance card)
+              </p>
+              <input
+                className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px] text-zinc-100"
+                value={review.activityBurnHint}
+                onChange={(e) => setReview({ ...review, activityBurnHint: e.target.value })}
+                placeholder='e.g. "biked 45 minutes", "30 min walk"'
+              />
+              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={review.syncActivityToEnergy}
+                  onChange={(e) =>
+                    setReview({ ...review, syncActivityToEnergy: e.target.checked })
+                  }
+                  className="rounded border-zinc-600"
+                />
+                Send this text to the Energy balance card (tap AI estimate there after applying)
+              </label>
+            </div>
+
             <div className="mt-3 grid grid-cols-2 gap-2">
               {(
                 [

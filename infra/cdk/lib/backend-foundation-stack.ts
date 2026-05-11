@@ -396,6 +396,7 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "POST /v2/food/estimate", id: "FoodEstimatePostRoute" },
       { routeKey: "POST /v2/food/log-confirm", id: "FoodLogConfirmPostRoute" },
       { routeKey: "POST /v2/activity/estimate-burn", id: "ActivityEstimateBurnPostRoute" },
+      { routeKey: "POST /v2/voice-daily-log/parse", id: "VoiceDailyLogParsePostRoute" },
       { routeKey: "POST /v2/activity/log", id: "ActivityLogPostRoute" },
       { routeKey: "PATCH /v2/activity/calibration", id: "ActivityCalibrationPatchRoute" },
       { routeKey: "GET /v2/activity/energy-weekly-summary", id: "EnergyWeeklySummaryGetRoute" },

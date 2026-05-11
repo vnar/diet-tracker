@@ -73,6 +73,11 @@ export function HealthDashboard() {
   const showAdminUsers = isAppAdminViewer(user?.email);
   const [mealEntries, setMealEntries] = useState<DayMealEntryRow[]>([]);
   const [mealRefreshEpoch, setMealRefreshEpoch] = useState(0);
+  const [voiceEnergyPrefill, setVoiceEnergyPrefill] = useState<{
+    nonce: string;
+    text: string;
+  } | null>(null);
+  const clearVoiceEnergyPrefill = useCallback(() => setVoiceEnergyPrefill(null), []);
   const [mealsOpen, setMealsOpen] = useState(false);
   const [coachToneDraft, setCoachToneDraft] = useState<CoachTone>(() =>
     normalizeCoachTone(useHealthStore.getState().settings.tone),
@@ -514,6 +519,7 @@ export function HealthDashboard() {
                   status === "authenticated" && Boolean(user?.id && isVoiceDailyLoggingEnabled(user.id))
                 }
                 getVoiceAccessToken={getAccessToken}
+                onVoiceEnergyActivityPrefill={setVoiceEnergyPrefill}
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
                   status === "authenticated" &&
@@ -574,6 +580,8 @@ export function HealthDashboard() {
                 getAccessToken={getAccessToken}
                 initialCalibrationFactor={settings.activityCalibrationFactor}
                 coachTone={normalizeCoachTone(settings.tone)}
+                voiceActivityPrefill={voiceEnergyPrefill}
+                onVoiceActivityPrefillConsumed={clearVoiceEnergyPrefill}
               />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-2">

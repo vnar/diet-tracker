@@ -533,16 +533,20 @@ export async function postMealNlParse(text: string, accessToken: string) {
 
 export type VoiceDailyParseApiResponse = { ok: true; parsed: VoiceDailyParsedFields };
 
-/** Same-origin Next route: Cognito bearer + transcript only (no audio upload). */
+/**
+ * Voice transcript → structured check-in. Uses the **same** AWS HTTP API as food vision when
+ * `NEXT_PUBLIC_USE_AWS_BACKEND` is on (Lambda has `ANTHROPIC_API_KEY`); otherwise same-origin Next route for local dev.
+ */
 export async function postVoiceDailyLogParse(transcript: string, accessToken: string) {
+  const useAws = isAwsBackendEnabled();
   return fetchJson<VoiceDailyParseApiResponse>(
-    "/api/v2/voice-daily-log/parse",
+    "/v2/voice-daily-log/parse",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript }),
     },
-    false,
+    useAws,
     accessToken,
     60000,
   );

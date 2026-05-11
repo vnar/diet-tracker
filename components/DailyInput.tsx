@@ -32,6 +32,7 @@ export function DailyInput({
   caloriesProteinAggregate,
   voiceDailyLogEnabled,
   getVoiceAccessToken,
+  onVoiceEnergyActivityPrefill,
 }: {
   renderCaloriesAccessory?: (ctx: DailyInputCaloriesAccessoryContext) => ReactNode;
   /** When set with readOnly, calories/protein reflect meal totals and are not editable. */
@@ -41,9 +42,11 @@ export function DailyInput({
     readOnly: boolean;
     caption?: string;
   } | null;
-  /** Cognito access token for same-origin voice parse API. */
+  /** Cognito access token for voice parse (Next dev or AWS API). */
   voiceDailyLogEnabled?: boolean;
   getVoiceAccessToken?: () => string | null;
+  /** When voice applies an activity line for the Energy balance card. */
+  onVoiceEnergyActivityPrefill?: (payload: { nonce: string; text: string }) => void;
 } = {}) {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
@@ -205,11 +208,21 @@ export function DailyInput({
       if (d.nightWeightKg != null) {
         setNight(String(Math.round(kgToInput(d.nightWeightKg, u) * 10) / 10));
       }
-      if (d.calories != null && !caloriesProteinAggregate?.readOnly) {
-        setCalories(String(d.calories));
-      }
-      if (d.proteinG != null && !caloriesProteinAggregate?.readOnly) {
-        setProtein(String(d.proteinG));
+      if (!caloriesProteinAggregate?.readOnly) {
+        if (d.calories != null) setCalories(String(d.calories));
+        if (d.proteinG != null) setProtein(String(d.proteinG));
+        if (d.foodKcalDelta != null && d.foodKcalDelta > 0) {
+          setCalories((c) => {
+            const base = parseFloat(c.trim() === "" ? "0" : c) || 0;
+            return String(Math.round(base + d.foodKcalDelta!));
+          });
+        }
+        if (d.foodProteinDeltaG != null && d.foodProteinDeltaG > 0) {
+          setProtein((p) => {
+            const base = parseFloat(p.trim() === "" ? "0" : p) || 0;
+            return String(Math.round(base + d.foodProteinDeltaG!));
+          });
+        }
       }
       if (d.steps != null) setSteps(String(d.steps));
       if (d.sleepHours != null) setSleep(String(d.sleepHours));
@@ -233,8 +246,14 @@ export function DailyInput({
           return n;
         });
       }
+      if (d.syncActivityToEnergyCard && d.activityBurnHint?.trim()) {
+        onVoiceEnergyActivityPrefill?.({
+          nonce: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          text: d.activityBurnHint.trim(),
+        });
+      }
     },
-    [u, caloriesProteinAggregate?.readOnly],
+    [u, caloriesProteinAggregate?.readOnly, onVoiceEnergyActivityPrefill],
   );
 
   function scheduleHabitPersist(next: {

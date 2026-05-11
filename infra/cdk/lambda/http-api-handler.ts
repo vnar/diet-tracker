@@ -44,6 +44,7 @@ import {
   handleV2MealsPatch,
   handleV2MealsSuggestMatch,
 } from "./meals-api";
+import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -1807,6 +1808,26 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
 
     if (event.rawPath === "/v2/activity/estimate-burn" && method === "POST") {
       return handleV2ActivityEstimateBurn(event);
+    }
+
+    if (event.rawPath === "/v2/voice-daily-log/parse" && method === "POST") {
+      let payload: unknown;
+      try {
+        payload = parseJsonBody(event);
+      } catch {
+        return json(400, { error: "Invalid JSON" });
+      }
+      const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+      const transcript = typeof body.transcript === "string" ? body.transcript : "";
+      if (!transcript.trim()) {
+        return json(400, { error: "transcript required" });
+      }
+      const result = await parseVoiceDailyTranscriptWithAnthropic(transcript);
+      if (!result.ok) {
+        const status = result.error === "no_api_key" ? 503 : 422;
+        return json(status, { ok: false, error: result.error });
+      }
+      return json(200, { ok: true, parsed: result.parsed });
     }
     if (event.rawPath === "/v2/activity/log" && method === "POST") {
       const table = getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName);

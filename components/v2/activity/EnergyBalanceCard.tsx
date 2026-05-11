@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Flame, Footprints, Loader2, Sparkles } from "lucide-react";
 import type { DailyEntry } from "@/lib/types";
 import { normalizeCoachTone, weeklyEnergyCoachLine, type CoachTone } from "@/lib/coachTone";
@@ -55,6 +55,9 @@ type Props = {
   initialCalibrationFactor?: number;
   /** Saved coach tone for weekly summary phrasing. */
   coachTone?: CoachTone;
+  /** From voice log apply: merge into activity text so user can tap AI estimate. */
+  voiceActivityPrefill?: { nonce: string; text: string } | null;
+  onVoiceActivityPrefillConsumed?: () => void;
 };
 
 export function EnergyBalanceCard(props: Props) {
@@ -145,6 +148,27 @@ export function EnergyBalanceCard(props: Props) {
       cancelled = true;
     };
   }, [props.day, props.getAccessToken]);
+
+  const lastVoiceNonceRef = useRef<string | null>(null);
+  useEffect(() => {
+    const pre = props.voiceActivityPrefill;
+    if (!pre?.text.trim()) return;
+    if (pre.nonce === lastVoiceNonceRef.current) return;
+    lastVoiceNonceRef.current = pre.nonce;
+    const t = pre.text.trim();
+    setActivityText((prev) => {
+      const p = prev.trim();
+      if (!p) return t;
+      if (p.includes(t)) return p;
+      return `${p}; ${t}`;
+    });
+    setAiBurn(null);
+    setAiConfidence(null);
+    setAiSummary("");
+    setAiMinutes(0);
+    setAiMet(0);
+    props.onVoiceActivityPrefillConsumed?.();
+  }, [props.voiceActivityPrefill]);
 
   const tone = normalizeCoachTone(props.coachTone);
 

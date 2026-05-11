@@ -1,10 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 const PLACEHOLDER_HINTS = /^your-anthropic/i;
 
 /**
  * Anthropic key for Next.js server routes only (never `NEXT_PUBLIC_*`).
+ * Same variable name as food vision on `BackendApiLambda` / CDK deploy (`ANTHROPIC_API_KEY`).
+ *
  * Resolution order:
  * 1. `ANTHROPIC_API_KEY` when non-empty
  * 2. In non-production only: `secrets.toml` at repo root (`ANTHROPIC_API_KEY = "…"`), skipping placeholders

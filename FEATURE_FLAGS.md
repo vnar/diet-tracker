@@ -37,7 +37,7 @@
 - **Default:** `true` when unset (opt-out: set `FF_VOICE_DAILY_LOGGING=false` / `NEXT_PUBLIC_FF_VOICE_DAILY_LOGGING=false` to disable).
 - **Scope:** “Voice” entry on Today’s log: Web Speech API transcript (client-only audio), optional `POST /api/v2/voice-daily-log/parse` (Cognito bearer + text only) to fill review fields; user must **Apply to today’s form** then **Save today**. Transcript is not stored unless the user opts in via checkboxes in the review step.
 - **Env keys supported:** `FF_VOICE_DAILY_LOGGING`, `NEXT_PUBLIC_FF_VOICE_DAILY_LOGGING`. Per-user overrides: `FF_VOICE_DAILY_LOGGING` in `FeatureFlagOverrides`.
-- **Server:** local Next route uses `getAnthropicApiKeyForServer()` (`ANTHROPIC_API_KEY`, or non-production `secrets.toml`); optional `ANTHROPIC_VOICE_DAILY_MODEL`.
+- **Server:** `POST /v2/voice-daily-log/parse` on the main AWS API Lambda (same `ANTHROPIC_API_KEY` as food vision). Local dev without AWS can still use the Next.js `/api/v2/voice-daily-log/parse` route + `getAnthropicApiKeyForServer()` (`secrets.toml` in non-production). Optional `ANTHROPIC_VOICE_DAILY_MODEL`.
 
 ### `FF_PHOTO_FOOD_LOG`
 
