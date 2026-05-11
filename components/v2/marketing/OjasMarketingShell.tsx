@@ -29,44 +29,68 @@ export function OjasMarketingShell({ children }: Props) {
       />
 
       <header className="sticky top-0 z-30 border-b border-zinc-200/90 bg-white/85 px-4 py-3 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:px-6">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+            className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-500/10">
               <Activity className="h-4 w-4 text-white" strokeWidth={2.5} aria-hidden />
             </span>
             <span className="hidden sm:inline">Ojas-Health</span>
           </Link>
-          <nav className="flex flex-wrap items-center justify-end gap-1 text-[11px] font-medium sm:gap-2 sm:text-xs">
-            <a
-              href="#features"
-              className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              Product
-            </a>
-            <a
-              href="#pricing"
-              className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              Free vs Pro
-            </a>
-            <Link
-              href="/account/billing"
-              className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              Plans
-            </Link>
-            <a
-              href="#sign-in"
-              className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-white shadow-sm transition hover:bg-emerald-500 sm:px-3"
-            >
-              Sign in
-            </a>
-            <ThemeToggle />
-            <SignOutButton />
-          </nav>
+          <div className="flex min-w-0 flex-1 flex-col items-end gap-2 sm:max-w-none">
+            <p className="text-right text-[10px] leading-snug text-zinc-500 dark:text-zinc-400">
+              <span className="text-zinc-400 dark:text-zinc-500">By </span>
+              <a
+                href="https://vnar.github.io/viharnar/"
+                className="font-medium text-zinc-700 underline underline-offset-2 transition-colors hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Vihar Nar
+              </a>
+              <span className="mx-1 text-zinc-400 dark:text-zinc-600" aria-hidden>
+                ·
+              </span>
+              <a
+                href="https://www.linkedin.com/in/viharnar/"
+                className="font-medium text-zinc-700 underline underline-offset-2 transition-colors hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                LinkedIn
+              </a>
+            </p>
+            <nav className="flex flex-wrap items-center justify-end gap-1 text-[11px] font-medium sm:gap-2 sm:text-xs">
+              <a
+                href="#features"
+                className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              >
+                Product
+              </a>
+              <a
+                href="#pricing"
+                className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              >
+                Free vs Pro
+              </a>
+              <Link
+                href="/account/billing"
+                className="rounded-lg px-2 py-1.5 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              >
+                Plans
+              </Link>
+              <a
+                href="#sign-in"
+                className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-white shadow-sm transition hover:bg-emerald-500 sm:px-3"
+              >
+                Sign in
+              </a>
+              <ThemeToggle />
+              <SignOutButton />
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -243,18 +267,6 @@ export function OjasMarketingShell({ children }: Props) {
           </p>
           <div className="mt-8">{children}</div>
         </section>
-
-        <p className="mt-12 text-center text-[11px] text-zinc-500 dark:text-zinc-600">
-          By{" "}
-          <a
-            href="https://www.linkedin.com/in/viharnar/"
-            className="font-medium text-zinc-700 underline underline-offset-2 transition-colors hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-zinc-300"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Vihar Nar
-          </a>
-        </p>
       </div>
     </main>
   );

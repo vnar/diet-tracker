@@ -323,6 +323,14 @@ export function HealthDashboard() {
                   Meals
                 </Link>
               ) : null}
+              {status === "authenticated" && isAwsBackendEnabled() ? (
+                <Link
+                  href="/account/billing"
+                  className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[10px] font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-none dark:hover:bg-zinc-700"
+                >
+                  Billing
+                </Link>
+              ) : null}
               {showAdminUsers ? (
                 <button
                   type="button"
@@ -416,6 +424,14 @@ export function HealthDashboard() {
               >
                 Meals
               </Link>
+              {status === "authenticated" && isAwsBackendEnabled() ? (
+                <Link
+                  href="/account/billing"
+                  className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-600 transition hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                >
+                  Billing
+                </Link>
+              ) : null}
               {showAdminUsers ? (
                 <button
                   type="button"
@@ -765,6 +781,18 @@ export function HealthDashboard() {
                 </select>
               </div>
             </div>
+
+            {status === "authenticated" && isAwsBackendEnabled() ? (
+              <p className="mt-3 text-[11px]">
+                <Link
+                  href="/account/billing"
+                  className="font-medium text-sky-400 transition hover:text-sky-300"
+                  onClick={() => setSettingsOpen(false)}
+                >
+                  Pro plan & billing →
+                </Link>
+              </p>
+            ) : null}
 
             {settingsError ? (
               <p className="mt-3 text-xs text-rose-400">{settingsError}</p>

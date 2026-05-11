@@ -26,5 +26,13 @@ describe("OjasMarketingShell", () => {
     expect(document.getElementById("pricing")).toBeTruthy();
     expect(document.getElementById("sign-in")).toBeTruthy();
     expect(screen.getByRole("link", { name: /open billing/i })).toHaveAttribute("href", "/account/billing");
+    expect(screen.getByRole("link", { name: "Vihar Nar" })).toHaveAttribute(
+      "href",
+      "https://vnar.github.io/viharnar/",
+    );
+    expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/viharnar/",
+    );
   });
 });
