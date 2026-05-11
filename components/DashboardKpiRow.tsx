@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   getEntryForDate,
   getYesterdayKey,
@@ -12,6 +13,7 @@ import {
 import { displayWeight, kgToLbs } from "@/lib/units";
 import { useHealthStore } from "@/lib/store";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
+import { HelpHint } from "@/components/ui/HelpHint";
 
 function fmtDelta(kgDelta: number, unit: "kg" | "lbs"): string {
   const v = unit === "kg" ? kgDelta : kgToLbs(kgDelta);
@@ -47,6 +49,18 @@ const GOAL_DATE_TOOLTIP =
 
 const GOAL_DATE_PAST_TOOLTIP =
   "That goal date is still the one stored in your settings; update it there if you want a new deadline.";
+
+const HELP_TITLE_TODAY_WEIGHT =
+  "Your morning weight for today (your device’s local date). The line below compares to yesterday if you logged then; otherwise to your most recent earlier weigh-in.";
+
+const HELP_TITLE_SEVEN_DAY =
+  "Average of up to the last seven days you actually logged a weight (gaps are skipped, so it can span more than seven calendar days). “Vs prior week” compares this average to the same rolling idea from the week before—not a single-day spike.";
+
+const HELP_TITLE_TARGET =
+  "Goal weight from Settings. “To go” is the absolute gap from today’s weight after you save today’s log; otherwise you’ll see a placeholder until today’s weight is saved.";
+
+const HELP_TITLE_COUNTDOWN =
+  "Calendar days from today to the goal date saved in Settings. This is not a prediction of when you’ll hit the number—it only counts days on the calendar. Change the date in Settings anytime.";
 
 export function DashboardKpiRow() {
   const entries = useHealthStore((s) => s.entries);
@@ -85,6 +99,7 @@ export function DashboardKpiRow() {
 
   const kpis: Array<{
     title: string;
+    titleHelp: ReactNode;
     value: string;
     sub: string;
     subClass: string;
@@ -92,6 +107,7 @@ export function DashboardKpiRow() {
   }> = [
     {
       title: "Today's weight",
+      titleHelp: HELP_TITLE_TODAY_WEIGHT,
       value:
         currentKg !== undefined
           ? `${displayWeight(currentKg, u)} ${u}`
@@ -110,6 +126,7 @@ export function DashboardKpiRow() {
     },
     {
       title: "7-day average",
+      titleHelp: HELP_TITLE_SEVEN_DAY,
       value:
         sevenAvg !== null
           ? `${displayWeight(sevenAvg, u)} ${u}`
@@ -122,6 +139,7 @@ export function DashboardKpiRow() {
     },
     {
       title: "Target",
+      titleHelp: HELP_TITLE_TARGET,
       value: `${displayWeight(settings.goalWeight, u)} ${u}`,
       sub:
         remainingKg !== null
@@ -131,6 +149,7 @@ export function DashboardKpiRow() {
     },
     {
       title: "Countdown to goal date",
+      titleHelp: HELP_TITLE_COUNTDOWN,
       value:
         daysLeft === null
           ? "—"
@@ -171,10 +190,13 @@ export function DashboardKpiRow() {
           key={k.title}
           className="flex min-h-[96px] flex-col gap-1.5 rounded-2xl border border-zinc-800 bg-zinc-900 p-3.5"
         >
-          <div className="flex items-center justify-between">
-            <p className="text-[9px] font-medium uppercase tracking-widest text-zinc-500">
+          <div className="flex items-start justify-between gap-1">
+            <p className="min-w-0 flex-1 text-[9px] font-medium uppercase tracking-widest text-zinc-500">
               {k.title}
             </p>
+            <HelpHint topic={k.title}>
+              <p className="leading-relaxed">{k.titleHelp}</p>
+            </HelpHint>
           </div>
           <p className="font-mono text-xl font-semibold tracking-tight text-zinc-100">
             {k.value}

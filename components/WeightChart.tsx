@@ -12,6 +12,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Card } from "@/components/ui/Card";
+import { HelpHint } from "@/components/ui/HelpHint";
 import {
   formatDateKeyLocal,
   sortEntriesByDateAsc,
@@ -33,6 +34,15 @@ function formatTick(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+
+const HELP_WEIGHT_CHART =
+  "The blue line connects each logged morning weight. The green dashed line is a rolling average over your last seven logged weights (gaps are skipped, so it may not be seven calendar days). The orange dashed path is a straight-line illustration from your latest weigh-in toward your goal weight by your goal date—context only, not medical advice or a forecast.";
+
+const HELP_STARTING_WEIGHT =
+  "Shown as your earliest logged weigh-in in history, or your saved starting weight from Settings when the chart needs a baseline—same basis used for the trend display.";
+
+const HELP_TWO_DAYS =
+  "A trend line needs two different days with saved weights. Log today and one other day (or two past days) and the chart will appear.";
 
 export function WeightChart() {
   const chartSectionRef = useRef<HTMLDivElement>(null);
@@ -145,10 +155,20 @@ export function WeightChart() {
   return (
     <div ref={chartSectionRef} className="w-full">
     <Card variant="surface" className="overflow-hidden">
-      <div className="-mt-0.5 mb-6 flex flex-col gap-4 border-b border-slate-600/40 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <h3 className="ui-card-title-lg shrink-0">Weight trend</h3>
+      <div className="-mt-0.5 mb-6 flex flex-col gap-4 border-b border-slate-600/40 pb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          <h3 className="ui-card-title-lg shrink-0">Weight trend</h3>
+          <HelpHint topic="Weight trend chart">
+            <p className="leading-relaxed">{HELP_WEIGHT_CHART}</p>
+          </HelpHint>
+        </div>
         <div className="flex flex-col gap-1 sm:items-end sm:text-right">
-          <p className="ui-overline">Starting weight</p>
+          <div className="flex items-center justify-end gap-1.5">
+            <p className="ui-overline">Starting weight</p>
+            <HelpHint topic="Starting weight on chart">
+              <p className="leading-relaxed">{HELP_STARTING_WEIGHT}</p>
+            </HelpHint>
+          </div>
           <p className="ui-metric text-xl font-semibold leading-none text-slate-50">
             {displayWeight(startWeight, unit)} {unit}
           </p>
@@ -171,7 +191,12 @@ export function WeightChart() {
                 strokeDasharray="4 3"
               />
             </svg>
-            <p className="text-xs text-zinc-600">Log at least 2 days to see your trend</p>
+            <div className="flex max-w-sm flex-col items-center gap-2 text-center">
+              <p className="text-xs text-zinc-600">Log at least 2 days to see your trend</p>
+              <HelpHint topic="Why two days for the chart">
+                <p className="leading-relaxed">{HELP_TWO_DAYS}</p>
+              </HelpHint>
+            </div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

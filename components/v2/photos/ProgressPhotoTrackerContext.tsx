@@ -66,8 +66,8 @@ export type ProgressPhotoTrackerContextValue = {
   setPreviewPhoto: (v: { url: string; date: string } | null) => void;
   onDeletePhoto: (photoId: string) => Promise<void>;
   toggleCompare: (photoId: string) => void;
-  runAssessment: (photosToAssess: ProgressUiPhoto[], query: string) => Promise<void>;
-  runRangeEndpointsAssessment: () => Promise<void>;
+  runAssessment: (photosToAssess: ProgressUiPhoto[], query: string) => Promise<boolean>;
+  runRangeEndpointsAssessment: () => Promise<boolean>;
 };
 
 const ProgressPhotoTrackerContext = createContext<ProgressPhotoTrackerContextValue | null>(null);
@@ -237,9 +237,9 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
   }, []);
 
   const runAssessment = useCallback(
-    async (photosToAssess: ProgressUiPhoto[], query: string) => {
+    async (photosToAssess: ProgressUiPhoto[], query: string): Promise<boolean> => {
       const accessToken = getAccessToken();
-      if (!accessToken) return;
+      if (!accessToken) return false;
       const payloads = photosToAssess
         .map((p) => uiPhotoToAssessmentPayload({ date: p.date, imageUrl: p.imageUrl }))
         .filter((x): x is NonNullable<typeof x> => x != null);
@@ -247,7 +247,7 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
         setError(
           "Need two photos we can send for analysis (JPEG/PNG/WebP/GIF as cloud files or saved in your log).",
         );
-        return;
+        return false;
       }
       setAssessing(true);
       setError(null);
@@ -261,22 +261,23 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       setAssessing(false);
       if (!res.ok) {
         setError(res.error);
-        return;
+        return false;
       }
       setCompareAssessment({ ...res.data, generatedAt: new Date().toISOString() });
+      return true;
     },
     [getAccessToken],
   );
 
-  const runRangeEndpointsAssessment = useCallback(async () => {
+  const runRangeEndpointsAssessment = useCallback(async (): Promise<boolean> => {
     if (aiReadyInRange.length < 2) {
       setError("Need at least two analyzable photos in this date range (see note under the button).");
-      return;
+      return false;
     }
     const sorted = [...aiReadyInRange].sort((a, b) => a.date.localeCompare(b.date));
     const pair = [sorted[0], sorted[sorted.length - 1]] as [ProgressUiPhoto, ProgressUiPhoto];
     setCompareSelection(pair.map((p) => p.photoId));
-    await runAssessment(
+    return runAssessment(
       pair,
       `Compare my progress photos from ${pair[0].date} to ${pair[1].date}. Estimate visible body-composition trends, which areas look leaner or fuller, and call out uncertainty from pose, lighting, clothing, or mixing face vs torso shots.`,
     );

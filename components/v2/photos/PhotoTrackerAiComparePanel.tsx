@@ -85,6 +85,16 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
         <p className="mb-2 text-[10px] leading-snug text-amber-200/90">{syncNotice}</p>
       ) : null}
 
+      {embedded && displayPhotos.length > 0 ? (
+        <p className="mb-2 text-[10px] leading-relaxed text-zinc-500">
+          <span className="font-medium text-zinc-400">Photos column:</span> tap{" "}
+          <span className="text-zinc-300">Select</span> on two thumbnails, then{" "}
+          <span className="text-zinc-300">Run AI comparison</span> under the strip. Here you can also pick a{" "}
+          <span className="text-zinc-300">date range</span> and auto-run on first vs last analyzable photo, and read the
+          full result card.
+        </p>
+      ) : null}
+
       {error ? (
         <div className="mb-3 rounded-lg border border-rose-500/40 bg-rose-900/20 px-3 py-2 text-xs text-rose-200">
           {error}
@@ -155,54 +165,70 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
         </div>
       )}
       {comparePhotos.length === 2 ? (
-        <div className="mt-4 rounded-2xl border border-white/[0.06] bg-zinc-950/35 p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-zinc-200">Compare two photos</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={assessing || comparePhotos.length !== 2 || !comparePhotos.every((p) => isPhotoAiAssessable(p))}
-                onClick={() =>
-                  void runAssessment(
-                    comparePhotos,
-                    "Compare these two selected photos. They may show different body areas (e.g. face vs belly). Estimate visible trends and uncertainty only.",
-                  )
-                }
-                title={
-                  comparePhotos.length === 2 && !comparePhotos.every((p) => isPhotoAiAssessable(p))
-                    ? "Needs S3-style photo URLs or JPEG/PNG/WebP/GIF data in your log (not HEIC or blob: links)."
-                    : undefined
-                }
-                className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-medium text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
-              >
-                {assessing ? "Analyzing…" : "AI assess these two"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCompareSelection([])}
-                className="text-[11px] text-zinc-400 hover:text-zinc-200"
-              >
-                Clear
-              </button>
-            </div>
+        <div className="mt-4 rounded-2xl border border-violet-500/25 bg-zinc-950/40 p-3">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-300/90">Your pair</p>
+          <p className="mb-2 text-xs font-semibold text-zinc-100">Two photos selected — run AI comparison</p>
+          <p className="mb-3 text-[10px] leading-snug text-zinc-500">
+            Same action as <span className="text-zinc-400">Run AI comparison</span> in the Photos column. The previews
+            below are the two images that will be sent (estimate only, not medical advice).
+          </p>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={assessing || comparePhotos.length !== 2 || !comparePhotos.every((p) => isPhotoAiAssessable(p))}
+              onClick={() =>
+                void runAssessment(
+                  comparePhotos,
+                  "Compare these two selected photos. They may show different body areas (e.g. face vs belly). Estimate visible trends and uncertainty only.",
+                )
+              }
+              title={
+                comparePhotos.length === 2 && !comparePhotos.every((p) => isPhotoAiAssessable(p))
+                  ? "Needs JPEG/PNG/WebP/GIF or cloud URLs — not HEIC or broken links."
+                  : undefined
+              }
+              className="rounded-lg border border-emerald-500/45 bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-50 hover:bg-emerald-500/30 disabled:opacity-50"
+            >
+              {assessing ? "Running…" : "Run AI comparison on this pair"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompareSelection([])}
+              className="rounded-lg border border-zinc-600 px-2.5 py-2 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800/80"
+            >
+              Clear selection
+            </button>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {comparePhotos.map((p) => (
               <div key={p.photoId} className="rounded-lg border border-slate-700 bg-slate-900/70 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.imageUrl} alt={`Progress ${p.date}`} className="h-56 w-full rounded object-cover" />
+                <img
+                  src={p.imageUrl}
+                  alt={`Selected progress ${p.date}`}
+                  className="h-44 w-full rounded object-cover sm:h-48"
+                />
                 <p className="mt-1 text-xs text-slate-300">{formatDateLabel(p.date)}</p>
               </div>
             ))}
           </div>
           {comparePhotos.length === 2 && !assessing && !comparePhotos.every((p) => isPhotoAiAssessable(p)) ? (
             <p className="mt-2 text-[10px] leading-snug text-amber-200/90">
-              Each photo must be a supported image in your log (JPEG/PNG/WebP/GIF or a signed cloud URL), not HEIC or blob
-              links. Re-save from Past days if needed.
+              Each photo must be JPEG/PNG/WebP/GIF or a supported cloud URL in your log — not HEIC or blob links.
+              Re-save from Past days if needed.
             </p>
           ) : null}
           <p className="mt-2 text-[10px] text-zinc-500">
-            The <span className="text-zinc-400">AI photo analysis</span> card appears above after you run the assessment.
+            The written analysis card appears in the <span className="text-zinc-400">Date range</span> block above after a
+            successful run.
+          </p>
+        </div>
+      ) : displayPhotos.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-dashed border-zinc-700/80 bg-zinc-950/20 px-3 py-2.5">
+          <p className="text-[10px] leading-snug text-zinc-500">
+            <span className="font-medium text-zinc-400">No pair yet.</span> Select two photos in the Photos column, or
+            change the date range and use <span className="text-zinc-400">Generate AI assessment</span> for automatic
+            endpoints.
           </p>
         </div>
       ) : null}

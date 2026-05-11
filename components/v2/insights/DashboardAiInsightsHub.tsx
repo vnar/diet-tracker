@@ -8,18 +8,19 @@ import { PhotoTrackerAiComparePanel } from "@/components/v2/photos/PhotoTrackerA
 
 function CollapsibleBlock({
   id,
+  detailsId,
   title,
-  defaultOpen,
   children,
 }: {
   id: string;
+  /** On `<details>` for `scrollIntoView` / programmatic `open` from the photo column. */
+  detailsId?: string;
   title: string;
-  defaultOpen?: boolean;
   children: ReactNode;
 }) {
   return (
     <details
-      open={defaultOpen}
+      id={detailsId}
       className="group rounded-xl border border-zinc-800/90 bg-zinc-950/25 open:border-zinc-700/90"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-zinc-100 [&::-webkit-details-marker]:hidden">
@@ -40,10 +41,14 @@ function CollapsibleBlock({
 export function DashboardAiInsightsHub() {
   return (
     <Card title="AI insights" variant="surface" className="flex flex-col gap-2">
-      <CollapsibleBlock id="ai-insights-coaching" title="Coaching insights" defaultOpen>
+      <CollapsibleBlock id="ai-insights-coaching" detailsId="ai-insights-coaching-details" title="Coaching insights">
         <AIInsights embedded />
       </CollapsibleBlock>
-      <CollapsibleBlock id="ai-insights-photo-compare" title="Photo compare (AI)" defaultOpen>
+      <CollapsibleBlock
+        id="ai-insights-photo-compare"
+        detailsId="ai-insights-photo-compare-details"
+        title="Photo compare (AI)"
+      >
         <PhotoTrackerAiComparePanel embedded />
       </CollapsibleBlock>
     </Card>
