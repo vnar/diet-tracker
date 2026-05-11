@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
 import { isPhotoAiAssessable } from "@/lib/progressPhotoAssessmentPayload";
 import { ProgressPhotoInsightCard } from "@/components/v2/photos/ProgressPhotoInsightCard";
 import { useProgressPhotoTracker } from "@/components/v2/photos/ProgressPhotoTrackerContext";
@@ -60,15 +61,11 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
   return (
     <PanelShell embedded={embedded}>
       {embedded ? (
-        <p className="mb-2 text-[10px] leading-snug text-zinc-500">
-          Estimate only, not medical advice. Anthropic (Claude) on our servers.
-        </p>
+        <p className="mb-2 text-[10px] leading-snug text-zinc-500">{PHOTO_COMPARE_INSTRUCTIONS}</p>
       ) : (
         <div className="mb-3 border-b border-zinc-800 pb-2.5">
           <h3 className="text-sm font-semibold tracking-tight text-zinc-100">Photo compare (AI)</h3>
-          <p className="mt-1 text-[10px] leading-snug text-zinc-500">
-            Estimate only, not medical advice. Anthropic (Claude) on our servers.
-          </p>
+          <p className="mt-1 text-[10px] leading-snug text-zinc-500">{PHOTO_COMPARE_INSTRUCTIONS}</p>
           {syncNotice ? (
             <p className="mt-2 text-[10px] leading-snug text-amber-200/90">{syncNotice}</p>
           ) : null}
@@ -76,15 +73,6 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
       )}
       {embedded && syncNotice ? (
         <p className="mb-2 text-[10px] leading-snug text-amber-200/90">{syncNotice}</p>
-      ) : null}
-
-      {embedded && displayPhotos.length > 0 ? (
-        <p className="mb-2 text-[10px] leading-relaxed text-zinc-500">
-          <span className="font-medium text-zinc-400">Photos column:</span> tap{" "}
-          <span className="text-zinc-300">Select</span> on two thumbnails, then{" "}
-          <span className="text-zinc-300">Run AI comparison</span> under the strip. Your latest result appears below when
-          ready.
-        </p>
       ) : null}
 
       {error ? (
@@ -123,8 +111,7 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-300/90">Your pair</p>
               <p className="mb-2 text-xs font-semibold text-zinc-100">Two photos selected — run AI comparison</p>
               <p className="mb-3 text-[10px] leading-snug text-zinc-500">
-                Same action as <span className="text-zinc-400">Run AI comparison</span> in the Photos column. The
-                previews below are the two images that will be sent (estimate only, not medical advice).
+                Previews below are the two images sent for this comparison.
               </p>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <button
@@ -177,12 +164,7 @@ export function PhotoTrackerAiComparePanel({ embedded = false }: { embedded?: bo
             </div>
           ) : (
             <div className="mt-3 rounded-xl border border-dashed border-zinc-700/80 bg-zinc-950/20 px-3 py-2.5">
-              <p className="text-[10px] leading-snug text-zinc-500">
-                <span className="font-medium text-zinc-400">No pair selected.</span> In the Photos column, tap{" "}
-                <span className="text-zinc-300">Select</span> on two thumbnails, then tap{" "}
-                <span className="text-zinc-300">Run AI comparison</span> under the strip. After two are selected, this
-                section shows the same previews and an optional second run button.
-              </p>
+              <p className="text-center text-[10px] text-zinc-500">No pair selected yet.</p>
             </div>
           )}
         </>

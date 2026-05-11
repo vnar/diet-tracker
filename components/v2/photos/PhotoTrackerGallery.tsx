@@ -3,6 +3,7 @@
 import { Sparkles, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useProgressPhotoTracker } from "@/components/v2/photos/ProgressPhotoTrackerContext";
+import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
 import { isPhotoAiAssessable } from "@/lib/progressPhotoAssessmentPayload";
 import { openAiPhotoCompareSection } from "@/lib/openAiPhotoCompareSection";
 
@@ -63,16 +64,7 @@ export function PhotoTrackerGallery() {
       className="flex max-h-[min(460px,58vh)] min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
     >
       <div className="mb-2 shrink-0 space-y-1.5">
-        <p className="text-[11px] leading-snug text-zinc-400">
-          <span className="font-semibold text-zinc-300">Pick two photos</span> for an{" "}
-          <span className="text-zinc-300">AI comparison</span> (pose/lighting estimate, not medical advice). Tap{" "}
-          <span className="rounded border border-zinc-600 bg-zinc-800/80 px-1 py-0.5 font-mono text-[10px] text-zinc-200">
-            Select
-          </span>{" "}
-          on two thumbnails — a bar appears here to run it, or open{" "}
-          <span className="text-zinc-300">AI insights → Photo compare</span> to review the write-up or pick a different
-          pair.
-        </p>
+        <p className="text-[11px] leading-snug text-zinc-400">{PHOTO_COMPARE_INSTRUCTIONS}</p>
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Gallery</p>
           <p className="text-[10px] text-zinc-500">

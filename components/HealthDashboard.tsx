@@ -456,9 +456,6 @@ export function HealthDashboard() {
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-2">
               <div>
                 <p className="ui-label mb-0 min-h-[1.25rem]">Photos</p>
-                <p className="mt-0.5 max-w-[18rem] text-[10px] leading-snug text-zinc-500 sm:max-w-none">
-                  Select two shots below, then Run AI comparison — or open AI insights for more tools.
-                </p>
               </div>
               <div className="min-h-0 min-w-0 flex-1">
                 <PhotoTrackerGallery />
