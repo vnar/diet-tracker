@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { OJAS_PRODUCT_VERSION_LABEL } from "@/lib/productVersion";
 
 type Tab = "problem" | "features" | "architecture" | "tech";
 
@@ -128,6 +129,21 @@ function ProblemTab() {
 function FeaturesTab() {
   const features = [
     { title: "Daily Log", description: "Morning/night weight, nutrition, steps, sleep, and habit flags." },
+    {
+      title: "Voice log",
+      description:
+        "Speak or type a quick update; server parses into review fields. Optional food kcal adds to Today’s calories; activity text can prefill Energy balance for AI burn estimates.",
+    },
+    {
+      title: "Meals & photo calories",
+      description:
+        "Meal library, natural-language meal logging, and optional photo → vision estimates (feature-flagged) feeding the same daily totals.",
+    },
+    {
+      title: "Energy balance",
+      description:
+        "Consumed vs burn (baseline, steps, activities) with optional Anthropic-backed activity burn estimate.",
+    },
     { title: "AI Insights", description: "Rule-based explanations for spikes from sodium, sleep, and routines." },
     { title: "Weight Trend", description: "Daily values and moving average to reduce decision noise." },
     { title: "Progress Photos", description: "S3-backed visual timeline for body-composition context." },
@@ -304,7 +320,9 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <h2 className="text-sm font-semibold tracking-tight text-zinc-100">About Ojas-Health</h2>
-                <p className="text-[10px] text-zinc-500">Daily Awareness Dashboard · v1.0.0</p>
+                <p className="text-[10px] text-zinc-500">
+                  Daily Awareness Dashboard · {OJAS_PRODUCT_VERSION_LABEL}
+                </p>
               </div>
             </div>
             <button

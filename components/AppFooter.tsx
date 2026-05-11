@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronUp, FileText } from "lucide-react";
 import { AWS_SERVICES, CHANGELOG, type AWSService } from "@/lib/aws-services";
+import { OJAS_PRODUCT_VERSION_LABEL } from "@/lib/productVersion";
 import { getFooterStats, isAwsBackendEnabled, trackPageView } from "@/lib/frontend-api-client";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { AboutButton } from "@/components/AboutButton";
@@ -112,7 +113,7 @@ export function AppFooter() {
             type="button"
           >
             <FileText size={10} />
-            <span>v1.0.0</span>
+            <span>{OJAS_PRODUCT_VERSION_LABEL}</span>
             <ChevronUp
               size={9}
               className={`transition-transform duration-200 ${changelogOpen ? "" : "rotate-180"}`}

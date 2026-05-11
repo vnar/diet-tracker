@@ -68,17 +68,4 @@ export const AWS_SERVICES: AWSService[] = [
   },
 ];
 
-export const CHANGELOG = [
-  {
-    version: "v1.0.0",
-    date: "Mar 21 2026",
-    note: "Amplify static hosting pipeline · Initial release",
-    latest: true,
-  },
-  {
-    version: "v0.9.0",
-    date: "Mar 14 2026",
-    note: "Auth flow with Cognito · DynamoDB entries schema",
-    latest: false,
-  },
-];
+export { CHANGELOG } from "./productVersion";
