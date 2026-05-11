@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/server/cognito-auth";
 import { parseVoiceDailyTranscriptWithAnthropic } from "@/lib/voiceDailyLog/parseTranscript";
 
-export const dynamic = "force-dynamic";
+/** Required for `output: "export"` (Amplify); same pattern as `app/api/v2/insights/route.ts`. */
+export const dynamic = "force-static";
 
 export async function POST(req: Request) {
   const userId = await getAuthenticatedUserId(req);
