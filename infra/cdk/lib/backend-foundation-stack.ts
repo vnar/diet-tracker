@@ -360,6 +360,8 @@ export class BackendFoundationStack extends cdk.Stack {
       integrationUri: apiLambda.functionArn,
       integrationMethod: "POST",
       payloadFormatVersion: "2.0",
+      /** HTTP API max is 30s; match it so long-running routes (voice LLM) fail with HTTP instead of a client "network" drop. */
+      timeoutInMillis: 30_000,
     });
 
     const mealNlParseIntegration = new apigwv2.CfnIntegration(this, "MealNlParseLambdaIntegration", {
@@ -368,6 +370,7 @@ export class BackendFoundationStack extends cdk.Stack {
       integrationUri: mealNlParseLambda.functionArn,
       integrationMethod: "POST",
       payloadFormatVersion: "2.0",
+      timeoutInMillis: 15_000,
     });
 
     const jwtAuthorizer = new apigwv2.CfnAuthorizer(this, "CognitoJwtAuthorizer", {

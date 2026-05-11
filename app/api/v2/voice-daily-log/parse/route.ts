@@ -32,7 +32,8 @@ export async function POST(req: Request) {
 
   const result = await parseVoiceDailyTranscriptWithAnthropic(transcript);
   if (!result.ok) {
-    const status = result.error === "no_api_key" ? 503 : 422;
+    const status =
+      result.error === "no_api_key" || result.error === "voice_parse_timeout" ? 503 : 422;
     return NextResponse.json({ ok: false, error: result.error }, { status });
   }
 

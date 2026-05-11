@@ -16,6 +16,12 @@ export interface DailyEntry {
     photoUrl?: string | null;
     /** `null` when clearing via API; treat like undefined in UI state. */
     notes?: string | null;
+    activityText?: string;
+    activitySummary?: string;
+    activityBurnKcal?: number;
+    activityMet?: number;
+    activityMinutes?: number;
+    activityConfidence?: number;
 }
 /** Optional tuning for weight plateau detection (synced with backend settings when present). */
 export type PlateauUserSettings = {
@@ -28,8 +34,27 @@ export interface UserSettings {
     startWeight: number;
     targetDate: string;
     unit: "kg" | "lbs";
+    /**
+     * Coach communication tone (product: “coach tone”). Stored as `tone` in the API / DynamoDB.
+     * Values: friendly | clinical | tough-love | ayurvedic (maps from tough_love in some UIs).
+     */
     tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
     plateau?: PlateauUserSettings;
+    /** Multiplier for activity-burn estimates (default 1.0). */
+    activityCalibrationFactor?: number;
+    /** Explicit user consent gate for future AI body forecast features. */
+    optInForecast?: boolean;
+    forecastGeneratedAt?: string;
+    forecastDisclaimerAccepted?: boolean;
+}
+export interface ProgressPhoto {
+    photoId: string;
+    userId: string;
+    date: string;
+    imageUrl?: string;
+    storageKey?: string;
+    weightAtPhoto?: number;
+    createdAt: string;
 }
 export type InsightSeverity = "warning" | "success" | "info" | "neutral";
 export interface Insight {

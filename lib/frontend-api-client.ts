@@ -96,7 +96,11 @@ async function fetchJson<T>(
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       return { ok: false, error: "You're offline. Reconnect and try again." };
     }
-    if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) {
+    if (
+      /failed to fetch|networkerror|load failed|network request failed|fetch api cannot load|could not connect|connection refused/i.test(
+        message,
+      )
+    ) {
       try {
         const attempted = useAws ? buildAwsUrl(path) : path;
         let apiHost = "(n/a)";

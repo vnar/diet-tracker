@@ -154,10 +154,18 @@ type InsightCard = {
   degraded?: boolean;
 };
 
+/** CORS on every JSON response so browsers can read bodies on errors (API-level CORS alone can miss edge cases). */
+const JSON_CORS_HEADERS: Record<string, string> = {
+  "content-type": "application/json; charset=utf-8",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization,content-type,x-cognito-access-token",
+  "access-control-allow-methods": "GET,PUT,POST,PATCH,DELETE,OPTIONS",
+};
+
 function json(statusCode: number, payload: unknown): HttpResult {
   return {
     statusCode,
-    headers: { "content-type": "application/json" },
+    headers: JSON_CORS_HEADERS,
     body: JSON.stringify(payload),
   };
 }
@@ -1824,7 +1832,8 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       }
       const result = await parseVoiceDailyTranscriptWithAnthropic(transcript);
       if (!result.ok) {
-        const status = result.error === "no_api_key" ? 503 : 422;
+        const status =
+          result.error === "no_api_key" || result.error === "voice_parse_timeout" ? 503 : 422;
         return json(status, { ok: false, error: result.error });
       }
       return json(200, { ok: true, parsed: result.parsed });
