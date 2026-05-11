@@ -53,7 +53,23 @@ export function PhotoTrackerGallery() {
   if (displayPhotos.length === 0) {
     return (
       <Card variant="surface" className="flex min-h-0 flex-1 flex-col">
-        <p className="text-sm text-zinc-400">No progress photos yet. Add a photo from Past days on your log.</p>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          No progress photos yet. After you save today with your morning weight, add one from{" "}
+          <a
+            href="#today-progress-photo"
+            className="font-medium text-sky-400 underline decoration-sky-500/40 underline-offset-2 hover:text-sky-300"
+          >
+            Today&apos;s log → Progress photo
+          </a>
+          , or pick a date under{" "}
+          <a
+            href="#dashboard-history"
+            className="font-medium text-sky-400 underline decoration-sky-500/40 underline-offset-2 hover:text-sky-300"
+          >
+            Review + history
+          </a>{" "}
+          and tap <span className="font-medium text-zinc-300">Upload</span> in the day panel.
+        </p>
       </Card>
     );
   }

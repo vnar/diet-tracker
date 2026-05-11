@@ -18,11 +18,14 @@ import { useSaveEntry } from "@/hooks/useHealthActions";
 import { VoiceDailyLogSheet } from "@/components/v2/voice/VoiceDailyLogSheet";
 import type { VoiceDailyFormApply } from "@/lib/voiceDailyLog/types";
 import {
+  isAwsBackendEnabled,
   postDayMealEntry,
   postInsightCacheInvalidateAfterMeals,
   postMealLibraryCreate,
+  uploadPhotoFile,
 } from "@/lib/frontend-api-client";
-import { Mic } from "lucide-react";
+import { useCognitoAuth } from "@/components/CognitoAuthProvider";
+import { Mic, Trash2, Upload } from "lucide-react";
 
 export type DailyInputCaloriesAccessoryContext = {
   todayKey: string;
@@ -59,10 +62,12 @@ export function DailyInput({
   /** When voice applies an activity line for the Energy balance card. */
   onVoiceEnergyActivityPrefill?: (payload: { nonce: string; text: string }) => void;
 } = {}) {
+  const { status, getAccessToken } = useCognitoAuth();
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
   const saveEntry = useSaveEntry();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const today = useClientTodayKey();
   const yesterdayKey = today ? getYesterdayKey(today) : "";
@@ -355,6 +360,73 @@ export function DailyInput({
     });
   }
 
+  function onPickTodayProgressPhoto(file: File) {
+    if (!today || !todayEntry) return;
+    setSaveError(null);
+    if (isAwsBackendEnabled()) {
+      if (status !== "authenticated") {
+        setSaveError("Please sign in to upload photos.");
+        return;
+      }
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        setSaveError("Session expired. Please sign in again.");
+        return;
+      }
+      setUploadingPhoto(true);
+      void (async () => {
+        const upload = await uploadPhotoFile(file, accessToken);
+        if (!upload.ok || !upload.photoUrl) {
+          setSaveError(upload.error ?? "Could not upload photo.");
+          setUploadingPhoto(false);
+          return;
+        }
+        const saved = await saveEntry({
+          ...todayEntry,
+          photoUrl: upload.photoUrl,
+        });
+        if (!saved.ok) {
+          setSaveError(saved.error ?? "Could not save photo to today.");
+        }
+        setUploadingPhoto(false);
+      })();
+      return;
+    }
+
+    const reader = new FileReader();
+    setUploadingPhoto(true);
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        setUploadingPhoto(false);
+        return;
+      }
+      void saveEntry({
+        ...todayEntry,
+        photoUrl: result,
+      }).then((r) => {
+        if (!r.ok) setSaveError(r.error ?? "Could not save photo.");
+        setUploadingPhoto(false);
+      });
+    };
+    reader.onerror = () => {
+      setSaveError("Could not read selected image.");
+      setUploadingPhoto(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearTodayProgressPhoto() {
+    if (!todayEntry) return;
+    setSaveError(null);
+    void saveEntry({
+      ...todayEntry,
+      photoUrl: null,
+    }).then((r) => {
+      if (!r.ok) setSaveError(r.error ?? "Could not remove photo.");
+    });
+  }
+
   if (today === null) {
     return (
       <Card title="Today's log" variant="surface">
@@ -402,7 +474,9 @@ export function DailyInput({
           <p className="mb-2 text-[11px] leading-snug text-zinc-500">
             Enter your <span className="font-medium text-zinc-400">morning weight</span>, then tap{" "}
             <span className="font-medium text-emerald-400/90">Save today</span> at the bottom. The
-            weight summary above updates after a successful save.
+            weight summary above updates after a successful save. Then you can add a{" "}
+            <span className="font-medium text-zinc-400">progress photo</span> on this card (section
+            below) or under <span className="font-medium text-zinc-400">Review + history</span>.
           </p>
         ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
@@ -519,6 +593,65 @@ export function DailyInput({
             placeholder="Private notes for this day…"
           />
         </details>
+
+        <div
+          id="today-progress-photo"
+          className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-900/30 px-2.5 py-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+              Progress photo
+            </span>
+            <div className="flex items-center gap-2">
+              <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] text-zinc-300 transition-all hover:bg-zinc-700">
+                <Upload className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {uploadingPhoto ? "Uploading…" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={!todayEntry || uploadingPhoto}
+                  aria-label="Upload progress photo for today"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onPickTodayProgressPhoto(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={!todayEntry?.photoUrl || uploadingPhoto}
+                onClick={clearTodayProgressPhoto}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 transition-all hover:bg-zinc-700 disabled:opacity-35"
+                aria-label="Remove today’s progress photo"
+                title="Remove photo"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          </div>
+          {todayEntry?.photoUrl ? (
+            <div className="mt-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={todayEntry.photoUrl}
+                alt="Today’s progress"
+                className="h-24 w-24 rounded-lg border border-zinc-700 object-cover"
+              />
+            </div>
+          ) : todayEntry ? (
+            <p className="mt-1.5 text-[10px] leading-snug text-zinc-500">
+              Optional body or progress shot for today. Shown in your Photos strip after save.
+            </p>
+          ) : (
+            <p className="mt-1.5 text-[10px] leading-snug text-zinc-500">
+              Save today with your morning weight first, then upload here (same as picking today in{" "}
+              <span className="text-zinc-400">Review + history</span>).
+            </p>
+          )}
+        </div>
+
         <div className="mt-3 border-t border-zinc-800 pt-3">
           <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-100">
             Daily habits
