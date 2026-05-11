@@ -201,6 +201,22 @@ export async function postBillingPortalSession(accessToken: string) {
   );
 }
 
+export async function postV2WeeklyReportSendEmail(
+  body: { htmlBody: string; textBody?: string; subject?: string },
+  accessToken: string,
+) {
+  return fetchJson<{ ok: true; to: string }>(
+    "/v2/weekly-report/send-email",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    true,
+    accessToken,
+  );
+}
+
 export async function patchSettings(settings: UserSettings, accessToken?: string) {
   return fetchJson<{ settings: UserSettings }>(
     "/settings",

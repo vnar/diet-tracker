@@ -3,6 +3,8 @@ import { Construct } from "constructs";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -186,6 +188,16 @@ export class BackendFoundationStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    /** Idempotency for scheduled weekly digest emails (userId + weekStart). */
+    const weeklyDigestLogTable = new dynamodb.Table(this, "WeeklyDigestLogTable", {
+      tableName: "WeeklyDigestLog",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "weekStart", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const photoCorsOrigins = photoCorsAllowAllOrigins()
       ? ["*"]
       : [
@@ -268,6 +280,13 @@ export class BackendFoundationStack extends cdk.Stack {
       }),
     );
 
+    backendLambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"],
+      }),
+    );
+
     // Default matches app owner; override with ADMIN_EMAILS=... at deploy time if needed.
     const adminEmailsDeploy =
       process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
@@ -281,6 +300,23 @@ export class BackendFoundationStack extends cdk.Stack {
     /** Opt-out: personalized coaching nudges + Pro gate on `/v2/insights` (same pattern as other FF_*). */
     const personalizedAiCoachingEnv =
       process.env.FF_PERSONALIZED_AI_COACHING === "false" ? "false" : "true";
+    /** Opt-in: POST /v2/weekly-report/send-email (SES). Requires verified TRANSACTIONAL_EMAIL_FROM identity. */
+    const weeklyReportEmailEnv = process.env.FF_WEEKLY_REPORT_EMAIL === "true" ? "true" : "false";
+    const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() ?? "";
+    const transactionalEmailFromNameDeploy =
+      process.env.TRANSACTIONAL_EMAIL_FROM_NAME?.trim() || "Ojas Health";
+    const transactionalEmailReplyToDeploy = process.env.TRANSACTIONAL_EMAIL_REPLY_TO?.trim() ?? "";
+    const transactionalEmailMessageIdDomainDeploy =
+      process.env.TRANSACTIONAL_EMAIL_MESSAGE_ID_DOMAIN?.trim() ?? "";
+    const transactionalEmailListUnsubscribeUrlDeploy =
+      process.env.TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_URL?.trim() ?? "";
+    /** List-ID + default List-Unsubscribe https://{domain}/ (GET only; one-click POST opt-in). */
+    const transactionalEmailBrandDomainDeploy =
+      process.env.TRANSACTIONAL_EMAIL_BRAND_DOMAIN?.trim() || "ojas-health.com";
+    const transactionalEmailListUnsubscribeOneClickDeploy =
+      process.env.TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_ONE_CLICK === "true" ? "true" : "false";
+    /** Opt-in: EventBridge invokes weekly digest Lambda (Mondays UTC). Users must set `weeklyDigestEmail` in Settings. */
+    const weeklyDigestSchedulerEnv = process.env.FF_WEEKLY_DIGEST_SCHEDULER === "true" ? "true" : "false";
     /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
@@ -344,6 +380,20 @@ export class BackendFoundationStack extends cdk.Stack {
         FF_NL_MEAL_PARSE: nlMealParseEnv,
         FF_BODY_COMPARE_AI: bodyCompareAiEnv,
         FF_PERSONALIZED_AI_COACHING: personalizedAiCoachingEnv,
+        FF_WEEKLY_REPORT_EMAIL: weeklyReportEmailEnv,
+        TRANSACTIONAL_EMAIL_FROM: transactionalEmailFromDeploy,
+        TRANSACTIONAL_EMAIL_FROM_NAME: transactionalEmailFromNameDeploy,
+        TRANSACTIONAL_EMAIL_BRAND_DOMAIN: transactionalEmailBrandDomainDeploy,
+        TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_ONE_CLICK: transactionalEmailListUnsubscribeOneClickDeploy,
+        ...(transactionalEmailReplyToDeploy
+          ? { TRANSACTIONAL_EMAIL_REPLY_TO: transactionalEmailReplyToDeploy }
+          : {}),
+        ...(transactionalEmailMessageIdDomainDeploy
+          ? { TRANSACTIONAL_EMAIL_MESSAGE_ID_DOMAIN: transactionalEmailMessageIdDomainDeploy }
+          : {}),
+        ...(transactionalEmailListUnsubscribeUrlDeploy
+          ? { TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_URL: transactionalEmailListUnsubscribeUrlDeploy }
+          : {}),
         ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
         STRIPE_SECRET_KEY: stripeSecretKeyDeploy,
         ...(billingAppUrlDeploy ? { BILLING_APP_URL: billingAppUrlDeploy } : {}),
@@ -358,6 +408,79 @@ export class BackendFoundationStack extends cdk.Stack {
         forceDockerBundling: false,
       },
     });
+
+    const weeklyDigestLambdaRole = new iam.Role(this, "WeeklyDigestLambdaRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      description: "Scheduled weekly digest (rule-based report + SES) for opted-in users",
+    });
+    weeklyDigestLambdaRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+    );
+    entriesTable.grantReadData(weeklyDigestLambdaRole);
+    settingsTable.grantReadData(weeklyDigestLambdaRole);
+    progressPhotosTable.grantReadData(weeklyDigestLambdaRole);
+    weeklyDigestLogTable.grantReadWriteData(weeklyDigestLambdaRole);
+    weeklyDigestLambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["cognito-idp:ListUsers"],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+    weeklyDigestLambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"],
+      }),
+    );
+
+    const weeklyDigestLambda = new NodejsFunction(this, "WeeklyDigestLambda", {
+      functionName: `${this.stackName}-weekly-digest`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: path.join(__dirname, "..", "lambda", "weekly-digest-scheduler.ts"),
+      handler: "handler",
+      role: weeklyDigestLambdaRole,
+      timeout: cdk.Duration.minutes(15),
+      memorySize: 512,
+      environment: {
+        ENTRIES_TABLE_NAME: entriesTable.tableName,
+        SETTINGS_TABLE_NAME: settingsTable.tableName,
+        PROGRESS_PHOTOS_TABLE_NAME: progressPhotosTable.tableName,
+        WEEKLY_DIGEST_LOG_TABLE_NAME: weeklyDigestLogTable.tableName,
+        USER_POOL_ID: userPool.userPoolId,
+        FF_WEEKLY_DIGEST_SCHEDULER: weeklyDigestSchedulerEnv,
+        FF_WEEKLY_REPORT_EMAIL: weeklyReportEmailEnv,
+        TRANSACTIONAL_EMAIL_FROM: transactionalEmailFromDeploy,
+        TRANSACTIONAL_EMAIL_FROM_NAME: transactionalEmailFromNameDeploy,
+        TRANSACTIONAL_EMAIL_BRAND_DOMAIN: transactionalEmailBrandDomainDeploy,
+        TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_ONE_CLICK: transactionalEmailListUnsubscribeOneClickDeploy,
+        ...(transactionalEmailReplyToDeploy
+          ? { TRANSACTIONAL_EMAIL_REPLY_TO: transactionalEmailReplyToDeploy }
+          : {}),
+        ...(transactionalEmailMessageIdDomainDeploy
+          ? { TRANSACTIONAL_EMAIL_MESSAGE_ID_DOMAIN: transactionalEmailMessageIdDomainDeploy }
+          : {}),
+        ...(transactionalEmailListUnsubscribeUrlDeploy
+          ? { TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_URL: transactionalEmailListUnsubscribeUrlDeploy }
+          : {}),
+        ...(process.env.WEEKLY_DIGEST_MAX_USERS_PER_RUN?.trim()
+          ? { WEEKLY_DIGEST_MAX_USERS_PER_RUN: process.env.WEEKLY_DIGEST_MAX_USERS_PER_RUN.trim() }
+          : {}),
+      },
+      bundling: {
+        minify: true,
+        sourceMap: false,
+        target: "node20",
+        forceDockerBundling: false,
+      },
+    });
+
+    const weeklyDigestRule = new events.Rule(this, "WeeklyDigestMondayUtcRule", {
+      schedule: events.Schedule.cron({ minute: "30", hour: "14", weekDay: "MON", month: "*", year: "*" }),
+      enabled: weeklyDigestSchedulerEnv === "true",
+      description:
+        "Sends prior-week digest (UTC calendar). Enable with FF_WEEKLY_DIGEST_SCHEDULER=true at deploy.",
+    });
+    weeklyDigestRule.addTarget(new targets.LambdaFunction(weeklyDigestLambda));
 
     const integration = new apigwv2.CfnIntegration(this, "BackendApiLambdaIntegration", {
       apiId: httpApi.apiId,
@@ -430,6 +553,7 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "PUT /admin/flags", id: "AdminFlagsPutRoute" },
       { routeKey: "POST /v2/billing/checkout-session", id: "BillingCheckoutSessionPostRoute" },
       { routeKey: "POST /v2/billing/portal", id: "BillingPortalPostRoute" },
+      { routeKey: "POST /v2/weekly-report/send-email", id: "WeeklyReportSendEmailPostRoute" },
     ];
 
     for (const route of securedRoutes) {

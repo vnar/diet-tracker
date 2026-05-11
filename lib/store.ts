@@ -27,6 +27,7 @@ const defaultSettings: UserSettings = {
   targetDate: defaultTargetDate(),
   unit: "kg",
   tone: "friendly",
+  weeklyDigestEmail: false,
 };
 
 function normalizeEntry(e: DailyEntry): DailyEntry {

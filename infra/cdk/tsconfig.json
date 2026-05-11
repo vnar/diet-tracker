@@ -9,6 +9,8 @@
     "lib": [
       "es2020"
     ],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "declaration": true,
     "strict": true,
     "noImplicitAny": true,
@@ -27,6 +29,11 @@
       "./node_modules/@types"
     ]
   },
+  "include": [
+    "bin/**/*.ts",
+    "lib/**/*.ts",
+    "lambda/**/*.ts"
+  ],
   "exclude": [
     "cdk.out"
   ]

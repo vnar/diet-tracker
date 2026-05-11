@@ -5,7 +5,11 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
+    include: [
+      "tests/unit/**/*.test.ts",
+      "tests/unit/**/*.test.tsx",
+      "scripts/gen-weekly-email-preview.spec.ts",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

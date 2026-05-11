@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { AIInsights } from "@/components/AIInsights";
 import { PhotoTrackerAiComparePanel } from "@/components/v2/photos/PhotoTrackerAiComparePanel";
+import { WeeklyReportCollapsible } from "@/components/v2/weeklyReport/WeeklyReportCollapsible";
 
 function CollapsibleBlock({
   id,
@@ -41,6 +42,7 @@ function CollapsibleBlock({
 export function DashboardAiInsightsHub() {
   return (
     <Card title="AI insights" variant="surface" className="flex flex-col gap-2">
+      <WeeklyReportCollapsible />
       <CollapsibleBlock id="ai-insights-coaching" detailsId="ai-insights-coaching-details" title="Coaching insights">
         <AIInsights embedded />
       </CollapsibleBlock>

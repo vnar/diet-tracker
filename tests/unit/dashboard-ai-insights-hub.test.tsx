@@ -10,6 +10,10 @@ vi.mock("@/components/v2/photos/PhotoTrackerAiComparePanel", () => ({
   PhotoTrackerAiComparePanel: () => <div data-testid="photo-compare-mock">Photo compare body</div>,
 }));
 
+vi.mock("@/components/v2/weeklyReport/WeeklyReportCollapsible", () => ({
+  WeeklyReportCollapsible: () => null,
+}));
+
 describe("DashboardAiInsightsHub", () => {
   afterEach(() => {
     cleanup();

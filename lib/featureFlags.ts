@@ -154,3 +154,33 @@ export function isProMonetizationEnabled(userId?: string): boolean {
   if (explicit === false) return false;
   return process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION === "true";
 }
+
+/**
+ * AI Weekly Report Card (rule-based aggregate + coach tone). Default OFF unless env enables.
+ * Set `NEXT_PUBLIC_FF_WEEKLY_REPORT=true` and/or per-user override `FF_WEEKLY_REPORT`.
+ */
+export function isWeeklyReportEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_WEEKLY_REPORT"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("WEEKLY_REPORT");
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return process.env.NEXT_PUBLIC_FF_WEEKLY_REPORT === "true";
+}
+
+/**
+ * POST /v2/weekly-report/send-email (SES to Cognito user's verified email). Default OFF.
+ * Requires Lambda `FF_WEEKLY_REPORT_EMAIL=true` and verified `TRANSACTIONAL_EMAIL_FROM` at deploy.
+ */
+export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_WEEKLY_REPORT_EMAIL"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("WEEKLY_REPORT_EMAIL");
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return process.env.NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL === "true";
+}

@@ -4,7 +4,7 @@ export type VoiceDailyParseResult = {
     parsed: VoiceDailyParsedFields;
 } | {
     ok: false;
-    error: "no_api_key" | "parse_failed" | "model_empty";
+    error: "no_api_key" | "parse_failed" | "model_empty" | "voice_parse_timeout";
 };
 /**
  * Server-only: call Anthropic to parse transcript into structured fields.

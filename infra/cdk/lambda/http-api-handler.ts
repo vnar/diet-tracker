@@ -46,6 +46,7 @@ import {
 } from "./meals-api";
 import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
 import { handleBillingCheckoutSession, handleBillingPortalSession } from "./billing-api";
+import { handlePostV2WeeklyReportSendEmail } from "./weekly-report-email-send";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -122,6 +123,7 @@ type SettingsPatch = {
   optInForecast?: boolean;
   forecastGeneratedAt?: string;
   forecastDisclaimerAccepted?: boolean;
+  weeklyDigestEmail?: boolean;
 };
 
 type StoredEntry = DailyEntryUpsert & {
@@ -349,6 +351,12 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
   ) {
     return { ok: false, error: "Invalid forecastDisclaimerAccepted" };
   }
+  if (
+    Object.prototype.hasOwnProperty.call(body, "weeklyDigestEmail") &&
+    typeof body.weeklyDigestEmail !== "boolean"
+  ) {
+    return { ok: false, error: "Invalid weeklyDigestEmail" };
+  }
   return {
     ok: true,
     data: {
@@ -360,6 +368,9 @@ function validateSettings(input: unknown): { ok: true; data: SettingsPatch } | {
       optInForecast: body.optInForecast as boolean | undefined,
       forecastGeneratedAt: body.forecastGeneratedAt as string | undefined,
       forecastDisclaimerAccepted: body.forecastDisclaimerAccepted as boolean | undefined,
+      weeklyDigestEmail: Object.prototype.hasOwnProperty.call(body, "weeklyDigestEmail")
+        ? (body.weeklyDigestEmail as boolean)
+        : undefined,
     },
   };
 }
@@ -1093,6 +1104,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
           targetDate: { S: settings.targetDate },
           unit: { S: settings.unit },
           tone: { S: settings.tone ?? "friendly" },
+          weeklyDigestEmail: { N: "0" },
         },
       }),
     );
@@ -1105,6 +1117,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
         tone: settings.tone,
         plateau: undefined,
         activityCalibrationFactor: settings.activityCalibrationFactor ?? 1,
+        weeklyDigestEmail: false,
       },
       subscription,
     });
@@ -1127,6 +1140,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
       optInForecast: Number(out.Item.optInForecast?.N ?? "0") === 1,
       forecastGeneratedAt: out.Item.forecastGeneratedAt?.S,
       forecastDisclaimerAccepted: Number(out.Item.forecastDisclaimerAccepted?.N ?? "0") === 1,
+      weeklyDigestEmail: Number(out.Item.weeklyDigestEmail?.N ?? "0") === 1,
     },
     subscription,
   });
@@ -1160,6 +1174,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
   const existingForecastGeneratedAt = existingOut.Item?.forecastGeneratedAt?.S;
   const existingForecastDisclaimerAccepted =
     Number(existingOut.Item?.forecastDisclaimerAccepted?.N ?? "0") === 1;
+  const existingWeeklyDigestEmail = Number(existingOut.Item?.weeklyDigestEmail?.N ?? "0") === 1;
 
   let nextPlateau = plateauSettingsFromItem(existingOut.Item);
   if (Object.prototype.hasOwnProperty.call(body, "plateau")) {
@@ -1201,6 +1216,8 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
   item.forecastDisclaimerAccepted = {
     N: (data.forecastDisclaimerAccepted ?? existingForecastDisclaimerAccepted) ? "1" : "0",
   };
+  const nextWeeklyDigestEmail = data.weeklyDigestEmail ?? existingWeeklyDigestEmail;
+  item.weeklyDigestEmail = { N: nextWeeklyDigestEmail ? "1" : "0" };
 
   await ddb.send(
     new PutItemCommand({
@@ -1222,6 +1239,7 @@ async function patchSettings(userId: string, event: HttpEvent): Promise<HttpResu
       forecastGeneratedAt: data.forecastGeneratedAt ?? existingForecastGeneratedAt,
       forecastDisclaimerAccepted:
         data.forecastDisclaimerAccepted ?? existingForecastDisclaimerAccepted,
+      weeklyDigestEmail: nextWeeklyDigestEmail,
     },
   });
 }
@@ -1818,6 +1836,10 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
 
     if (event.rawPath === "/v2/billing/portal" && method === "POST") {
       return handleBillingPortalSession(userId);
+    }
+
+    if (event.rawPath === "/v2/weekly-report/send-email" && method === "POST") {
+      return handlePostV2WeeklyReportSendEmail(bearerAccessToken(event), event, json);
     }
 
     if (event.rawPath === "/stats" && method === "GET") {

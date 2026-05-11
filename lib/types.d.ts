@@ -46,6 +46,11 @@ export interface UserSettings {
     optInForecast?: boolean;
     forecastGeneratedAt?: string;
     forecastDisclaimerAccepted?: boolean;
+    /**
+     * When true, the weekly digest scheduler (if enabled on the stack) may email this user’s
+     * verified address with the prior week’s rule-based report. Default false / unset.
+     */
+    weeklyDigestEmail?: boolean;
 }
 export interface ProgressPhoto {
     photoId: string;

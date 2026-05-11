@@ -550,7 +550,7 @@ export function HealthDashboard() {
 
           <ProgressPhotoTrackerProvider>
             <div className="ui-dashboard-grid-3">
-            <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
+            <motion.section {...fadeInUp} id="dashboard-today" className="flex min-h-0 min-w-0 flex-col gap-3">
               <p className="ui-label mb-0 min-h-[1.25rem]">Logging + meals</p>
               <DailyInput
                 voiceDailyLogEnabled={

@@ -99,14 +99,14 @@ function HealthBootstrapInner({ children }: { children: React.ReactNode }) {
 
       if (settingsResult.ok) {
         useHealthStore.setState({
-          settings: settingsResult.data.settings,
+          settings: { ...useHealthStore.getState().settings, ...settingsResult.data.settings },
         });
         setSubscription(settingsResult.data.subscription ?? null);
       } else {
         const retry = await getSettings(accessToken);
         if (retry.ok) {
           useHealthStore.setState({
-            settings: retry.data.settings,
+            settings: { ...useHealthStore.getState().settings, ...retry.data.settings },
           });
           setSubscription(retry.data.subscription ?? null);
         }
