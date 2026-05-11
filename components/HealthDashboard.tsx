@@ -381,6 +381,10 @@ export function HealthDashboard() {
             <DashboardKpiRow />
           </motion.section>
 
+          <motion.section {...fadeInUp}>
+            <WeightChart />
+          </motion.section>
+
           <div className="ui-dashboard-grid-3">
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
               <p className="ui-label mb-0 min-h-[1.25rem]">Logging + meals</p>
@@ -454,10 +458,6 @@ export function HealthDashboard() {
               </div>
             </motion.section>
           </div>
-
-          <motion.section {...fadeInUp}>
-            <WeightChart />
-          </motion.section>
 
           <motion.section {...fadeInUp} id="dashboard-history">
             <p className="ui-label mb-2">Review + history</p>
