@@ -297,8 +297,8 @@ class BackendFoundationStack extends cdk.Stack {
         const bodyCompareAiEnv = process.env.FF_BODY_COMPARE_AI === "false" ? "false" : "true";
         /** Opt-out: personalized coaching nudges + Pro gate on `/v2/insights` (same pattern as other FF_*). */
         const personalizedAiCoachingEnv = process.env.FF_PERSONALIZED_AI_COACHING === "false" ? "false" : "true";
-        /** Opt-in: POST /v2/weekly-report/send-email (SES). Requires verified TRANSACTIONAL_EMAIL_FROM identity. */
-        const weeklyReportEmailEnv = process.env.FF_WEEKLY_REPORT_EMAIL === "true" ? "true" : "false";
+        /** Opt-out: weekly SES send route unless FF_WEEKLY_REPORT_EMAIL=false. Requires TRANSACTIONAL_EMAIL_FROM. */
+        const weeklyReportEmailEnv = process.env.FF_WEEKLY_REPORT_EMAIL === "false" ? "false" : "true";
         const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() ?? "";
         const transactionalEmailFromNameDeploy = process.env.TRANSACTIONAL_EMAIL_FROM_NAME?.trim() || "Ojas Health";
         const transactionalEmailReplyToDeploy = process.env.TRANSACTIONAL_EMAIL_REPLY_TO?.trim() ?? "";

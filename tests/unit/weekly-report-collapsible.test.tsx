@@ -57,20 +57,20 @@ describe("WeeklyReportCollapsible", () => {
     getProgressPhotosMock.mockReset();
   });
 
-  it("renders when weekly report flag is enabled for the user", () => {
+  it("renders when weekly report is on by default", () => {
     render(<WeeklyReportCollapsible />);
-    expect(screen.getByText("Weekly report card")).toBeInTheDocument();
+    expect(screen.getByText("Weekly recap")).toBeInTheDocument();
   });
 
-  it("renders when per-user override enables flag without public env", () => {
-    vi.unstubAllEnvs();
+  it("renders when per-user override enables flag with public env false", () => {
+    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "false");
     setUserFlagOverrides("user-weekly-1", { FF_WEEKLY_REPORT: true });
     render(<WeeklyReportCollapsible />);
-    expect(screen.getByText("Weekly report card")).toBeInTheDocument();
+    expect(screen.getByText("Weekly recap")).toBeInTheDocument();
   });
 
-  it("returns null when flag is off", () => {
-    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "");
+  it("returns null when flag is explicitly off", () => {
+    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "false");
     const { container } = render(<WeeklyReportCollapsible />);
     expect(container.firstChild).toBeNull();
   });

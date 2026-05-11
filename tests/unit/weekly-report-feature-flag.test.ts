@@ -12,9 +12,9 @@ describe("isWeeklyReportEnabled", () => {
     clearUserFlagOverrides();
   });
 
-  it("defaults false when env unset", () => {
+  it("defaults true when env unset", () => {
     vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "");
-    expect(isWeeklyReportEnabled()).toBe(false);
+    expect(isWeeklyReportEnabled()).toBe(true);
   });
 
   it("reads NEXT_PUBLIC_FF_WEEKLY_REPORT=true", () => {
@@ -23,7 +23,7 @@ describe("isWeeklyReportEnabled", () => {
   });
 
   it("respects per-user override", () => {
-    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "");
+    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT", "false");
     setUserFlagOverrides("user-1", { FF_WEEKLY_REPORT: true });
     expect(isWeeklyReportEnabled("user-1")).toBe(true);
     expect(isWeeklyReportEnabled("user-2")).toBe(false);
@@ -36,9 +36,9 @@ describe("isWeeklyReportEmailSendEnabled", () => {
     clearUserFlagOverrides();
   });
 
-  it("defaults false when env unset", () => {
+  it("defaults true when env unset", () => {
     vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL", "");
-    expect(isWeeklyReportEmailSendEnabled()).toBe(false);
+    expect(isWeeklyReportEmailSendEnabled()).toBe(true);
   });
 
   it("reads NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL=true", () => {
@@ -47,7 +47,7 @@ describe("isWeeklyReportEmailSendEnabled", () => {
   });
 
   it("respects per-user override", () => {
-    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL", "");
+    vi.stubEnv("NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL", "false");
     setUserFlagOverrides("u1", { FF_WEEKLY_REPORT_EMAIL: true });
     expect(isWeeklyReportEmailSendEnabled("u1")).toBe(true);
   });

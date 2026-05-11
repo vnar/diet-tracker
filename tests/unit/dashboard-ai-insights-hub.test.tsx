@@ -19,9 +19,10 @@ describe("DashboardAiInsightsHub", () => {
     cleanup();
   });
 
-  it("renders AI insights shell and both collapsible sections", () => {
+  it("renders weekly card, AI insights shell, and both collapsible sections", () => {
     render(<DashboardAiInsightsHub />);
 
+    expect(screen.getByRole("heading", { name: "Weekly recap & email" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "AI insights" })).toBeInTheDocument();
     expect(screen.getByText("Coaching insights")).toBeInTheDocument();
     expect(screen.getAllByText("Photo compare (AI)").length).toBeGreaterThanOrEqual(1);

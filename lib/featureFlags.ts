@@ -156,8 +156,8 @@ export function isProMonetizationEnabled(userId?: string): boolean {
 }
 
 /**
- * AI Weekly Report Card (rule-based aggregate + coach tone). Default OFF unless env enables.
- * Set `NEXT_PUBLIC_FF_WEEKLY_REPORT=true` and/or per-user override `FF_WEEKLY_REPORT`.
+ * AI Weekly Report Card (rule-based aggregate + coach tone). Default ON when unset (opt-out:
+ * `FF_WEEKLY_REPORT=false` / `NEXT_PUBLIC_FF_WEEKLY_REPORT=false`).
  */
 export function isWeeklyReportEnabled(userId?: string): boolean {
   if (userId) {
@@ -165,14 +165,14 @@ export function isWeeklyReportEnabled(userId?: string): boolean {
     if (typeof o === "boolean") return o;
   }
   const explicit = readEnvFlag("WEEKLY_REPORT");
-  if (explicit === true) return true;
   if (explicit === false) return false;
-  return process.env.NEXT_PUBLIC_FF_WEEKLY_REPORT === "true";
+  return true;
 }
 
 /**
- * POST /v2/weekly-report/send-email (SES to Cognito user's verified email). Default OFF.
- * Requires Lambda `FF_WEEKLY_REPORT_EMAIL=true` and verified `TRANSACTIONAL_EMAIL_FROM` at deploy.
+ * POST /v2/weekly-report/send-email (SES to Cognito user's verified email). Default ON when unset (opt-out:
+ * `FF_WEEKLY_REPORT_EMAIL=false` / `NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL=false`). Lambda must still set
+ * `TRANSACTIONAL_EMAIL_FROM` (verified SES identity) or the route returns 503.
  */
 export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
   if (userId) {
@@ -180,7 +180,6 @@ export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
     if (typeof o === "boolean") return o;
   }
   const explicit = readEnvFlag("WEEKLY_REPORT_EMAIL");
-  if (explicit === true) return true;
   if (explicit === false) return false;
-  return process.env.NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL === "true";
+  return true;
 }

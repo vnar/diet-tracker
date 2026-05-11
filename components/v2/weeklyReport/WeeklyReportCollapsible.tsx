@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ClipboardCopy, Loader2, Mail, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronDown, ClipboardCopy, Loader2, Mail, RotateCcw } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { usePatchSettings, useRefreshEntries } from "@/hooks/useHealthActions";
 import { useHealthStore } from "@/lib/store";
@@ -287,16 +287,22 @@ export function WeeklyReportCollapsible() {
 
   return (
     <details
-      className="group rounded-xl border border-zinc-800/90 bg-zinc-950/25 open:border-zinc-700/90"
+      open
+      className="group rounded-xl border border-emerald-900/40 bg-gradient-to-b from-emerald-950/20 to-zinc-950/25 open:border-emerald-800/50"
       onToggle={(e) => {
         const el = e.target as HTMLDetailsElement;
         if (el.open) onOpenDetails();
       }}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-zinc-100 [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-400" aria-hidden />
-          Weekly report card
+        <span className="inline-flex min-w-0 flex-1 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+          <span className="inline-flex items-center gap-2">
+            <Mail className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+            <span className="text-left">Weekly recap</span>
+          </span>
+          <span className="text-[11px] font-normal text-emerald-200/80 sm:pl-1">
+            Generate → Email to my inbox
+          </span>
         </span>
         <ChevronDown
           aria-hidden
@@ -305,7 +311,8 @@ export function WeeklyReportCollapsible() {
       </summary>
       <div className="border-t border-zinc-800/80 px-3 pb-3 pt-2 text-sm text-zinc-200">
         <p className="text-[11px] leading-snug text-zinc-400">
-          Seven-day coach-style recap from your logs. Rule-based today—thoughtful, not clinical.
+          Seven-day coach-style recap from your logs. After you generate, use the green mail button to send it to your
+          verified email (optional: include dashboard AI insights in that email).
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="block min-w-[10rem]">
