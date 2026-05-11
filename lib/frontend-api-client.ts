@@ -533,6 +533,10 @@ export async function postMealNlParse(text: string, accessToken: string) {
 
 export type VoiceDailyParseApiResponse = { ok: true; parsed: VoiceDailyParsedFields };
 
+export type VoiceDailyParseFetchResult =
+  | { ok: true; data: VoiceDailyParseApiResponse }
+  | { ok: false; error: string };
+
 /** True when AWS voice parse failed in a way that might succeed via Next.js (dev) or a missing CDK route. */
 export function voiceParseAwsFailureMayRetryWithNext(awsError: string): boolean {
   const e = awsError.toLowerCase();
@@ -551,7 +555,10 @@ export function voiceParseAwsFailureMayRetryWithNext(awsError: string): boolean 
  * transport/missing-route style error, retries the Next.js `/api/v2/...` route (helps local dev).
  * On Amplify static hosting only, ensure CDK deployed `POST /v2/voice-daily-log/parse`.
  */
-export async function postVoiceDailyLogParse(transcript: string, accessToken: string) {
+export async function postVoiceDailyLogParse(
+  transcript: string,
+  accessToken: string,
+): Promise<VoiceDailyParseFetchResult> {
   const init: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -577,7 +584,7 @@ export async function postVoiceDailyLogParse(transcript: string, accessToken: st
       );
       if (nextRes.ok) return nextRes;
       return {
-        ok: false,
+        ok: false as const,
         error: `${awsRes.error}\n\nStill failing after same-origin fallback. Deploy CDK so API Gateway includes POST /v2/voice-daily-log/parse (same stack as photo food). Fallback error: ${nextRes.error}`,
       };
     }
