@@ -26,6 +26,7 @@ const defaultSettings: UserSettings = {
   startWeight: 85,
   targetDate: defaultTargetDate(),
   unit: "kg",
+  tone: "friendly",
 };
 
 function normalizeEntry(e: DailyEntry): DailyEntry {

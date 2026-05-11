@@ -21,7 +21,13 @@ import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthBar, SignOutButton } from "@/components/AuthBar";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
-import { getDayMealEntries, getSettings, isAwsBackendEnabled, type DayMealEntryRow } from "@/lib/frontend-api-client";
+import {
+  getDayMealEntries,
+  getSettings,
+  isAwsBackendEnabled,
+  type DayMealEntryRow,
+} from "@/lib/frontend-api-client";
+import type { UserSettings } from "@/lib/types";
 import { useHealthStore } from "@/lib/store";
 import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings, Users, Utensils } from "lucide-react";
@@ -33,6 +39,7 @@ import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { formatDateKeyLocal, getEntryForDate } from "@/lib/calculations";
 import { getDayTotals } from "@/lib/meals/dayTotals";
 import { track } from "@/lib/analytics";
+import { COACH_TONE_OPTIONS, normalizeCoachTone, type CoachTone } from "@/lib/coachTone";
 import { goalEditedFieldNames } from "@/lib/weightTrendAnalytics";
 
 const fadeInUp = {
@@ -62,6 +69,11 @@ export function HealthDashboard() {
   const [mealEntries, setMealEntries] = useState<DayMealEntryRow[]>([]);
   const [mealRefreshEpoch, setMealRefreshEpoch] = useState(0);
   const [mealsOpen, setMealsOpen] = useState(false);
+  const [coachToneDraft, setCoachToneDraft] = useState<CoachTone>(() =>
+    normalizeCoachTone(useHealthStore.getState().settings.tone),
+  );
+  const [coachOnboardingDismissed, setCoachOnboardingDismissed] = useState(false);
+  const [coachBannerError, setCoachBannerError] = useState<string | null>(null);
 
   const refreshMeals = useCallback(() => {
     setMealRefreshEpoch((n) => n + 1);
@@ -115,16 +127,21 @@ export function HealthDashboard() {
     setTargetDate(settings.targetDate);
   }, [settings]);
 
+  useEffect(() => {
+    if (!settingsOpen) return;
+    setCoachToneDraft(normalizeCoachTone(useHealthStore.getState().settings.tone));
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCoachOnboardingDismissed(localStorage.getItem("ojas-coach-tone-onboarding-dismissed") === "1");
+  }, []);
+
   async function refreshSettingsFromCloud(options?: {
     applyToForm?: boolean;
   }): Promise<{
     ok: boolean;
-    settings?: {
-      goalWeight: number;
-      startWeight: number;
-      targetDate: string;
-      unit: "kg" | "lbs";
-    };
+    settings?: UserSettings;
     error?: string;
   }> {
     if (!isAwsBackendEnabled() || status !== "authenticated") return { ok: false };
@@ -162,6 +179,8 @@ export function HealthDashboard() {
     }
 
     const prevSettings = useHealthStore.getState().settings;
+    const prevTone = normalizeCoachTone(prevSettings.tone);
+    const nextTone = coachToneDraft;
 
     setSettingsError(null);
     setSavingSettings(true);
@@ -169,7 +188,8 @@ export function HealthDashboard() {
       startWeight: start,
       goalWeight: goal,
       targetDate,
-    });
+      tone: nextTone,
+    } satisfies Partial<UserSettings>);
     setSavingSettings(false);
 
     if (!result.ok) {
@@ -187,7 +207,8 @@ export function HealthDashboard() {
     const matchesCloud =
       refreshed.settings.startWeight === start &&
       refreshed.settings.goalWeight === goal &&
-      refreshed.settings.targetDate === targetDate;
+      refreshed.settings.targetDate === targetDate &&
+      normalizeCoachTone(refreshed.settings.tone) === nextTone;
 
     if (!matchesCloud) {
       setSettingsError(
@@ -208,8 +229,45 @@ export function HealthDashboard() {
       });
     }
 
+    if (prevTone !== nextTone) {
+      track("coach_tone_changed", {
+        from: prevTone,
+        to: nextTone,
+        source: "settings_modal",
+      });
+      if (prevTone === "friendly" && nextTone !== "friendly") {
+        track("coach_tone_selected", { tone: nextTone, source: "settings_modal" });
+      }
+    }
+
     setSettingsOpen(false);
   }
+
+  async function saveCoachToneFromOnboarding() {
+    setCoachBannerError(null);
+    const tone = coachToneDraft;
+    track("coach_tone_selected", { tone, source: "onboarding_banner" });
+    const prev = normalizeCoachTone(useHealthStore.getState().settings.tone);
+    const r = await patchSettings({ tone });
+    if (r.ok) {
+      if (prev !== tone) {
+        track("coach_tone_changed", { from: prev, to: tone, source: "onboarding_banner" });
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ojas-coach-tone-onboarding-dismissed", "1");
+      }
+      setCoachOnboardingDismissed(true);
+      void refreshSettingsFromCloud({ applyToForm: false });
+    } else {
+      setCoachBannerError(r.error ?? "Could not save coach tone.");
+    }
+  }
+
+  const showCoachOnboarding =
+    status === "authenticated" &&
+    isAwsBackendEnabled() &&
+    !coachOnboardingDismissed &&
+    entryCount <= 10;
 
   return (
     <main className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
@@ -378,6 +436,61 @@ export function HealthDashboard() {
 
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-24 pt-4 sm:px-5">
 
+        {showCoachOnboarding ? (
+          <motion.div
+            {...fadeInUp}
+            className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-950/40"
+          >
+            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+              How should Ojas coach you?
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-emerald-900/90 dark:text-emerald-200/85">
+              Pick a tone for insights and nudges. You can change this anytime in Settings. Tone adjusts wording only —
+              facts come from your logs.
+            </p>
+            {coachBannerError ? (
+              <p className="mt-2 text-[11px] text-rose-600 dark:text-rose-300">{coachBannerError}</p>
+            ) : null}
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+              <label className="block min-w-[12rem] flex-1">
+                <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-emerald-800 dark:text-emerald-300/90">
+                  Coach tone
+                </span>
+                <select
+                  value={coachToneDraft}
+                  onChange={(e) => setCoachToneDraft(normalizeCoachTone(e.target.value))}
+                  className="w-full rounded-lg border border-emerald-600/40 bg-white px-2 py-2 text-sm text-zinc-900 dark:border-emerald-700/50 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {COACH_TONE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void saveCoachToneFromOnboarding()}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+              >
+                Save preference
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("ojas-coach-tone-onboarding-dismissed", "1");
+                  }
+                  setCoachOnboardingDismissed(true);
+                }}
+                className="text-left text-[11px] text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-300/90"
+              >
+                Skip for now
+              </button>
+            </div>
+          </motion.div>
+        ) : null}
+
         <div className="ui-dashboard-stack">
           <motion.section {...fadeInUp}>
             <DashboardKpiRow />
@@ -451,6 +564,7 @@ export function HealthDashboard() {
                 mealEntries={mealEntries}
                 getAccessToken={getAccessToken}
                 initialCalibrationFactor={settings.activityCalibrationFactor}
+                coachTone={normalizeCoachTone(settings.tone)}
               />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-2">
@@ -592,6 +706,26 @@ export function HealthDashboard() {
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
                 />
               </label>
+
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] text-zinc-400">Coach tone</span>
+                <p className="mb-2 text-[10px] leading-snug text-zinc-500">
+                  Affects how AI insights, nudges, and weekly summaries are phrased. Numbers and facts stay tied to your
+                  logs.
+                </p>
+                <select
+                  value={coachToneDraft}
+                  onChange={(e) => setCoachToneDraft(normalizeCoachTone(e.target.value))}
+                  disabled={loadingSettings || savingSettings}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+                >
+                  {COACH_TONE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label} — {o.hint}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {settingsError ? (

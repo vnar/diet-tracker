@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp, Sparkles, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { track } from "@/lib/analytics";
 import type { AiNudge, PersonalizedCoachingApiPayload } from "@/lib/aiNudges/types";
+import { normalizeCoachTone, type CoachTone } from "@/lib/coachTone";
 import { submitInsightFeedback } from "@/lib/frontend-api-client";
 
 function categoryLabel(c: AiNudge["category"]): string {
@@ -29,6 +30,8 @@ function categoryLabel(c: AiNudge["category"]): string {
 export function PersonalCoachingNudges(props: {
   accessToken: string;
   coaching: PersonalizedCoachingApiPayload;
+  /** Defaults from coaching payload when omitted. */
+  coachTone?: CoachTone;
 }) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
   const [rated, setRated] = useState<Record<string, "helpful" | "not_helpful">>({});
@@ -89,6 +92,7 @@ export function PersonalCoachingNudges(props: {
   if (props.coaching.nudges.length === 0) return null;
 
   const visibleCount = props.coaching.nudges.filter((n) => !dismissed[n.id]).length;
+  const tone = normalizeCoachTone(props.coachTone ?? props.coaching.coachTone);
 
   return (
     <div className="mt-4" role="region" aria-label="Personalized nudges from your logs">
@@ -123,6 +127,7 @@ export function PersonalCoachingNudges(props: {
               <NudgeRow
                 key={nudge.id}
                 nudge={nudge}
+                coachTone={tone}
                 accessToken={props.accessToken}
                 globalNotice={props.coaching.globalSafetyNotice}
                 rated={rated[nudge.id]}
@@ -146,6 +151,7 @@ export function PersonalCoachingNudges(props: {
 
 function NudgeRow(props: {
   nudge: AiNudge;
+  coachTone: CoachTone;
   accessToken: string;
   globalNotice: string;
   rated?: "helpful" | "not_helpful";
@@ -158,7 +164,12 @@ function NudgeRow(props: {
 
   useEffect(() => {
     track("ai_nudge_viewed", { nudge_id: nudge.id, category: nudge.category });
-  }, [nudge.id, nudge.category]);
+    track("nudge_viewed_by_tone", {
+      nudge_id: nudge.id,
+      category: nudge.category,
+      tone: props.coachTone,
+    });
+  }, [nudge.id, nudge.category, props.coachTone]);
 
   async function rate(r: "helpful" | "not_helpful") {
     props.onRate(r);

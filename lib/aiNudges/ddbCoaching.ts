@@ -77,6 +77,10 @@ export async function getPersonalizedCoachingAttachment(
   const goalWeight = gItem ? Number(gItem.goalWeight?.N ?? 72) : 72;
   const startWeight = gItem ? Number(gItem.startWeight?.N ?? 85) : 85;
   const targetDate = gItem?.targetDate?.S ?? to;
+  const coachTone =
+    gItem?.tone?.S === "clinical" || gItem?.tone?.S === "tough-love" || gItem?.tone?.S === "ayurvedic"
+      ? gItem.tone.S
+      : "friendly";
 
   const sorted = [...entriesRaw]
     .filter((e) => e.date)
@@ -95,5 +99,6 @@ export async function getPersonalizedCoachingAttachment(
     plan: subscription?.plan,
     subscriptionStatus: subscription?.status,
     recentAvgDailyCalories,
+    coachTone,
   });
 }

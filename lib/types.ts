@@ -36,6 +36,10 @@ export interface UserSettings {
   startWeight: number;
   targetDate: string;
   unit: "kg" | "lbs";
+  /**
+   * Coach communication tone (product: “coach tone”). Stored as `tone` in the API / DynamoDB.
+   * Values: friendly | clinical | tough-love | ayurvedic (maps from tough_love in some UIs).
+   */
   tone?: "friendly" | "clinical" | "tough-love" | "ayurvedic";
   plateau?: PlateauUserSettings;
   /** Multiplier for activity-burn estimates (default 1.0). */

@@ -35,6 +35,14 @@ export async function refine(insight: Insight, userContext: UserPrefs): Promise<
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey });
     const tone = userContext.tone ?? "friendly";
+    const toneGuide =
+      tone === "clinical"
+        ? "Use neutral, concise, factual language. No cheerleading. Do not add diagnoses or claims not supported by the why points."
+        : tone === "tough-love"
+          ? "Be direct and motivating; never shameful or insulting. No personal attacks. Preserve every factual claim from the original."
+          : tone === "ayurvedic"
+            ? "Use gentle rhythm/balance/wellness framing only; do not claim dosha types, Ayurvedic diagnoses, or cures. Preserve facts."
+            : "Warm and supportive; preserve facts.";
     const notes = (userContext.recentNotes ?? []).slice(-3).join("\n- ");
     const firstName = userContext.firstName ?? "there";
     const response = await client.messages.create({
@@ -42,7 +50,7 @@ export async function refine(insight: Insight, userContext: UserPrefs): Promise<
       max_tokens: 180,
       temperature: 0.4,
       system:
-        "Rewrite a health insight in a warmer, personalized tone while preserving facts. Reply with ONLY a single JSON object (no markdown, no code fences) with keys headline and detail (strings).",
+        `Rewrite a health insight for the user's coach tone while preserving all factual claims from the original (numbers, comparisons, dates). Reply with ONLY a single JSON object (no markdown, no code fences) with keys headline and detail (strings). Style: ${toneGuide}`,
       messages: [
         {
           role: "user",

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flame, Footprints, Loader2, Sparkles } from "lucide-react";
 import type { DailyEntry } from "@/lib/types";
+import { normalizeCoachTone, weeklyEnergyCoachLine, type CoachTone } from "@/lib/coachTone";
 import {
   getEnergyWeeklySummary,
   postActivityBurnEstimate,
@@ -52,6 +53,8 @@ type Props = {
   mealEntries: DayMealEntryRow[];
   getAccessToken: () => string | null;
   initialCalibrationFactor?: number;
+  /** Saved coach tone for weekly summary phrasing. */
+  coachTone?: CoachTone;
 };
 
 export function EnergyBalanceCard(props: Props) {
@@ -68,6 +71,8 @@ export function EnergyBalanceCard(props: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [calibration, setCalibration] = useState<number>(props.initialCalibrationFactor ?? 1);
+  const [weeklyAvgNet, setWeeklyAvgNet] = useState<number | null>(null);
+  const [weeklyTrend, setWeeklyTrend] = useState<"deficit" | "surplus" | "near_maintenance" | null>(null);
 
   const activityBurnRaw = aiBurn ?? estimateActivityBurn(activityText, weightKg);
   const activityBurn = Math.round(activityBurnRaw * calibration);
@@ -121,7 +126,27 @@ export function EnergyBalanceCard(props: Props) {
     const res = await getEnergyWeeklySummary(token, props.day);
     if (!res.ok) return;
     setCalibration(res.data.calibrationFactor);
+    setWeeklyAvgNet(res.data.avgNetKcal);
+    setWeeklyTrend(res.data.trend);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const token = props.getAccessToken();
+      if (!token) return;
+      const res = await getEnergyWeeklySummary(token, props.day);
+      if (cancelled || !res.ok) return;
+      setCalibration(res.data.calibrationFactor);
+      setWeeklyAvgNet(res.data.avgNetKcal);
+      setWeeklyTrend(res.data.trend);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [props.day, props.getAccessToken]);
+
+  const tone = normalizeCoachTone(props.coachTone);
 
   return (
     <div className="rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20">
@@ -175,6 +200,12 @@ export function EnergyBalanceCard(props: Props) {
       <p className={`mt-2 text-xs ${net <= 0 ? "text-emerald-300" : "text-amber-300"}`}>
         Net calories: {Math.round(net)} kcal
       </p>
+      {weeklyTrend != null && weeklyAvgNet != null ? (
+        <p className="mt-2 border-t border-zinc-800/80 pt-2 text-[10px] leading-snug text-zinc-400">
+          <span className="font-medium text-zinc-500">Week in review (7 days ending {props.day}): </span>
+          {weeklyEnergyCoachLine(weeklyTrend, weeklyAvgNet, tone)}
+        </p>
+      ) : null}
       {aiBurn != null ? (
         <button
           type="button"

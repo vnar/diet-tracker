@@ -63,6 +63,7 @@ describe("buildPersonalizedCoachingPayload", () => {
     });
     expect(out.gated).toBe(true);
     expect(out.nudges).toHaveLength(0);
+    expect(out.coachTone).toBe("friendly");
   });
 
   it("returns nudges for active paid plan with enough data", () => {
@@ -80,5 +81,24 @@ describe("buildPersonalizedCoachingPayload", () => {
     });
     expect(out.gated).toBe(false);
     expect(out.nudges.length).toBeGreaterThan(0);
+    expect(out.coachTone).toBe("friendly");
+  });
+
+  it("applies clinical templates to plateau nudge title", () => {
+    const weights = Array.from({ length: 14 }, (_, i) =>
+      day(`2026-04-${String(18 + i).padStart(2, "0")}`, 80.05),
+    );
+    const out = buildPersonalizedCoachingPayload({
+      entriesRaw: weights,
+      goalWeight: 70,
+      startWeight: 85,
+      targetDate: "2026-08-01",
+      asOfDate: "2026-05-01",
+      plan: "pro_monthly",
+      subscriptionStatus: "active",
+      coachTone: "clinical",
+    });
+    const plateau = out.nudges.find((n) => n.category === "plateau");
+    expect(plateau?.title).toContain("Plateau");
   });
 });

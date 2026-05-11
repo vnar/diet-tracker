@@ -2,6 +2,7 @@
  * Personalized AI coaching nudges — normalized categories and API contract.
  * Raw PII stays in DynamoDB; only derived summaries flow through this layer.
  */
+import type { InsightTone } from "@/lib/insights/types";
 
 export type AiNudgeCategory =
   | "weight_trend"
@@ -63,4 +64,6 @@ export type PersonalizedCoachingApiPayload = {
   gated: boolean;
   nudges: AiNudge[];
   globalSafetyNotice: string;
+  /** Mirrors saved settings `tone` (coach voice) for client analytics and display. */
+  coachTone?: InsightTone;
 };

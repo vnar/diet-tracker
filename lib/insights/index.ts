@@ -7,6 +7,7 @@ import { sodiumBumpRule } from "@/lib/insights/rules/sodiumBumpRule";
 import { streakRule } from "@/lib/insights/rules/streakRule";
 import { trajectoryRule } from "@/lib/insights/rules/trajectoryRule";
 import { workoutRule } from "@/lib/insights/rules/workoutRule";
+import { applyCoachToneToInsight, normalizeCoachTone } from "@/lib/coachTone";
 import type { Insight, InsightLog, InsightRule, UserPrefs } from "@/lib/insights/types";
 
 const ALL_RULES: InsightRule[] = [
@@ -42,28 +43,32 @@ export async function generateInsights(
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 3);
 
+  const tone = normalizeCoachTone(userPrefs.tone);
   const refined: Insight[] = [];
   for (const insight of ranked) {
-    refined.push(await maybeRefineInsight(insight, userPrefs));
+    let next = await maybeRefineInsight(insight, userPrefs);
+    if ((next.generationSource ?? "rules") === "rules") {
+      next = applyCoachToneToInsight(next, tone);
+    }
+    refined.push(next);
   }
   if (refined.length > 0) return refined;
   const latestDate = scoped[scoped.length - 1]?.date ?? new Date().toISOString().slice(0, 10);
-  return [
-    {
-      id: `baseline-insight-${latestDate}`,
-      ruleId: "baseline",
-      priority: 10,
-      headline: "Great consistency so far - keep logging daily for sharper insights.",
-      detail: "We need a bit more signal to detect strong personal patterns, but your data flow is active.",
-      why: [
-        `${scoped.length} logs analyzed from the last 90 days`,
-        "No rule crossed confidence thresholds yet",
-      ],
-      action: "Keep tracking daily habits and weight to unlock stronger personalized insights.",
-      category: "streak",
-      generationSource: "rules",
-    },
-  ];
+  const baseline: Insight = {
+    id: `baseline-insight-${latestDate}`,
+    ruleId: "baseline",
+    priority: 10,
+    headline: "Great consistency so far - keep logging daily for sharper insights.",
+    detail: "We need a bit more signal to detect strong personal patterns, but your data flow is active.",
+    why: [
+      `${scoped.length} logs analyzed from the last 90 days`,
+      "No rule crossed confidence thresholds yet",
+    ],
+    action: "Keep tracking daily habits and weight to unlock stronger personalized insights.",
+    category: "streak",
+    generationSource: "rules",
+  };
+  return [applyCoachToneToInsight(baseline, tone)];
 }
 
 export type { Insight, InsightLog, UserPrefs } from "@/lib/insights/types";

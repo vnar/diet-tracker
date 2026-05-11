@@ -10,6 +10,7 @@ import {
 } from "@/lib/aiNudges/providers";
 import { generateRuleBasedNudges } from "@/lib/aiNudges/ruleEngine";
 import { isPaidPlanActive } from "@/lib/billing/access";
+import { applyCoachToneToAiNudges, normalizeCoachTone, type CoachTone } from "@/lib/coachTone";
 
 export type {
   AiNudge,
@@ -53,6 +54,8 @@ export function buildPersonalizedCoachingPayload(input: {
   subscriptionStatus: string | undefined;
   recentAvgDailyCalories?: number | null;
   nowIso?: string;
+  /** Saved settings tone; templates restyle rule-based nudges when not friendly. */
+  coachTone?: CoachTone;
 }): PersonalizedCoachingApiPayload {
   const gated = !isPaidPlanActive(input.plan, input.subscriptionStatus);
   const snapshot = buildNormalizedHealthSnapshot({
@@ -64,18 +67,22 @@ export function buildPersonalizedCoachingPayload(input: {
     recentAvgDailyCalories: input.recentAvgDailyCalories,
   });
   const nowIso = input.nowIso ?? new Date().toISOString();
+  const tone = normalizeCoachTone(input.coachTone);
   if (gated) {
     return {
       enabled: true,
       gated: true,
       nudges: [],
       globalSafetyNotice: GLOBAL_HEALTH_COACHING_DISCLAIMER,
+      coachTone: tone,
     };
   }
+  const raw = generatePersonalizedNudgesSync(snapshot, nowIso);
   return {
     enabled: true,
     gated: false,
-    nudges: generatePersonalizedNudgesSync(snapshot, nowIso),
+    nudges: applyCoachToneToAiNudges(raw, tone),
     globalSafetyNotice: GLOBAL_HEALTH_COACHING_DISCLAIMER,
+    coachTone: tone,
   };
 }
