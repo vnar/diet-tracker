@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mic, MicOff, Sparkles, X } from "lucide-react";
 import { postVoiceDailyLogParse } from "@/lib/frontend-api-client";
+import { inferMealTypeFromLocalTime } from "@/lib/meals/mealTypes";
 import { inputToKg, kgToInput } from "@/lib/units";
 import type { VoiceDailyFormApply, VoiceDailyParsedFields, VoiceSpokenFoodItem } from "@/lib/voiceDailyLog/types";
+import { buildSpokenFoodMealsToLog } from "@/lib/voiceDailyLog/spokenFoodMealsFromReview";
 import { track } from "@/lib/analytics";
 
 /** Minimal Web Speech API surface (DOM lib typings omit `SpeechRecognition` in this toolchain). */
@@ -134,6 +136,8 @@ type Props = {
   onClose: () => void;
   unit: "kg" | "lbs";
   caloriesProteinReadOnly: boolean;
+  /** When true, user can append parsed foods to the meal library + today’s meal log (additive). */
+  mealLibraryEnabled?: boolean;
   getAccessToken: () => string | null;
   onApply: (draft: VoiceDailyFormApply) => void;
 };
@@ -175,7 +179,15 @@ function parsedToReviewStrings(p: VoiceDailyParsedFields, unit: "kg" | "lbs"): V
 }
 
 export function VoiceDailyLogSheet(props: Props) {
-  const { open, onClose, unit, caloriesProteinReadOnly, getAccessToken, onApply } = props;
+  const {
+    open,
+    onClose,
+    unit,
+    caloriesProteinReadOnly,
+    mealLibraryEnabled = false,
+    getAccessToken,
+    onApply,
+  } = props;
   const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -185,6 +197,8 @@ export function VoiceDailyLogSheet(props: Props) {
   const [parseDetail, setParseDetail] = useState<string | null>(null);
   const [appendTranscript, setAppendTranscript] = useState(false);
   const [appendMeals, setAppendMeals] = useState(false);
+  /** When meal library is on, append checked voice foods as new day meals (additive). */
+  const [saveFoodToMealLog, setSaveFoodToMealLog] = useState(false);
 
   const recRef = useRef<WebSpeechRecognitionInstance | null>(null);
   const startedTrackedRef = useRef(false);
@@ -201,6 +215,7 @@ export function VoiceDailyLogSheet(props: Props) {
     setParseDetail(null);
     setAppendTranscript(false);
     setAppendMeals(false);
+    setSaveFoodToMealLog(false);
     transcribedTrackedRef.current = false;
     recRef.current = null;
   }, []);
@@ -332,24 +347,40 @@ export function VoiceDailyLogSheet(props: Props) {
     const p = res.data.parsed;
     setParsed(p);
     setReview(parsedToReviewStrings(p, unit));
+    setSaveFoodToMealLog(Boolean(mealLibraryEnabled && p.foodItems.length > 0));
     track("voice_log_parsed", {
       confidence: p.confidence,
       unclear_count: p.unclearParts.length,
     });
-  }, [getAccessToken, transcript, unit]);
+  }, [getAccessToken, transcript, unit, mealLibraryEnabled]);
 
   const handleApply = useCallback(() => {
     if (!review) return;
     const morningNum = review.morning.trim() === "" ? NaN : parseFloat(review.morning);
     const nightNum = review.night.trim() === "" ? NaN : parseFloat(review.night);
+
+    const tz =
+      typeof Intl !== "undefined"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC"
+        : "UTC";
+    const inferredMealType = inferMealTypeFromLocalTime(new Date(), tz);
+    const wantMealPost =
+      Boolean(mealLibraryEnabled && saveFoodToMealLog && review.foodRows.length > 0);
+    const spokenFoodMealsToLog = wantMealPost
+      ? buildSpokenFoodMealsToLog(review.foodRows, inferredMealType)
+      : null;
+    const postingMeals = Boolean(spokenFoodMealsToLog?.length);
+
     let foodKcalDelta = 0;
     let foodProteinDeltaG = 0;
-    for (const row of review.foodRows) {
-      if (!row.includeInDaily) continue;
-      const k = row.estKcal.trim() === "" ? NaN : parseFloat(row.estKcal);
-      const pr = row.estProteinG.trim() === "" ? NaN : parseFloat(row.estProteinG);
-      if (!Number.isNaN(k) && k > 0) foodKcalDelta += Math.round(k);
-      if (!Number.isNaN(pr) && pr > 0) foodProteinDeltaG += Math.round(pr);
+    if (!postingMeals) {
+      for (const row of review.foodRows) {
+        if (!row.includeInDaily) continue;
+        const k = row.estKcal.trim() === "" ? NaN : parseFloat(row.estKcal);
+        const pr = row.estProteinG.trim() === "" ? NaN : parseFloat(row.estProteinG);
+        if (!Number.isNaN(k) && k > 0) foodKcalDelta += Math.round(k);
+        if (!Number.isNaN(pr) && pr > 0) foodProteinDeltaG += Math.round(pr);
+      }
     }
 
     const draft: VoiceDailyFormApply = {
@@ -360,13 +391,17 @@ export function VoiceDailyLogSheet(props: Props) {
           ? inputToKg(nightNum, unit)
           : null,
       calories:
-        !caloriesProteinReadOnly && review.calories.trim() !== ""
-          ? Math.round(parseFloat(review.calories))
-          : null,
+        postingMeals || caloriesProteinReadOnly
+          ? null
+          : review.calories.trim() !== ""
+            ? Math.round(parseFloat(review.calories))
+            : null,
       proteinG:
-        !caloriesProteinReadOnly && review.protein.trim() !== ""
-          ? Math.round(parseFloat(review.protein))
-          : null,
+        postingMeals || caloriesProteinReadOnly
+          ? null
+          : review.protein.trim() !== ""
+            ? Math.round(parseFloat(review.protein))
+            : null,
       steps: review.steps.trim() !== "" ? Math.round(parseFloat(review.steps)) : null,
       sleepHours: review.sleep.trim() !== "" ? parseFloat(review.sleep) : null,
       workout: review.workout,
@@ -378,11 +413,14 @@ export function VoiceDailyLogSheet(props: Props) {
       appendTranscriptToNotes: appendTranscript,
       appendMealsSummaryToNotes: appendMeals,
       foodKcalDelta:
-        !caloriesProteinReadOnly && foodKcalDelta > 0 ? foodKcalDelta : null,
+        postingMeals || caloriesProteinReadOnly || foodKcalDelta <= 0 ? null : foodKcalDelta,
       foodProteinDeltaG:
-        !caloriesProteinReadOnly && foodProteinDeltaG > 0 ? foodProteinDeltaG : null,
+        postingMeals || caloriesProteinReadOnly || foodProteinDeltaG <= 0
+          ? null
+          : foodProteinDeltaG,
       activityBurnHint: review.activityBurnHint.trim() || null,
       syncActivityToEnergyCard: review.syncActivityToEnergy && Boolean(review.activityBurnHint.trim()),
+      spokenFoodMealsToLog,
     };
     appliedRef.current = true;
     track("voice_log_saved");
@@ -395,7 +433,8 @@ export function VoiceDailyLogSheet(props: Props) {
     transcript,
     appendTranscript,
     appendMeals,
-    transcript,
+    mealLibraryEnabled,
+    saveFoodToMealLog,
     onApply,
     handleClose,
   ]);
@@ -422,7 +461,7 @@ export function VoiceDailyLogSheet(props: Props) {
       >
         <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
           <p id="voice-daily-title" className="text-sm font-semibold text-zinc-100">
-            Voice log (today)
+            Quick voice log
           </p>
           <button
             type="button"
@@ -434,11 +473,10 @@ export function VoiceDailyLogSheet(props: Props) {
           </button>
         </div>
 
-        <p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
-          Speak or type your update (e.g. what you ate, a bike ride). Only text is sent for parsing — not audio.
-          On the test portal, parsing uses the same AWS API and Anthropic key as food photo estimates. Review
-          everything before applying; nothing is saved until{" "}
-          <span className="font-medium text-zinc-400">Save today</span>.
+        <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+          Say or type a short line. Only <span className="text-zinc-400">text</span> is sent for parsing (no
+          audio file). This sheet fills the form — use{" "}
+          <span className="font-medium text-zinc-400">Save today</span> on the card to persist.
         </p>
 
         {error || parseDetail ? (
@@ -485,15 +523,15 @@ export function VoiceDailyLogSheet(props: Props) {
           ) : null}
         </div>
 
-        <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-          Transcript
+        <label className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          What you said
         </label>
         <textarea
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          rows={4}
-          className="mb-3 w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none ring-emerald-500/30 focus:ring-2"
-          placeholder="Example: Morning weight 182 pounds, 8k steps, slept 7 hours, no workout, small late snack, high sodium lunch…"
+          rows={2}
+          className="mb-3 max-h-28 min-h-[2.75rem] w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none ring-emerald-500/30 focus:ring-2"
+          placeholder="e.g. Two bowls of grapes"
         />
 
         <button
@@ -503,81 +541,44 @@ export function VoiceDailyLogSheet(props: Props) {
           className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/15 py-2 text-sm font-semibold text-violet-100 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Sparkles className="h-4 w-4" />
-          {parsing ? "Parsing…" : "Parse into check-in fields"}
+          {parsing ? "Parsing…" : "Parse"}
         </button>
 
         {review ? (
-          <div className="border-t border-zinc-800 pt-3">
-            <p className="mb-2 text-xs font-semibold text-zinc-200">Review & edit</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="block text-[10px] text-zinc-500">
-                Morning weight ({unit})
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                  value={review.morning}
-                  onChange={(e) => setReview({ ...review, morning: e.target.value })}
-                  inputMode="decimal"
-                />
-              </label>
-              <label className="block text-[10px] text-zinc-500">
-                Night weight ({unit})
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                  value={review.night}
-                  onChange={(e) => setReview({ ...review, night: e.target.value })}
-                  inputMode="decimal"
-                />
-              </label>
-              {!caloriesProteinReadOnly ? (
-                <>
-                  <label className="block text-[10px] text-zinc-500">
-                    Calories (kcal)
-                    <input
-                      className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                      value={review.calories}
-                      onChange={(e) => setReview({ ...review, calories: e.target.value })}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <label className="block text-[10px] text-zinc-500">
-                    Protein (g)
-                    <input
-                      className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                      value={review.protein}
-                      onChange={(e) => setReview({ ...review, protein: e.target.value })}
-                      inputMode="numeric"
-                    />
-                  </label>
-                </>
-              ) : (
-                <p className="sm:col-span-2 text-[10px] text-zinc-500">
-                  Calories and protein come from logged meals today — voice will not overwrite them.
-                </p>
-              )}
-              <label className="block text-[10px] text-zinc-500">
-                Steps
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                  value={review.steps}
-                  onChange={(e) => setReview({ ...review, steps: e.target.value })}
-                  inputMode="numeric"
-                />
-              </label>
-              <label className="block text-[10px] text-zinc-500">
-                Sleep (hours)
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                  value={review.sleep}
-                  onChange={(e) => setReview({ ...review, sleep: e.target.value })}
-                  inputMode="decimal"
-                />
-              </label>
+          <div className="space-y-3 border-t border-zinc-800 pt-3">
+            <div>
+              <p className="text-xs font-semibold text-zinc-200">Review</p>
+              <p className="mt-0.5 text-[10px] text-zinc-500">
+                Edit if needed, then Apply. Fields you leave empty are left unchanged on the form.
+              </p>
             </div>
 
-            {!caloriesProteinReadOnly && review.foodRows.length > 0 ? (
-              <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+            {mealLibraryEnabled && review.foodRows.length > 0 ? (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-100/95">
+                <input
+                  type="checkbox"
+                  checked={saveFoodToMealLog}
+                  onChange={(e) => setSaveFoodToMealLog(e.target.checked)}
+                  className="mt-0.5 rounded border-emerald-600/60"
+                />
+                <span>
+                  <span className="font-medium text-emerald-50">Add checked foods to today&apos;s meal log</span>
+                  <span className="mt-0.5 block text-[10px] font-normal text-emerald-200/80">
+                    New library + log rows only — does not remove meals you logged earlier (e.g. lemon, then grapes
+                    later).
+                  </span>
+                </span>
+              </label>
+            ) : null}
+
+            {review.foodRows.length > 0 ? (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
                 <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-200/90">
-                  Food & drink (adds to Today calories)
+                  {saveFoodToMealLog && mealLibraryEnabled
+                    ? "Food & drink (meal log)"
+                    : caloriesProteinReadOnly
+                      ? "Food & drink"
+                      : "Food & drink (adds to Today calories)"}
                 </p>
                 <ul className="space-y-2">
                   {review.foodRows.map((row, idx) => (
@@ -642,40 +643,111 @@ export function VoiceDailyLogSheet(props: Props) {
                   ))}
                 </ul>
                 <p className="mt-1.5 text-[9px] text-zinc-500">
-                  Checked rows add kcal / protein on top of the calories & protein fields above when you apply.
+                  {saveFoodToMealLog && mealLibraryEnabled
+                    ? "Uncheck a row to skip it. Meal log mode does not change the calorie fields — today’s total comes from all logged meals."
+                    : caloriesProteinReadOnly
+                      ? "Today’s kcal total comes from meals — turn on “meal log” above to append checked lines as new meals."
+                      : "Checked rows add kcal / protein on top of the calories & protein fields in the section below."}
                 </p>
               </div>
-            ) : caloriesProteinReadOnly && review.foodRows.length > 0 ? (
-              <p className="mt-3 text-[10px] text-zinc-500">
-                Calories are driven by logged meals today — food voice lines are for your notes only (use meal
-                logging for structured kcal).
-              </p>
             ) : null}
 
-            <div className="mt-3 rounded-lg border border-violet-500/20 bg-violet-500/5 p-2">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-violet-200/90">
-                Activity (energy balance card)
-              </p>
-              <input
-                className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px] text-zinc-100"
-                value={review.activityBurnHint}
-                onChange={(e) => setReview({ ...review, activityBurnHint: e.target.value })}
-                placeholder='e.g. "biked 45 minutes", "30 min walk"'
-              />
-              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={review.syncActivityToEnergy}
-                  onChange={(e) =>
-                    setReview({ ...review, syncActivityToEnergy: e.target.checked })
-                  }
-                  className="rounded border-zinc-600"
-                />
-                Send this text to the Energy balance card (tap AI estimate there after applying)
-              </label>
-            </div>
+            <details className="rounded-lg border border-zinc-800 bg-zinc-900/50">
+              <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-zinc-400 hover:text-zinc-300">
+                Weight, steps, sleep{!caloriesProteinReadOnly ? ", calories & protein" : ""}
+              </summary>
+              <div className="grid gap-2 border-t border-zinc-800 p-2 sm:grid-cols-2">
+                <label className="block text-[10px] text-zinc-500">
+                  Morning weight ({unit})
+                  <input
+                    className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                    value={review.morning}
+                    onChange={(e) => setReview({ ...review, morning: e.target.value })}
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="block text-[10px] text-zinc-500">
+                  Night weight ({unit})
+                  <input
+                    className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                    value={review.night}
+                    onChange={(e) => setReview({ ...review, night: e.target.value })}
+                    inputMode="decimal"
+                  />
+                </label>
+                {!caloriesProteinReadOnly ? (
+                  <>
+                    <label className="block text-[10px] text-zinc-500">
+                      Calories (kcal)
+                      <input
+                        className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                        value={review.calories}
+                        onChange={(e) => setReview({ ...review, calories: e.target.value })}
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <label className="block text-[10px] text-zinc-500">
+                      Protein (g)
+                      <input
+                        className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                        value={review.protein}
+                        onChange={(e) => setReview({ ...review, protein: e.target.value })}
+                        inputMode="numeric"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <p className="sm:col-span-2 text-[10px] text-zinc-500">
+                    Calories and protein come from logged meals today — voice will not overwrite them here.
+                  </p>
+                )}
+                <label className="block text-[10px] text-zinc-500">
+                  Steps
+                  <input
+                    className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                    value={review.steps}
+                    onChange={(e) => setReview({ ...review, steps: e.target.value })}
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="block text-[10px] text-zinc-500">
+                  Sleep (hours)
+                  <input
+                    className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                    value={review.sleep}
+                    onChange={(e) => setReview({ ...review, sleep: e.target.value })}
+                    inputMode="decimal"
+                  />
+                </label>
+              </div>
+            </details>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <details className="rounded-lg border border-violet-500/20 bg-violet-500/5">
+              <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-violet-200/90 hover:text-violet-100">
+                Activity → Energy card
+              </summary>
+              <div className="border-t border-violet-500/15 p-2">
+                <input
+                  className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px] text-zinc-100"
+                  value={review.activityBurnHint}
+                  onChange={(e) => setReview({ ...review, activityBurnHint: e.target.value })}
+                  placeholder='e.g. 25 min bike'
+                />
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={review.syncActivityToEnergy}
+                    onChange={(e) =>
+                      setReview({ ...review, syncActivityToEnergy: e.target.checked })
+                    }
+                    className="rounded border-zinc-600"
+                  />
+                  Prefill Energy card (run AI estimate there after Apply)
+                </label>
+              </div>
+            </details>
+
+            <div className="grid grid-cols-2 gap-2">
               {(
                 [
                   ["workout", "Workout", review.workout],
@@ -698,42 +770,46 @@ export function VoiceDailyLogSheet(props: Props) {
                 </label>
               ))}
             </div>
-            <label className="mt-3 block text-[10px] text-zinc-500">
-              Meals (text summary — optional)
-              <textarea
-                className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                rows={2}
-                value={review.mealsSummary}
-                onChange={(e) => setReview({ ...review, mealsSummary: e.target.value })}
-              />
-            </label>
-
-            <div className="mt-3 space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-              <p className="text-[10px] font-medium text-zinc-400">Privacy (optional notes)</p>
-              <label className="flex cursor-pointer items-start gap-2 text-[11px] text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={appendMeals}
-                  onChange={(e) => setAppendMeals(e.target.checked)}
-                  className="mt-0.5 rounded border-zinc-600"
-                />
-                Append meal summary to entry notes
-              </label>
-              <label className="flex cursor-pointer items-start gap-2 text-[11px] text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={appendTranscript}
-                  onChange={(e) => setAppendTranscript(e.target.checked)}
-                  className="mt-0.5 rounded border-zinc-600"
-                />
-                Append full transcript to entry notes
-              </label>
-            </div>
+            <details className="rounded-lg border border-zinc-800 bg-zinc-900/50">
+              <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-zinc-400 hover:text-zinc-300">
+                Optional: meal text & notes
+              </summary>
+              <div className="space-y-2 border-t border-zinc-800 p-2">
+                <label className="block text-[10px] text-zinc-500">
+                  Meal summary (optional)
+                  <textarea
+                    className="mt-0.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                    rows={2}
+                    value={review.mealsSummary}
+                    onChange={(e) => setReview({ ...review, mealsSummary: e.target.value })}
+                  />
+                </label>
+                <p className="text-[10px] font-medium text-zinc-400">Append to day notes (optional)</p>
+                <label className="flex cursor-pointer items-start gap-2 text-[11px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={appendMeals}
+                    onChange={(e) => setAppendMeals(e.target.checked)}
+                    className="mt-0.5 rounded border-zinc-600"
+                  />
+                  Meal summary
+                </label>
+                <label className="flex cursor-pointer items-start gap-2 text-[11px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={appendTranscript}
+                    onChange={(e) => setAppendTranscript(e.target.checked)}
+                    className="mt-0.5 rounded border-zinc-600"
+                  />
+                  Full transcript
+                </label>
+              </div>
+            </details>
 
             <button
               type="button"
               onClick={handleApply}
-              className="mt-4 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+              className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
             >
               Apply to today&apos;s form
             </button>

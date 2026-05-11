@@ -3,6 +3,8 @@
  * Weights are stored in kg in the parse contract; UI converts with user unit.
  */
 
+import type { MealType } from "@/lib/meals/mealTypes";
+
 export type VoiceSpokenFoodItem = {
   description: string;
   estKcal: number | null;
@@ -20,7 +22,7 @@ export type VoiceDailyParsedFields = {
   alcohol: boolean | null;
   lateSnack: boolean | null;
   highSodium: boolean | null;
-  /** Free-text meals / food; not auto-posted as meal library rows. */
+  /** Free-text meals / food; optional notes — structured foods use `foodItems`. */
   mealsSummary: string | null;
   /** Colloquial eats ("two coffees", "burger") with rough kcal for manual calorie grid. */
   foodItems: VoiceSpokenFoodItem[];
@@ -57,4 +59,16 @@ export type VoiceDailyFormApply = {
   /** Prefill Energy balance “activity text” when user opts in. */
   activityBurnHint: string | null;
   syncActivityToEnergyCard: boolean;
+  /**
+   * When non-null, the client appends each row as a new day meal (and creates a library item),
+   * additive to anything already logged today. When used, omit top-level calories/protein and
+   * food deltas so totals are not double-counted.
+   */
+  spokenFoodMealsToLog: Array<{
+    name: string;
+    kcal: number;
+    protein_g: number;
+    meal_type: MealType;
+    notes?: string;
+  }> | null;
 };

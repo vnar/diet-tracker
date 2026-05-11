@@ -518,7 +518,11 @@ export function HealthDashboard() {
                 voiceDailyLogEnabled={
                   status === "authenticated" && Boolean(user?.id && isVoiceDailyLoggingEnabled(user.id))
                 }
+                voiceMealLibrarySyncEnabled={Boolean(
+                  user?.id && isMealLibraryEnabled(user.id),
+                )}
                 getVoiceAccessToken={getAccessToken}
+                onVoiceMealsLogged={refreshMeals}
                 onVoiceEnergyActivityPrefill={setVoiceEnergyPrefill}
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={

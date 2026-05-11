@@ -17,6 +17,11 @@ import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
 import { VoiceDailyLogSheet } from "@/components/v2/voice/VoiceDailyLogSheet";
 import type { VoiceDailyFormApply } from "@/lib/voiceDailyLog/types";
+import {
+  postDayMealEntry,
+  postInsightCacheInvalidateAfterMeals,
+  postMealLibraryCreate,
+} from "@/lib/frontend-api-client";
 import { Mic } from "lucide-react";
 
 export type DailyInputCaloriesAccessoryContext = {
@@ -31,7 +36,9 @@ export function DailyInput({
   renderCaloriesAccessory,
   caloriesProteinAggregate,
   voiceDailyLogEnabled,
+  voiceMealLibrarySyncEnabled,
   getVoiceAccessToken,
+  onVoiceMealsLogged,
   onVoiceEnergyActivityPrefill,
 }: {
   renderCaloriesAccessory?: (ctx: DailyInputCaloriesAccessoryContext) => ReactNode;
@@ -44,7 +51,11 @@ export function DailyInput({
   } | null;
   /** Cognito access token for voice parse (Next dev or AWS API). */
   voiceDailyLogEnabled?: boolean;
+  /** When true, voice can append parsed foods to meal library + today’s log (additive). */
+  voiceMealLibrarySyncEnabled?: boolean;
   getVoiceAccessToken?: () => string | null;
+  /** After voice appends meals via API, refresh meal totals (e.g. parent refetches day meals). */
+  onVoiceMealsLogged?: () => void;
   /** When voice applies an activity line for the Energy balance card. */
   onVoiceEnergyActivityPrefill?: (payload: { nonce: string; text: string }) => void;
 } = {}) {
@@ -252,8 +263,59 @@ export function DailyInput({
           text: d.activityBurnHint.trim(),
         });
       }
+
+      const meals = d.spokenFoodMealsToLog;
+      if (meals?.length && today && getVoiceAccessToken) {
+        const token = getVoiceAccessToken();
+        if (token) {
+          void (async () => {
+            for (const item of meals) {
+              const lib = await postMealLibraryCreate(
+                {
+                  name: item.name,
+                  meal_type: item.meal_type,
+                  kcal: item.kcal,
+                  protein_g: item.protein_g,
+                  source: "voice_daily_log",
+                },
+                token,
+              );
+              if (!lib.ok) {
+                setSaveError(lib.error ?? "Could not save meal to library");
+                return;
+              }
+              const dayRes = await postDayMealEntry(
+                today,
+                {
+                  name: item.name,
+                  meal_type: item.meal_type,
+                  kcal: item.kcal,
+                  protein_g: item.protein_g,
+                  notes: item.notes,
+                  raw_input: d.transcript.trim() || undefined,
+                  source: "voice_daily_log",
+                },
+                token,
+              );
+              if (!dayRes.ok) {
+                setSaveError(dayRes.error ?? "Could not log meal");
+                return;
+              }
+            }
+            await postInsightCacheInvalidateAfterMeals(token);
+            onVoiceMealsLogged?.();
+          })();
+        }
+      }
     },
-    [u, caloriesProteinAggregate?.readOnly, onVoiceEnergyActivityPrefill],
+    [
+      u,
+      today,
+      caloriesProteinAggregate?.readOnly,
+      getVoiceAccessToken,
+      onVoiceEnergyActivityPrefill,
+      onVoiceMealsLogged,
+    ],
   );
 
   function scheduleHabitPersist(next: {
@@ -326,6 +388,7 @@ export function DailyInput({
                 onClose={() => setVoiceSheetOpen(false)}
                 unit={u}
                 caloriesProteinReadOnly={Boolean(caloriesProteinAggregate?.readOnly)}
+                mealLibraryEnabled={Boolean(voiceMealLibrarySyncEnabled)}
                 getAccessToken={getVoiceAccessToken}
                 onApply={applyVoiceDaily}
               />
