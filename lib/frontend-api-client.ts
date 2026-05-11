@@ -533,20 +533,61 @@ export async function postMealNlParse(text: string, accessToken: string) {
 
 export type VoiceDailyParseApiResponse = { ok: true; parsed: VoiceDailyParsedFields };
 
+/** True when AWS voice parse failed in a way that might succeed via Next.js (dev) or a missing CDK route. */
+export function voiceParseAwsFailureMayRetryWithNext(awsError: string): boolean {
+  const e = awsError.toLowerCase();
+  if (e.includes("couldn't reach") || e.includes("couldn’t reach")) return true;
+  if (e.includes("network error")) return true;
+  if (e.includes("timed out")) return true;
+  if (e.includes("request failed (404)")) return true;
+  if (e.includes("request failed (403)")) return true;
+  if (e.includes("request failed (502)")) return true;
+  return false;
+}
+
 /**
- * Voice transcript → structured check-in. Uses the **same** AWS HTTP API as food vision when
- * `NEXT_PUBLIC_USE_AWS_BACKEND` is on (Lambda has `ANTHROPIC_API_KEY`); otherwise same-origin Next route for local dev.
+ * Voice transcript → structured check-in.
+ * When AWS is enabled, calls API Gateway first (same key as food vision). If that fails with a
+ * transport/missing-route style error, retries the Next.js `/api/v2/...` route (helps local dev).
+ * On Amplify static hosting only, ensure CDK deployed `POST /v2/voice-daily-log/parse`.
  */
 export async function postVoiceDailyLogParse(transcript: string, accessToken: string) {
-  const useAws = isAwsBackendEnabled();
+  const init: RequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcript }),
+  };
+
+  if (isAwsBackendEnabled()) {
+    const awsRes = await fetchJson<VoiceDailyParseApiResponse>(
+      "/v2/voice-daily-log/parse",
+      init,
+      true,
+      accessToken,
+      60000,
+    );
+    if (awsRes.ok) return awsRes;
+    if (voiceParseAwsFailureMayRetryWithNext(awsRes.error)) {
+      const nextRes = await fetchJson<VoiceDailyParseApiResponse>(
+        "/api/v2/voice-daily-log/parse",
+        init,
+        false,
+        accessToken,
+        60000,
+      );
+      if (nextRes.ok) return nextRes;
+      return {
+        ok: false,
+        error: `${awsRes.error}\n\nStill failing after same-origin fallback. Deploy CDK so API Gateway includes POST /v2/voice-daily-log/parse (same stack as photo food). Fallback error: ${nextRes.error}`,
+      };
+    }
+    return awsRes;
+  }
+
   return fetchJson<VoiceDailyParseApiResponse>(
-    "/v2/voice-daily-log/parse",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript }),
-    },
-    useAws,
+    "/api/v2/voice-daily-log/parse",
+    init,
+    false,
     accessToken,
     60000,
   );

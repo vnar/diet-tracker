@@ -396,7 +396,9 @@ export function VoiceDailyLogSheet(props: Props) {
           <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
             {error ? errorCopy(error) : null}
             {parseDetail ? (
-              <span className="mt-1 block font-mono text-[10px] text-rose-100/90">{parseDetail}</span>
+              <span className="mt-1 block whitespace-pre-wrap break-words font-mono text-[10px] text-rose-100/90">
+                {parseDetail}
+              </span>
             ) : null}
           </p>
         ) : null}
