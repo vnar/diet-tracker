@@ -125,3 +125,17 @@ export function isPersonalizedAiCoachingEnabled(userId?: string): boolean {
   if (explicit === false) return false;
   return true;
 }
+
+/**
+ * Voice daily check-in (browser speech-to-text + Next parse API). Default ON when unset (opt-out:
+ * set `FF_VOICE_DAILY_LOGGING=false` / `NEXT_PUBLIC_FF_VOICE_DAILY_LOGGING=false` to disable).
+ */
+export function isVoiceDailyLoggingEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_VOICE_DAILY_LOGGING"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("VOICE_DAILY_LOGGING");
+  if (explicit === false) return false;
+  return true;
+}

@@ -15,6 +15,9 @@ import { useHealthStore } from "@/lib/store";
 import type { DailyEntry } from "@/lib/types";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
+import { VoiceDailyLogSheet } from "@/components/v2/voice/VoiceDailyLogSheet";
+import type { VoiceDailyFormApply } from "@/lib/voiceDailyLog/types";
+import { Mic } from "lucide-react";
 
 export type DailyInputCaloriesAccessoryContext = {
   todayKey: string;
@@ -27,6 +30,8 @@ export type DailyInputCaloriesAccessoryContext = {
 export function DailyInput({
   renderCaloriesAccessory,
   caloriesProteinAggregate,
+  voiceDailyLogEnabled,
+  getVoiceAccessToken,
 }: {
   renderCaloriesAccessory?: (ctx: DailyInputCaloriesAccessoryContext) => ReactNode;
   /** When set with readOnly, calories/protein reflect meal totals and are not editable. */
@@ -36,6 +41,9 @@ export function DailyInput({
     readOnly: boolean;
     caption?: string;
   } | null;
+  /** Cognito access token for same-origin voice parse API. */
+  voiceDailyLogEnabled?: boolean;
+  getVoiceAccessToken?: () => string | null;
 } = {}) {
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
@@ -63,6 +71,8 @@ export function DailyInput({
   const [highSodium, setHighSodium] = useState(false);
   const [workout, setWorkout] = useState(false);
   const [alcohol, setAlcohol] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
   const habitSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -102,6 +112,7 @@ export function DailyInput({
       setHighSodium(todayEntry.highSodium);
       setWorkout(todayEntry.workout ?? false);
       setAlcohol(todayEntry.alcohol ?? false);
+      setNotes(todayEntry.notes ?? "");
     } else {
       setMorning("");
       setNight("");
@@ -115,6 +126,7 @@ export function DailyInput({
       setHighSodium(false);
       setWorkout(false);
       setAlcohol(false);
+      setNotes("");
     }
   }, [todayEntry, u, caloriesProteinAggregate]);
 
@@ -160,7 +172,7 @@ export function DailyInput({
         protein: protOut,
         steps: steps.trim() === "" ? undefined : Math.round(parseFloat(steps)),
         sleep: sleep.trim() === "" ? undefined : parseFloat(sleep),
-        notes: todayEntry?.notes,
+        notes: notes.trim() === "" ? undefined : notes.trim(),
         lateSnack: habits.lateSnack,
         highSodium: habits.highSodium,
         workout: habits.workout,
@@ -181,7 +193,48 @@ export function DailyInput({
       steps,
       sleep,
       caloriesProteinAggregate,
+      notes,
     ],
+  );
+
+  const applyVoiceDaily = useCallback(
+    (d: VoiceDailyFormApply) => {
+      if (d.morningWeightKg != null) {
+        setMorning(String(Math.round(kgToInput(d.morningWeightKg, u) * 10) / 10));
+      }
+      if (d.nightWeightKg != null) {
+        setNight(String(Math.round(kgToInput(d.nightWeightKg, u) * 10) / 10));
+      }
+      if (d.calories != null && !caloriesProteinAggregate?.readOnly) {
+        setCalories(String(d.calories));
+      }
+      if (d.proteinG != null && !caloriesProteinAggregate?.readOnly) {
+        setProtein(String(d.proteinG));
+      }
+      if (d.steps != null) setSteps(String(d.steps));
+      if (d.sleepHours != null) setSleep(String(d.sleepHours));
+      setWorkout(d.workout);
+      setAlcohol(d.alcohol);
+      setLateSnack(d.lateSnack);
+      setHighSodium(d.highSodium);
+      if (d.appendMealsSummaryToNotes || d.appendTranscriptToNotes) {
+        setNotes((prev) => {
+          let n = prev.trim();
+          if (d.appendMealsSummaryToNotes && d.mealsSummaryForNotes?.trim()) {
+            n = n
+              ? `${n}\n\nMeals (voice summary): ${d.mealsSummaryForNotes.trim()}`
+              : `Meals (voice summary): ${d.mealsSummaryForNotes.trim()}`;
+          }
+          if (d.appendTranscriptToNotes && d.transcript.trim()) {
+            n = n
+              ? `${n}\n\nVoice transcript:\n${d.transcript.trim()}`
+              : `Voice transcript:\n${d.transcript.trim()}`;
+          }
+          return n;
+        });
+      }
+    },
+    [u, caloriesProteinAggregate?.readOnly],
   );
 
   function scheduleHabitPersist(next: {
@@ -237,7 +290,28 @@ export function DailyInput({
       className="scroll-mt-28"
     >
       <Card title="Today's log" variant="surface">
-        <div className="mb-2 flex items-center justify-end">
+        <div className="mb-2 flex items-center justify-end gap-2">
+          {voiceDailyLogEnabled && getVoiceAccessToken ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setVoiceSheetOpen(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 hover:bg-sky-500/20"
+                aria-label="Voice log today"
+              >
+                <Mic className="h-3 w-3" />
+                Voice
+              </button>
+              <VoiceDailyLogSheet
+                open={voiceSheetOpen}
+                onClose={() => setVoiceSheetOpen(false)}
+                unit={u}
+                caloriesProteinReadOnly={Boolean(caloriesProteinAggregate?.readOnly)}
+                getAccessToken={getVoiceAccessToken}
+                onApply={applyVoiceDaily}
+              />
+            </>
+          ) : null}
           <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
             {todayEntry ? "Saved" : "New"}
           </span>
@@ -350,6 +424,19 @@ export function DailyInput({
             placeholder={ph?.sleep !== undefined ? String(ph.sleep) : ""}
           />
         </div>
+        <details className="mt-2 rounded-lg border border-zinc-800/80 bg-zinc-900/30 px-2 py-1.5">
+          <summary className="cursor-pointer select-none text-[10px] text-zinc-500">
+            Notes (optional)
+          </summary>
+          <textarea
+            id="daily-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="mt-2 w-full resize-y rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 outline-none ring-emerald-500/25 focus:ring-2"
+            placeholder="Private notes for this day…"
+          />
+        </details>
         <div className="mt-3 border-t border-zinc-800 pt-3">
           <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-100">
             Daily habits

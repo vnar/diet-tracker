@@ -5,6 +5,7 @@ import type { PersonalizedCoachingApiPayload } from "@/lib/aiNudges/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
 import type { MealType } from "@/lib/meals/mealTypes";
+import type { VoiceDailyParsedFields } from "@/lib/voiceDailyLog/types";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -525,6 +526,23 @@ export async function postMealNlParse(text: string, accessToken: string) {
       body: JSON.stringify({ text }),
     },
     true,
+    accessToken,
+    60000,
+  );
+}
+
+export type VoiceDailyParseApiResponse = { ok: true; parsed: VoiceDailyParsedFields };
+
+/** Same-origin Next route: Cognito bearer + transcript only (no audio upload). */
+export async function postVoiceDailyLogParse(transcript: string, accessToken: string) {
+  return fetchJson<VoiceDailyParseApiResponse>(
+    "/api/v2/voice-daily-log/parse",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript }),
+    },
+    false,
     accessToken,
     60000,
   );

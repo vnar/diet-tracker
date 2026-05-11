@@ -33,7 +33,12 @@ import { usePatchSettings } from "@/hooks/useHealthActions";
 import { Settings, Users, Utensils } from "lucide-react";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { isAppAdminViewer } from "@/lib/admin";
-import { isMealLibraryEnabled, isNlMealParseEnabled, isPhotoFoodLogEnabled } from "@/lib/featureFlags";
+import {
+  isMealLibraryEnabled,
+  isNlMealParseEnabled,
+  isPhotoFoodLogEnabled,
+  isVoiceDailyLoggingEnabled,
+} from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { formatDateKeyLocal, getEntryForDate } from "@/lib/calculations";
@@ -505,6 +510,10 @@ export function HealthDashboard() {
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
               <p className="ui-label mb-0 min-h-[1.25rem]">Logging + meals</p>
               <DailyInput
+                voiceDailyLogEnabled={
+                  status === "authenticated" && Boolean(user?.id && isVoiceDailyLoggingEnabled(user.id))
+                }
+                getVoiceAccessToken={getAccessToken}
                 caloriesProteinAggregate={caloriesProteinAggregate}
                 renderCaloriesAccessory={
                   status === "authenticated" &&

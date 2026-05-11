@@ -4,6 +4,7 @@ import {
   isEnabled,
   isInsightsSourceLabelEnabled,
   isPersonalizedAiCoachingEnabled,
+  isVoiceDailyLoggingEnabled,
   setUserFlagOverrides,
 } from "@/lib/featureFlags";
 
@@ -69,5 +70,28 @@ describe("personalized AI coaching flag", () => {
   it("respects explicit false", () => {
     process.env.FF_PERSONALIZED_AI_COACHING = "false";
     expect(isPersonalizedAiCoachingEnabled()).toBe(false);
+  });
+});
+
+describe("voice daily logging flag", () => {
+  beforeEach(() => {
+    delete process.env.FF_VOICE_DAILY_LOGGING;
+    delete process.env.NEXT_PUBLIC_FF_VOICE_DAILY_LOGGING;
+    clearUserFlagOverrides();
+  });
+
+  it("defaults to true when env unset", () => {
+    expect(isVoiceDailyLoggingEnabled()).toBe(true);
+    expect(isVoiceDailyLoggingEnabled("u-voice")).toBe(true);
+  });
+
+  it("respects explicit env false (opt-out)", () => {
+    process.env.FF_VOICE_DAILY_LOGGING = "false";
+    expect(isVoiceDailyLoggingEnabled()).toBe(false);
+  });
+
+  it("allows per-user override off", () => {
+    setUserFlagOverrides("u1", { FF_VOICE_DAILY_LOGGING: false });
+    expect(isVoiceDailyLoggingEnabled("u1")).toBe(false);
   });
 });
