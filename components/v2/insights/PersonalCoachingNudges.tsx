@@ -66,8 +66,7 @@ export function PersonalCoachingNudges(props: {
               Personalized coaching (Pro)
             </p>
             <p className="text-[12px] leading-relaxed text-amber-100/85">
-              Deeper nudges from your own logs are included with an active Pro plan. This is wellness
-              guidance, not medical advice.
+              Deeper nudges from your logs — included with Pro.
             </p>
             <Link
               href="/account/billing"
@@ -86,15 +85,6 @@ export function PersonalCoachingNudges(props: {
             </Link>
           </div>
         </div>
-        <details className="group mt-3 border-t border-amber-500/15 pt-3">
-          <summary className="cursor-pointer list-none text-[10px] font-medium text-slate-500 transition hover:text-slate-400 [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-1">
-              Medical disclaimer
-              <ChevronDown className="h-3 w-3 shrink-0 transition group-open:rotate-180" aria-hidden />
-            </span>
-          </summary>
-          <p className="mt-2 text-[10px] leading-relaxed text-slate-500">{props.coaching.globalSafetyNotice}</p>
-        </details>
       </div>
     );
   }
@@ -113,9 +103,7 @@ export function PersonalCoachingNudges(props: {
         aria-expanded={nudgesSectionOpen}
       >
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Personalized nudges
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Nudges</span>
           <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-violet-200/90 ring-1 ring-violet-400/20">
             {visibleCount}
           </span>
@@ -139,7 +127,6 @@ export function PersonalCoachingNudges(props: {
                 nudge={nudge}
                 coachTone={tone}
                 accessToken={props.accessToken}
-                globalNotice={props.coaching.globalSafetyNotice}
                 rated={rated[nudge.id]}
                 onRate={(r) => setRated((prev) => ({ ...prev, [nudge.id]: r }))}
                 onDismiss={() => {
@@ -163,14 +150,13 @@ function NudgeRow(props: {
   nudge: AiNudge;
   coachTone: CoachTone;
   accessToken: string;
-  globalNotice: string;
   rated?: "helpful" | "not_helpful";
   onRate: (r: "helpful" | "not_helpful") => void;
   onDismiss: () => void;
 }) {
   const { nudge } = props;
   const [whyOpen, setWhyOpen] = useState(false);
-  const disclaimerId = useId();
+  const whyPanelId = useId();
 
   useEffect(() => {
     track("ai_nudge_viewed", { nudge_id: nudge.id, category: nudge.category });
@@ -222,13 +208,13 @@ function NudgeRow(props: {
           <div className="border-t border-slate-700/50 pt-3">
             <button
               type="button"
-              id={`${disclaimerId}-why-trigger`}
+              id={`${whyPanelId}-why-trigger`}
               onClick={() => setWhyOpen((v) => !v)}
               className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left text-[11px] font-semibold text-sky-300/95 transition hover:text-sky-200"
               aria-expanded={whyOpen}
-              aria-controls={`${disclaimerId}-why-panel`}
+              aria-controls={`${whyPanelId}-why-panel`}
             >
-              <span>Why you&apos;re seeing this</span>
+              <span>Why</span>
               {whyOpen ? (
                 <ChevronUp className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
               ) : (
@@ -237,7 +223,7 @@ function NudgeRow(props: {
             </button>
             {whyOpen ? (
               <ul
-                id={`${disclaimerId}-why-panel`}
+                id={`${whyPanelId}-why-panel`}
                 className="mt-2 space-y-2.5 border-l-2 border-sky-500/25 pl-3 text-[12px] leading-relaxed text-slate-400"
               >
                 {nudge.supportingEvidence.map((line, i) => (
@@ -254,20 +240,8 @@ function NudgeRow(props: {
           </div>
         ) : null}
 
-        <details className="group rounded-lg bg-slate-950/40 ring-1 ring-slate-700/40">
-          <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-medium text-slate-500 transition hover:text-slate-400 [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-1.5">
-              Not medical advice
-              <ChevronDown className="h-3 w-3 shrink-0 opacity-70 transition group-open:rotate-180" aria-hidden />
-            </span>
-          </summary>
-          <p className="border-t border-slate-800/80 px-3 pb-2.5 pt-2 text-[10px] leading-relaxed text-slate-500">
-            {nudge.safetyNotice ?? props.globalNotice}
-          </p>
-        </details>
-
         <div className="flex flex-col gap-2 border-t border-slate-700/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[10px] text-slate-600">Was this useful?</p>
+          <p className="text-[10px] text-slate-600">Useful?</p>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

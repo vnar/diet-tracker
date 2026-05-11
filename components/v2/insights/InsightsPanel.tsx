@@ -87,15 +87,13 @@ export function InsightsPanel({ accessToken }: { accessToken: string }) {
   }
 
   if (loading) {
-    return <p className="text-[15px] font-medium text-slate-400">Loading…</p>;
+    return <p className="text-[13px] font-medium text-slate-400">Loading…</p>;
   }
 
   if (insights.length === 0 && !personalizedCoaching) {
     return (
       <div className="space-y-2">
-        <p className="text-[15px] font-medium leading-relaxed text-slate-400">
-          No insight available right now.
-        </p>
+        <p className="text-[13px] font-medium text-slate-400">Nothing yet — keep logging.</p>
         {error ? (
           <p className="text-xs text-rose-300">
             Insights unavailable: {error}

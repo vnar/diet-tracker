@@ -38,26 +38,23 @@ function CollapsibleBlock({
   );
 }
 
-/** Weekly recap (own card) + AI coaching + photo compare so email/send is not buried under “Coaching insights”. */
+/** Weekly recap (own card) + coaching + photo compare. */
 export function DashboardAiInsightsHub() {
   return (
     <div className="flex flex-col gap-3">
-      <Card title="Weekly recap & email" variant="surface" className="flex flex-col gap-2">
-        <p className="text-[12px] leading-snug text-zinc-400">
-          Your seven-day summary lives here — not inside Coaching insights. Tap{" "}
-          <span className="font-semibold text-zinc-200">Generate</span>, then{" "}
-          <span className="font-semibold text-emerald-200/90">Email to my inbox</span> (verified Cognito email).
-        </p>
+      <Card title="Weekly recap" variant="surface" className="flex flex-col gap-1.5">
+        <p className="text-[11px] leading-snug text-zinc-500">Week end date → Generate → Send to your account email.</p>
         <WeeklyReportCollapsible />
       </Card>
-      <Card title="AI insights" variant="surface" className="flex flex-col gap-2">
-        <CollapsibleBlock id="ai-insights-coaching" detailsId="ai-insights-coaching-details" title="Coaching insights">
+      <Card title="Insights" variant="surface" className="flex flex-col gap-2">
+        <p className="-mt-1 text-[11px] text-zinc-500">Short reads from your logs.</p>
+        <CollapsibleBlock id="ai-insights-coaching" detailsId="ai-insights-coaching-details" title="Coaching">
           <AIInsights embedded />
         </CollapsibleBlock>
         <CollapsibleBlock
           id="ai-insights-photo-compare"
           detailsId="ai-insights-photo-compare-details"
-          title="Photo compare (AI)"
+          title="Photo compare"
         >
           <PhotoTrackerAiComparePanel embedded />
         </CollapsibleBlock>

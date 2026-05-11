@@ -15,9 +15,7 @@ export function AIInsights({ embedded = false }: { embedded?: boolean }) {
     v2Enabled && isAwsBackendEnabled() && status === "authenticated" && typeof token === "string";
 
   const body = !canRenderPanel ? (
-    <p className="text-[15px] font-medium leading-relaxed text-slate-400">
-      No nudges right now — keep logging.
-    </p>
+    <p className="text-[13px] font-medium text-slate-400">Nothing yet.</p>
   ) : (
     <InsightsPanel accessToken={token} />
   );

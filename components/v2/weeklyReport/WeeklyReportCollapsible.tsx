@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ClipboardCopy, Loader2, Mail, RotateCcw } from "lucide-react";
+import { ChevronDown, Loader2, Mail, RotateCcw } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { usePatchSettings, useRefreshEntries } from "@/hooks/useHealthActions";
 import { useHealthStore } from "@/lib/store";
@@ -33,6 +33,25 @@ import {
   type WeeklyReportDocument,
 } from "@/lib/weeklyReport";
 import type { WeeklyMealAggRow } from "@/lib/weeklyReport/aggregate";
+
+const MAX_WEEKLY_BULLETS = 5;
+
+function compactWeeklyBullets(doc: WeeklyReportDocument): string[] {
+  const { whatChanged, whatHelped, whatHarder, nextExperiment } = doc.sections;
+  const out: string[] = [];
+  for (const t of whatChanged) {
+    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
+  }
+  for (const t of whatHelped) {
+    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
+  }
+  for (const t of whatHarder) {
+    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
+  }
+  const hint = nextExperiment.title?.trim();
+  if (hint && out.length < MAX_WEEKLY_BULLETS) out.push(`Try next: ${hint}`);
+  return out.slice(0, MAX_WEEKLY_BULLETS);
+}
 
 function MealFetchMapFromRows(
   results: PromiseSettledResult<Awaited<ReturnType<typeof getDayMealEntries>>>[],
@@ -78,7 +97,6 @@ export function WeeklyReportCollapsible() {
   const [includeAiInsightsInEmail, setIncludeAiInsightsInEmail] = useState(true);
   const [sessionHidden, setSessionHidden] = useState(false);
   const viewedKeyRef = useRef<string | null>(null);
-  const emailOpenRef = useRef(false);
 
   const weekMeta = useMemo(() => weekWindowInclusive(weekEnd), [weekEnd]);
   const dismissKey = `ojas-weekly-report-dismissed-${weekMeta.weekStart}`;
@@ -97,7 +115,7 @@ export function WeeklyReportCollapsible() {
     if (status !== "authenticated" || !user?.id) return;
     const token = getAccessToken();
     if (!token) {
-      setError("Sign in again to generate a report.");
+      setError("Sign in again.");
       return;
     }
     setLoading(true);
@@ -106,7 +124,7 @@ export function WeeklyReportCollapsible() {
       if (isAwsBackendEnabled()) {
         const sync = await refreshEntries();
         if (!sync.ok) {
-          setError(sync.error ?? "Could not refresh entries from the server.");
+          setError(sync.error ?? "Could not sync.");
           setLoading(false);
           return;
         }
@@ -150,7 +168,6 @@ export function WeeklyReportCollapsible() {
         generation_source: doc.generationSource,
         surface: "inline_after_generate",
       });
-      emailOpenRef.current = false;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not build report.");
     } finally {
@@ -178,7 +195,7 @@ export function WeeklyReportCollapsible() {
       const r = await patchSettings({ weeklyDigestEmail: enabledDigest });
       setDigestSaving(false);
       if (!r.ok) {
-        setError(r.error ?? "Could not update weekly email preference.");
+        setError(r.error ?? "Could not save digest preference.");
       }
     },
     [patchSettings],
@@ -197,22 +214,12 @@ export function WeeklyReportCollapsible() {
     });
   }, [dismissKey, weekMeta.weekEnd, weekMeta.weekStart]);
 
-  const copyHtml = useCallback(() => {
-    if (!report) return;
-    void navigator.clipboard.writeText(buildWeeklyReportEmailHtml(report));
-  }, [report]);
-
-  const copyText = useCallback(() => {
-    if (!report) return;
-    void navigator.clipboard.writeText(buildWeeklyReportEmailPlainText(report));
-  }, [report]);
-
   const sendWeeklyEmail = useCallback(
     async (reason: "first" | "resend") => {
       if (!report || !user?.id) return;
       const token = getAccessToken();
       if (!token) {
-        setEmailSendInfo("Session expired. Sign in again.");
+        setEmailSendInfo("Session expired.");
         return;
       }
       setEmailBusy(true);
@@ -234,22 +241,21 @@ export function WeeklyReportCollapsible() {
 
       const htmlBody = buildWeeklyReportEmailHtml(docForEmail);
       const textBody = buildWeeklyReportEmailPlainText(docForEmail);
-      const baseSubject = `Ojas weekly report (${report.aggregate.weekStart}–${report.aggregate.weekEnd})`;
-      const subject = reason === "resend" ? `${baseSubject} · another copy` : baseSubject;
+      const baseSubject = `Ojas weekly (${report.aggregate.weekStart}–${report.aggregate.weekEnd})`;
+      const subject = reason === "resend" ? `${baseSubject} (copy)` : baseSubject;
       const r = await postV2WeeklyReportSendEmail({ htmlBody, textBody, subject }, token);
       setEmailBusy(false);
       if (r.ok) {
-        const domain = r.data.to.includes("@") ? r.data.to.split("@")[1] ?? "" : "";
         const hadAi = Boolean(docForEmail.aiInsightsForEmail?.length);
         track("weekly_report_email_sent", {
           week_start: report.aggregate.weekStart,
-          recipient_domain: domain,
+          recipient_domain: r.data.to.includes("@") ? r.data.to.split("@")[1] ?? "" : "",
           resend: reason === "resend",
           include_ai_insights: hadAi,
         });
-        let info = `Sent to ${r.data.to}`;
+        let info = `Sent · ${r.data.to}`;
         if (includeAiInsightsInEmail && insightsEmailOption && !hadAi) {
-          info += " · AI insights were unavailable; sent your weekly card only.";
+          info += " (weekly only — no AI block)";
         }
         setEmailSendInfo(info);
       } else {
@@ -258,20 +264,6 @@ export function WeeklyReportCollapsible() {
       }
     },
     [report, user?.id, getAccessToken, includeAiInsightsInEmail, insightsEmailOption],
-  );
-
-  const onEmailPreviewToggle = useCallback(
-    (open: boolean) => {
-      if (open && !emailOpenRef.current && report) {
-        emailOpenRef.current = true;
-        track("weekly_report_email_opened", {
-          week_start: report.aggregate.weekStart,
-          week_end: report.aggregate.weekEnd,
-          surface: "in_app_preview",
-        });
-      }
-    },
-    [report],
   );
 
   const scrollToToday = useCallback(() => {
@@ -287,37 +279,28 @@ export function WeeklyReportCollapsible() {
 
   return (
     <details
-      open
-      className="group rounded-xl border border-emerald-900/40 bg-gradient-to-b from-emerald-950/20 to-zinc-950/25 open:border-emerald-800/50"
+      className="group rounded-xl border border-emerald-900/35 bg-gradient-to-b from-emerald-950/15 to-zinc-950/20 open:border-emerald-800/45"
       onToggle={(e) => {
         const el = e.target as HTMLDetailsElement;
         if (el.open) onOpenDetails();
       }}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-zinc-100 [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex min-w-0 flex-1 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-          <span className="inline-flex items-center gap-2">
-            <Mail className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
-            <span className="text-left">Weekly recap</span>
-          </span>
-          <span className="text-[11px] font-normal text-emerald-200/80 sm:pl-1">
-            Generate → Email to my inbox
-          </span>
+        <span className="inline-flex min-w-0 flex-1 items-center gap-2">
+          <Mail className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+          <span className="text-left">Weekly recap</span>
+          <span className="hidden text-[11px] font-normal text-zinc-500 sm:inline">Date → Generate → Email</span>
         </span>
         <ChevronDown
           aria-hidden
           className="h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 group-open:rotate-180"
         />
       </summary>
-      <div className="border-t border-zinc-800/80 px-3 pb-3 pt-2 text-sm text-zinc-200">
-        <p className="text-[11px] leading-snug text-zinc-400">
-          Seven-day coach-style recap from your logs. After you generate, use the green mail button to send it to your
-          verified email (optional: include dashboard AI insights in that email).
-        </p>
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <label className="block min-w-[10rem]">
+      <div className="border-t border-zinc-800/80 px-3 pb-3 pt-2.5 text-sm text-zinc-200">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="block min-w-[9.5rem]">
             <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-              Week ends (local)
+              Week ends
             </span>
             <input
               type="date"
@@ -327,7 +310,6 @@ export function WeeklyReportCollapsible() {
                 setWeekEnd(e.target.value || defaultWeeklyReportEndDate());
                 setReport(null);
                 viewedKeyRef.current = null;
-                emailOpenRef.current = false;
               }}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100"
             />
@@ -344,163 +326,99 @@ export function WeeklyReportCollapsible() {
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-lg px-2 py-2 text-[11px] text-zinc-500 underline-offset-2 hover:text-zinc-300 hover:underline"
+            className="rounded-lg py-2 text-[11px] text-zinc-600 hover:text-zinc-400"
           >
-            Dismiss for session
+            Hide
           </button>
         </div>
         {error ? <p className="mt-2 text-[11px] text-rose-400">{error}</p> : null}
 
         {report ? (
-          <div className="mt-4 space-y-4 rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-3">
-            <header>
-              <h3 className="text-base font-semibold text-zinc-50">{report.sections.title}</h3>
-              <p className="text-[11px] text-zinc-500">{report.sections.subtitle}</p>
+          <div className="mt-4 space-y-3 rounded-lg border border-zinc-800/70 bg-zinc-950/35 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-zinc-300">
+                  {report.aggregate.weekStart} → {report.aggregate.weekEnd}
+                </p>
+                <p className="text-[10px] text-zinc-500">{report.sections.subtitle}</p>
+              </div>
               {mailSendEnabled ? (
-                <div className="mt-2 flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={emailBusy}
-                      onClick={() => void sendWeeklyEmail("first")}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/40 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-900/50 disabled:opacity-50"
-                    >
-                      {emailBusy ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <Mail className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      Email to my inbox
-                    </button>
-                    <button
-                      type="button"
-                      disabled={emailBusy}
-                      onClick={() => void sendWeeklyEmail("resend")}
-                      title="Send the same week again — great after tweaking logs or to hit inbox"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-600/50 bg-violet-950/30 px-3 py-1.5 text-[11px] font-semibold text-violet-100 hover:bg-violet-900/35 disabled:opacity-50"
-                    >
-                      {emailBusy ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      Send again
-                    </button>
-                  </div>
-                  {insightsEmailOption ? (
-                    <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-zinc-800/80 bg-gradient-to-br from-violet-950/25 to-zinc-950/40 p-2.5">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-violet-600/60"
-                        checked={includeAiInsightsInEmail}
-                        onChange={(e) => setIncludeAiInsightsInEmail(e.target.checked)}
-                      />
-                      <span className="text-[11px] leading-snug text-zinc-300">
-                        <span className="font-semibold text-violet-200">Include AI insights</span> — adds your live
-                        dashboard insight cards (rule + optional LLM refine) above the weekly recap in the email.
-                      </span>
-                    </label>
-                  ) : null}
-                  {emailSendInfo ? (
-                    <p className="text-[11px] leading-snug text-zinc-400">{emailSendInfo}</p>
-                  ) : null}
-                  <label className="mt-1 flex cursor-pointer items-start gap-2 rounded-lg border border-zinc-800/80 bg-zinc-950/30 p-2">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-zinc-600"
-                      checked={Boolean(settings.weeklyDigestEmail)}
-                      disabled={digestSaving}
-                      onChange={(e) => void onToggleWeeklyDigest(e.target.checked)}
-                    />
-                    <span className="text-[11px] leading-snug text-zinc-400">
-                      Also send this automatically each Monday (UTC) for the prior week when the scheduled digest is
-                      enabled in your environment. Uses the same rule-based report as above.
-                    </span>
-                  </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={emailBusy}
+                    onClick={() => void sendWeeklyEmail("first")}
+                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    {emailBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <Mail className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    Send email
+                  </button>
+                  <button
+                    type="button"
+                    disabled={emailBusy}
+                    onClick={() => void sendWeeklyEmail("resend")}
+                    className="rounded-lg border border-zinc-600 px-2 py-1.5 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    Again
+                  </button>
                 </div>
               ) : null}
-            </header>
-            <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">What changed</h4>
-              <ul className="mt-1 list-inside list-disc space-y-1 text-[13px] leading-snug text-zinc-300">
-                {report.sections.whatChanged.map((t, i) => (
+            </div>
+
+            {mailSendEnabled && insightsEmailOption ? (
+              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-400">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-violet-600/60"
+                  checked={includeAiInsightsInEmail}
+                  onChange={(e) => setIncludeAiInsightsInEmail(e.target.checked)}
+                />
+                Include AI insights in email
+              </label>
+            ) : null}
+
+            {mailSendEnabled ? (
+              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-500">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-zinc-600"
+                  checked={Boolean(settings.weeklyDigestEmail)}
+                  disabled={digestSaving}
+                  onChange={(e) => void onToggleWeeklyDigest(e.target.checked)}
+                />
+                Auto-send Mondays (UTC)
+              </label>
+            ) : null}
+
+            {emailSendInfo ? <p className="text-[11px] text-zinc-500">{emailSendInfo}</p> : null}
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">This week</p>
+              <ul className="mt-1.5 list-inside list-disc space-y-1 text-[12px] leading-snug text-zinc-300">
+                {compactWeeklyBullets(report).map((t, i) => (
                   <li key={i}>{t}</li>
                 ))}
               </ul>
-            </section>
-            <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">What helped</h4>
-              <ul className="mt-1 list-inside list-disc space-y-1 text-[13px] leading-snug text-zinc-300">
-                {report.sections.whatHelped.map((t, i) => (
-                  <li key={i}>{t}</li>
-                ))}
-              </ul>
-            </section>
-            <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                What may have made things harder
-              </h4>
-              <ul className="mt-1 list-inside list-disc space-y-1 text-[13px] leading-snug text-zinc-300">
-                {report.sections.whatHarder.map((t, i) => (
-                  <li key={i}>{t}</li>
-                ))}
-              </ul>
-            </section>
-            <section className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-emerald-300/90">
-                One experiment for next week
-              </h4>
-              <p className="mt-1 text-sm font-semibold text-emerald-50">{report.sections.nextExperiment.title}</p>
-              <p className="mt-1 text-[13px] leading-snug text-emerald-100/90">
+            </div>
+
+            <div className="rounded-lg border border-emerald-900/40 bg-emerald-950/15 px-2.5 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90">Next</p>
+              <p className="mt-0.5 text-[12px] font-medium text-emerald-50">{report.sections.nextExperiment.title}</p>
+              <p className="mt-1 text-[11px] leading-snug text-emerald-100/85">
                 {report.sections.nextExperiment.description}
               </p>
               <button
                 type="button"
                 onClick={scrollToToday}
-                className="mt-3 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                className="mt-2 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500"
               >
-                Log today’s check-in
+                Log today
               </button>
-            </section>
-            <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Disclaimers</h4>
-              {report.sections.disclaimers.map((d, i) => (
-                <p key={i} className="mt-1 text-[11px] leading-snug text-zinc-500">
-                  {d}
-                </p>
-              ))}
-            </section>
-            <details
-              className="rounded-lg border border-zinc-800 bg-zinc-900/50"
-              onToggle={(e) => onEmailPreviewToggle((e.target as HTMLDetailsElement).open)}
-            >
-              <summary className="cursor-pointer px-2 py-2 text-[11px] font-medium text-zinc-300">
-                Email-ready export
-              </summary>
-              <div className="space-y-2 border-t border-zinc-800 px-2 py-2">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={copyHtml}
-                    className="inline-flex items-center gap-1 rounded border border-zinc-600 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
-                  >
-                    <ClipboardCopy className="h-3 w-3" aria-hidden />
-                    Copy HTML
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyText}
-                    className="inline-flex items-center gap-1 rounded border border-zinc-600 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
-                  >
-                    <ClipboardCopy className="h-3 w-3" aria-hidden />
-                    Copy plain text
-                  </button>
-                </div>
-                <pre className="max-h-40 overflow-auto rounded bg-black/40 p-2 text-[10px] text-zinc-400 whitespace-pre-wrap">
-                  {buildWeeklyReportEmailPlainText(report)}
-                </pre>
-              </div>
-            </details>
+            </div>
           </div>
         ) : null}
       </div>

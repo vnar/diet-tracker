@@ -6,12 +6,6 @@ import type {
   WeeklyReportSections,
 } from "@/lib/weeklyReport/types";
 
-const MED_DISCLAIMER =
-  "This summary reflects patterns in your logs. It is not medical advice, a diagnosis, or a medication review. Talk to a qualified clinician about prescriptions, side effects, or treatment changes.";
-
-const GENERAL_DISCLAIMER =
-  "Numbers come from what you logged; estimates (like meals from photos) can be imperfect. Use this card as a coaching mirror, not a clinical chart.";
-
 function toneLead(tone: CoachTone, friendly: string, clinical: string, tough: string, ayur: string): string {
   switch (tone) {
     case "clinical":
@@ -273,7 +267,7 @@ export function buildWeeklyReportFromRules(
     whatHelped: buildWhatHelped(agg, tone),
     whatHarder: buildWhatHarder(agg, tone),
     nextExperiment,
-    disclaimers: [GENERAL_DISCLAIMER, MED_DISCLAIMER],
+    disclaimers: [],
   };
 
   return {

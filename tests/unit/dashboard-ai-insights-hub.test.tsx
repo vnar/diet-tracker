@@ -22,10 +22,10 @@ describe("DashboardAiInsightsHub", () => {
   it("renders weekly card, AI insights shell, and both collapsible sections", () => {
     render(<DashboardAiInsightsHub />);
 
-    expect(screen.getByRole("heading", { name: "Weekly recap & email" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "AI insights" })).toBeInTheDocument();
-    expect(screen.getByText("Coaching insights")).toBeInTheDocument();
-    expect(screen.getAllByText("Photo compare (AI)").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("heading", { name: "Weekly recap" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Insights" })).toBeInTheDocument();
+    expect(screen.getByText("Coaching")).toBeInTheDocument();
+    expect(screen.getAllByText("Photo compare").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId("coaching-insights-mock")).toBeInTheDocument();
     expect(screen.getByTestId("photo-compare-mock")).toBeInTheDocument();
   });

@@ -38,7 +38,7 @@ function aiInsightsEmailBlock(insights: NonNullable<WeeklyReportDocument["aiInsi
           <span style="font-size:18px;line-height:1;" aria-hidden="true">✨</span>
           AI insights for you
         </h2>
-        <p style="margin:0 0 12px;font-size:12px;line-height:1.45;color:#57534e;">Pulled from your live Ojas Health insights — same engine as the dashboard.</p>
+        <p style="margin:0 0 12px;font-size:12px;line-height:1.45;color:#57534e;">From your dashboard insights.</p>
         ${cards}
       </div>`;
 }
@@ -75,7 +75,7 @@ export function buildWeeklyReportEmailHtml(doc: WeeklyReportDocument): string {
       <p style="margin:0 0 6px;font-weight:600;">${esc(exp.title)}</p>
       <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">${esc(exp.description)}</p>
       <hr style="border:none;border-top:1px solid #e4e4e7;margin:20px 0;" />
-      ${sections.disclaimers.map((d) => `<p style="font-size:12px;color:#71717a;line-height:1.45;margin:0 0 10px;">${esc(d)}</p>`).join("")}
+      ${sections.disclaimers.length ? sections.disclaimers.map((d) => `<p style="font-size:12px;color:#71717a;line-height:1.45;margin:0 0 10px;">${esc(d)}</p>`).join("") : ""}
       <p style="font-size:11px;color:#a1a1aa;margin:16px 0 0;">Generated ${esc(doc.generatedAt)} · ${esc(emailFooterSourceLine(doc))}</p>
     </td></tr>
   </table>
@@ -102,7 +102,9 @@ export function buildWeeklyReportEmailPlainText(doc: WeeklyReportDocument): stri
     `What helped\n${s.whatHelped.map((l) => `- ${l}`).join("\n")}\n`,
     `What may have made things harder\n${s.whatHarder.map((l) => `- ${l}`).join("\n")}\n`,
     `One experiment for next week\n${exp.title}\n${exp.description}\n`,
-    `Disclaimers\n${s.disclaimers.map((d) => `- ${d}`).join("\n")}\n`,
+    s.disclaimers.length
+      ? `Disclaimers\n${s.disclaimers.map((d) => `- ${d}`).join("\n")}\n`
+      : "",
     `Generated: ${doc.generatedAt} (${emailFooterSourceLine(doc)})`,
   ];
   return blocks.join("\n");

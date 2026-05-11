@@ -16,7 +16,7 @@ function e(p: Partial<DailyEntry> & Pick<DailyEntry, "date" | "morningWeight">):
 }
 
 describe("buildWeeklyReportFromRules", () => {
-  it("includes next experiment and medical disclaimer", () => {
+  it("includes next experiment and sections", () => {
     const agg = buildWeeklyAggregate({
       weekEnd: "2026-05-10",
       entries: [
@@ -34,8 +34,7 @@ describe("buildWeeklyReportFromRules", () => {
     expect(doc.generationSource).toBe("rules");
     expect(doc.sections.nextExperiment.title.length).toBeGreaterThan(3);
     expect(doc.sections.nextExperiment.description.length).toBeGreaterThan(10);
-    const joined = doc.sections.disclaimers.join(" ");
-    expect(joined.toLowerCase()).toMatch(/not medical advice/);
+    expect(doc.sections.disclaimers).toEqual([]);
     expect(doc.sections.whatChanged.length).toBeGreaterThan(0);
   });
 
