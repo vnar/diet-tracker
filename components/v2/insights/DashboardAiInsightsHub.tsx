@@ -38,16 +38,14 @@ function CollapsibleBlock({
   );
 }
 
-/** Weekly recap (own card) + coaching + photo compare. */
+/** Coaching, photo compare, then weekly recap — all under Insights. */
 export function DashboardAiInsightsHub() {
   return (
     <div className="flex flex-col gap-3">
-      <Card title="Weekly recap" variant="surface" className="flex flex-col gap-1.5">
-        <p className="text-[11px] leading-snug text-zinc-500">Week end date → Generate → Send to your account email.</p>
-        <WeeklyReportCollapsible />
-      </Card>
       <Card title="Insights" variant="surface" className="flex flex-col gap-2">
-        <p className="-mt-1 text-[11px] text-zinc-500">Short reads from your logs.</p>
+        <p className="-mt-1 text-[11px] text-zinc-500">
+          Short reads from your logs. Weekly recap below — week end → Generate → Send email.
+        </p>
         <CollapsibleBlock id="ai-insights-coaching" detailsId="ai-insights-coaching-details" title="Coaching">
           <AIInsights embedded />
         </CollapsibleBlock>
@@ -58,6 +56,7 @@ export function DashboardAiInsightsHub() {
         >
           <PhotoTrackerAiComparePanel embedded />
         </CollapsibleBlock>
+        <WeeklyReportCollapsible />
       </Card>
     </div>
   );

@@ -11,7 +11,7 @@ vi.mock("@/components/v2/photos/PhotoTrackerAiComparePanel", () => ({
 }));
 
 vi.mock("@/components/v2/weeklyReport/WeeklyReportCollapsible", () => ({
-  WeeklyReportCollapsible: () => null,
+  WeeklyReportCollapsible: () => <div data-testid="weekly-report-mock" />,
 }));
 
 describe("DashboardAiInsightsHub", () => {
@@ -19,14 +19,15 @@ describe("DashboardAiInsightsHub", () => {
     cleanup();
   });
 
-  it("renders weekly card, AI insights shell, and both collapsible sections", () => {
+  it("renders Insights card with coaching, photo compare, and weekly recap slot", () => {
     render(<DashboardAiInsightsHub />);
 
-    expect(screen.getByRole("heading", { name: "Weekly recap" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Insights" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Weekly recap" })).not.toBeInTheDocument();
     expect(screen.getByText("Coaching")).toBeInTheDocument();
     expect(screen.getAllByText("Photo compare").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId("coaching-insights-mock")).toBeInTheDocument();
     expect(screen.getByTestId("photo-compare-mock")).toBeInTheDocument();
+    expect(screen.getByTestId("weekly-report-mock")).toBeInTheDocument();
   });
 });
