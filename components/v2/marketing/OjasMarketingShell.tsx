@@ -132,17 +132,19 @@ export function OjasMarketingShell({ children }: Props) {
                 </div>
               </div>
 
-              <div
-                id="sign-in"
-                className="flex flex-col justify-center border-t border-zinc-200/80 bg-zinc-50/60 p-6 sm:p-8 dark:border-zinc-700/80 dark:bg-zinc-900/40 lg:col-span-5 lg:border-l lg:border-t-0 lg:p-10 lg:pl-8 xl:p-12"
-              >
-                <h2 className="text-center text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-left">
-                  Sign in or create an account
-                </h2>
-                <p className="mt-1 text-center text-[11px] leading-snug text-zinc-500 dark:text-zinc-400 lg:text-left">
-                  AWS Cognito · free core logging included
-                </p>
-                <div className="mt-4">{children}</div>
+              <div className="flex flex-col justify-center lg:col-span-5 lg:py-4 lg:pl-2 lg:pr-5 xl:py-6 xl:pl-3 xl:pr-7">
+                <div
+                  id="sign-in"
+                  className="mx-0 mt-8 flex flex-col justify-center rounded-2xl border-2 border-white bg-zinc-100/95 p-6 shadow-md shadow-zinc-900/10 dark:bg-zinc-900/55 dark:shadow-black/30 sm:p-8 lg:mt-0 lg:p-8 xl:p-10"
+                >
+                  <h2 className="text-center text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-left">
+                    Sign in or create an account
+                  </h2>
+                  <p className="mt-1 text-center text-[11px] leading-snug text-zinc-500 dark:text-zinc-400 lg:text-left">
+                    AWS Cognito · free core logging included
+                  </p>
+                  <div className="mt-4">{children}</div>
+                </div>
               </div>
             </div>
           </div>
