@@ -1,4 +1,5 @@
 import type { WeeklyReportDocument } from "@/lib/weeklyReport/types";
+import { compactWeeklyBulletLines } from "@/lib/weeklyReport/compactBullets";
 
 function esc(s: string): string {
   return s
@@ -63,15 +64,11 @@ export function buildWeeklyReportEmailHtml(doc: WeeklyReportDocument): string {
     <tr><td>
       <h1 style="font-size:20px;margin:0 0 8px;">${esc(sections.title)}</h1>
       <p style="margin:0 0 16px;color:#52525b;font-size:14px;">${esc(sections.subtitle)}</p>
-      <p style="margin:0 0 8px;font-size:13px;color:#71717a;">Window: ${esc(agg.weekStart)} – ${esc(agg.weekEnd)}</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#71717a;">${esc(agg.weekStart)} – ${esc(agg.weekEnd)}</p>
       ${aiBlock}
-      <h2 style="font-size:15px;margin:20px 0 8px;">What changed</h2>
-      ${listHtml(sections.whatChanged)}
-      <h2 style="font-size:15px;margin:20px 0 8px;">What helped</h2>
-      ${listHtml(sections.whatHelped)}
-      <h2 style="font-size:15px;margin:20px 0 8px;">What may have made things harder</h2>
-      ${listHtml(sections.whatHarder)}
-      <h2 style="font-size:15px;margin:20px 0 8px;">One experiment for next week</h2>
+      <h2 style="font-size:15px;margin:20px 0 8px;">This week</h2>
+      ${listHtml(compactWeeklyBulletLines(doc))}
+      <h2 style="font-size:15px;margin:20px 0 8px;">Next week</h2>
       <p style="margin:0 0 6px;font-weight:600;">${esc(exp.title)}</p>
       <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">${esc(exp.description)}</p>
       <hr style="border:none;border-top:1px solid #e4e4e7;margin:20px 0;" />
@@ -95,13 +92,12 @@ export function buildWeeklyReportEmailPlainText(doc: WeeklyReportDocument): stri
     doc.aiInsightsForEmail?.length && aiLines
       ? `AI insights for you\n${aiLines}\n\n`
       : "";
+  const bullets = compactWeeklyBulletLines(doc);
   const blocks = [
     `${s.title}\n${s.subtitle}\n`,
     aiBlock,
-    `What changed\n${s.whatChanged.map((l) => `- ${l}`).join("\n")}\n`,
-    `What helped\n${s.whatHelped.map((l) => `- ${l}`).join("\n")}\n`,
-    `What may have made things harder\n${s.whatHarder.map((l) => `- ${l}`).join("\n")}\n`,
-    `One experiment for next week\n${exp.title}\n${exp.description}\n`,
+    `This week\n${bullets.map((l) => `- ${l}`).join("\n")}\n`,
+    `Next week\n${exp.title}\n${exp.description}\n`,
     s.disclaimers.length
       ? `Disclaimers\n${s.disclaimers.map((d) => `- ${d}`).join("\n")}\n`
       : "",

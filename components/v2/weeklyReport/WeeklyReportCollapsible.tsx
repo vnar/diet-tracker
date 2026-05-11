@@ -33,25 +33,7 @@ import {
   type WeeklyReportDocument,
 } from "@/lib/weeklyReport";
 import type { WeeklyMealAggRow } from "@/lib/weeklyReport/aggregate";
-
-const MAX_WEEKLY_BULLETS = 5;
-
-function compactWeeklyBullets(doc: WeeklyReportDocument): string[] {
-  const { whatChanged, whatHelped, whatHarder, nextExperiment } = doc.sections;
-  const out: string[] = [];
-  for (const t of whatChanged) {
-    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
-  }
-  for (const t of whatHelped) {
-    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
-  }
-  for (const t of whatHarder) {
-    if (t?.trim() && out.length < MAX_WEEKLY_BULLETS) out.push(t.trim());
-  }
-  const hint = nextExperiment.title?.trim();
-  if (hint && out.length < MAX_WEEKLY_BULLETS) out.push(`Try next: ${hint}`);
-  return out.slice(0, MAX_WEEKLY_BULLETS);
-}
+import { compactWeeklyBulletLines } from "@/lib/weeklyReport/compactBullets";
 
 function MealFetchMapFromRows(
   results: PromiseSettledResult<Awaited<ReturnType<typeof getDayMealEntries>>>[],
@@ -399,7 +381,7 @@ export function WeeklyReportCollapsible() {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">This week</p>
               <ul className="mt-1.5 list-inside list-disc space-y-1 text-[12px] leading-snug text-zinc-300">
-                {compactWeeklyBullets(report).map((t, i) => (
+                {compactWeeklyBulletLines(report).map((t, i) => (
                   <li key={i}>{t}</li>
                 ))}
               </ul>

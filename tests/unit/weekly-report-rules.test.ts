@@ -38,7 +38,7 @@ describe("buildWeeklyReportFromRules", () => {
     expect(doc.sections.whatChanged.length).toBeGreaterThan(0);
   });
 
-  it("email HTML includes experiment block and structured shell", () => {
+  it("email HTML includes compact highlights and next week block", () => {
     const agg = buildWeeklyAggregate({
       weekEnd: "2026-05-10",
       entries: [e({ date: "2026-05-10", morningWeight: 70 })],
@@ -47,9 +47,11 @@ describe("buildWeeklyReportFromRules", () => {
     const doc = buildWeeklyReportFromRules(agg);
     const html = buildWeeklyReportEmailHtml(doc);
     expect(html).toMatch(/<!DOCTYPE html>/i);
+    expect(html).toContain("This week");
     expect(html).toContain(doc.sections.nextExperiment.title);
     const txt = buildWeeklyReportEmailPlainText(doc);
-    expect(txt).toContain("One experiment for next week");
+    expect(txt).toContain("This week");
+    expect(txt).toContain("Next week");
   });
 
   it("email HTML includes AI insights block when attached", () => {
