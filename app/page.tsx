@@ -15,7 +15,7 @@ export default function Home() {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-sm text-zinc-500 dark:text-slate-400">
+      <div className="flex min-h-[50vh] items-center justify-center bg-zinc-50 text-sm text-zinc-600 dark:bg-zinc-950 dark:text-slate-400">
         Loading...
       </div>
     );

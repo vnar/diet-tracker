@@ -49,7 +49,9 @@ export default function RootLayout({
       className={`${fontSans.variable} ${fontMono.variable} ${fontInsightDisplay.variable}`}
       suppressHydrationWarning
     >
-      <body className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased`}>
+      <body
+        className={`${fontSans.className} flex min-h-screen flex-col overflow-x-hidden bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100`}
+      >
         <Providers>
           <ErrorBoundary>
             <StoreHydration />

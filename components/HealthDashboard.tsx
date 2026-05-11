@@ -19,7 +19,7 @@ import { WeightHistoryTable } from "@/components/WeightHistoryTable";
 import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { AuthBar } from "@/components/AuthBar";
+import { AuthBar, SignOutButton } from "@/components/AuthBar";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { getDayMealEntries, getSettings, isAwsBackendEnabled, type DayMealEntryRow } from "@/lib/frontend-api-client";
 import { useHealthStore } from "@/lib/store";
@@ -212,8 +212,8 @@ export function HealthDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950">
-      <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/90 backdrop-blur-md">
+    <main className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
+      <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-950/90">
         <div className="mx-auto max-w-6xl px-5 py-2">
           <div className="flex items-center justify-between sm:hidden">
             <div className="flex items-center gap-2">
@@ -231,16 +231,16 @@ export function HealthDashboard() {
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold tracking-tight text-zinc-100">
+              <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 Ojas-Health
               </span>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-              <AuthBar compact />
+              <AuthBar compact showSignOut={false} />
               {user?.id && isMealLibraryEnabled(user.id) ? (
                 <Link
                   href="/meals"
-                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-700"
+                  className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[10px] font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-none dark:hover:bg-zinc-700"
                 >
                   Meals
                 </Link>
@@ -249,7 +249,7 @@ export function HealthDashboard() {
                 <button
                   type="button"
                   onClick={() => setAdminUsersOpen(true)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-300 bg-white text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-none dark:hover:bg-zinc-700"
                   aria-label="View registered users"
                   title="Users (admin)"
                 >
@@ -262,7 +262,7 @@ export function HealthDashboard() {
                   setSettingsOpen(true);
                   void refreshSettingsFromCloud();
                 }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-300 bg-white text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-none dark:hover:bg-zinc-700"
                 aria-label="Open settings"
                 title="Settings"
               >
@@ -273,11 +273,12 @@ export function HealthDashboard() {
                 onClick={() =>
                   void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
                 }
-                className="h-7 min-w-10 rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                className="h-7 min-w-10 rounded-lg border border-zinc-300 bg-white px-2 text-[11px] font-medium text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-none dark:hover:bg-zinc-700"
               >
                 {unit}
               </button>
               <ThemeToggle />
+              <SignOutButton compact />
             </div>
           </div>
 
@@ -287,7 +288,7 @@ export function HealthDashboard() {
               href="https://www.linkedin.com/in/viharnar/"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+              className="underline underline-offset-2 transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
             >
               Vihar Nar
             </a>
@@ -309,20 +310,20 @@ export function HealthDashboard() {
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold tracking-tight text-zinc-100">
+              <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 Ojas-Health
               </span>
             </div>
-            <nav className="mx-auto flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/60 p-1">
+            <nav className="mx-auto flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-100/90 p-1 dark:border-zinc-800 dark:bg-zinc-900/60">
               <Link
                 href="/"
-                className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-300"
+                className="rounded-full border border-emerald-500/25 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
               >
                 Dashboard
               </Link>
               <button
                 type="button"
-                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-600 transition hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                 onClick={() =>
                   document
                     .getElementById("dashboard-history")
@@ -333,7 +334,7 @@ export function HealthDashboard() {
               </button>
               <Link
                 href="/meals"
-                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-600 transition hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
               >
                 Meals
               </Link>
@@ -341,7 +342,7 @@ export function HealthDashboard() {
                 <button
                   type="button"
                   onClick={() => setAdminUsersOpen(true)}
-                  className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+                  className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-600 transition hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                 >
                   Users
                 </button>
@@ -352,23 +353,24 @@ export function HealthDashboard() {
                   setSettingsOpen(true);
                   void refreshSettingsFromCloud();
                 }}
-                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+                className="rounded-full px-2.5 py-1 text-[10px] font-medium text-zinc-600 transition hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
               >
                 Settings
               </button>
             </nav>
             <div className="flex flex-shrink-0 items-center gap-2">
-              <AuthBar />
+              <AuthBar showSignOut={false} />
               <button
                 type="button"
                 onClick={() =>
                   void patchSettings({ unit: unit === "kg" ? "lbs" : "kg" })
                 }
-                className="h-7 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 text-[11px] font-medium text-zinc-300 transition-all hover:bg-zinc-700"
+                className="h-7 rounded-lg border border-zinc-300 bg-white px-2.5 text-[11px] font-medium text-zinc-700 transition-all hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               >
                 {unit}
               </button>
               <ThemeToggle />
+              <SignOutButton />
             </div>
           </div>
         </div>

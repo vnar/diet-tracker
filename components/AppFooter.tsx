@@ -16,7 +16,7 @@ function ServicePill({ service }: { service: AWSService }) {
       <div
         onMouseEnter={() => setShowTip(true)}
         onMouseLeave={() => setShowTip(false)}
-        className="flex cursor-default items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 sm:px-2"
+        className="flex cursor-default items-center gap-1 rounded-full border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 sm:px-2 dark:border-zinc-800 dark:bg-zinc-900"
       >
         <service.Icon size={10} className={service.iconColor} />
         <div
@@ -69,10 +69,10 @@ export function AppFooter() {
   }, [getAccessToken, status]);
 
   return (
-    <footer className="overflow-x-clip border-t border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md">
+    <footer className="overflow-x-clip border-t border-zinc-200/90 bg-white/90 backdrop-blur-md dark:border-zinc-800/60 dark:bg-zinc-950/80">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-5">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
-          <span className="mr-0.5 text-[9px] font-medium uppercase tracking-widest text-zinc-600 sm:text-[10px]">
+          <span className="mr-0.5 text-[9px] font-medium uppercase tracking-widest text-zinc-500 sm:text-[10px] dark:text-zinc-600">
             AWS
           </span>
           {AWS_SERVICES.map((svc) => (
@@ -88,12 +88,12 @@ export function AppFooter() {
             <span>{pageViews ?? "-"}</span>
             <span className="hidden sm:inline">views</span>
           </div>
-          <div className="h-3 w-px bg-zinc-800" />
+          <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-800" />
           <div className="flex items-center gap-1.5">
             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             <span className="hidden text-[10px] text-zinc-500 sm:inline">All systems online</span>
           </div>
-          <div className="h-3 w-px bg-zinc-800" />
+          <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-800" />
           <a
             href={costDashboardUrl}
             target="_blank"
@@ -103,9 +103,9 @@ export function AppFooter() {
           >
             Cost
           </a>
-          <div className="h-3 w-px bg-zinc-800" />
+          <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-800" />
           <AboutButton />
-          <div className="h-3 w-px bg-zinc-800" />
+          <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-800" />
           <button
             onClick={() => setChangelogOpen(!changelogOpen)}
             className="flex items-center gap-1 text-[10px] text-zinc-500 transition-colors hover:text-zinc-300"

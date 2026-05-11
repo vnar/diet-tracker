@@ -11,11 +11,11 @@
   }
 
   body {
-    @apply min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased;
+    @apply min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
   }
 
   ::selection {
-    @apply bg-sky-500/35 text-white;
+    @apply bg-sky-500/30 text-zinc-900 dark:bg-sky-500/35 dark:text-white;
   }
 }
 
