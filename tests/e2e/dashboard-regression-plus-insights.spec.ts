@@ -23,7 +23,7 @@ test.describe("dashboard regression plus insights", () => {
   test("insights card renders safe empty state when no insights", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /AI insights/i })).toBeVisible();
     await expect(page.getByText("No insight available right now.")).toBeVisible();
     await expect(page.getByRole("button", { name: /Helpful insight/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Not helpful insight/i })).toHaveCount(0);

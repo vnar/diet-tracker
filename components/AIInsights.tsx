@@ -7,22 +7,28 @@ import { isInsightsV2Enabled } from "@/lib/featureFlags";
 import { isAwsBackendEnabled } from "@/lib/frontend-api-client";
 import { InsightsPanel } from "@/components/v2/insights/InsightsPanel";
 
-export function AIInsights() {
+export function AIInsights({ embedded = false }: { embedded?: boolean }) {
   const { status, getAccessToken, user } = useCognitoAuth();
   const v2Enabled = useMemo(() => isInsightsV2Enabled(user?.id), [user?.id]);
   const token = getAccessToken();
   const canRenderPanel =
     v2Enabled && isAwsBackendEnabled() && status === "authenticated" && typeof token === "string";
 
+  const body = !canRenderPanel ? (
+    <p className="text-[15px] font-medium leading-relaxed text-slate-400">
+      No nudges right now — keep logging.
+    </p>
+  ) : (
+    <InsightsPanel accessToken={token} />
+  );
+
+  if (embedded) {
+    return <div className="flex min-h-0 flex-1 flex-col pt-1">{body}</div>;
+  }
+
   return (
     <Card title="Insights" variant="surface" className="flex min-h-0 flex-1 flex-col">
-      {!canRenderPanel ? (
-        <p className="text-[15px] font-medium leading-relaxed text-slate-400">
-          No nudges right now — keep logging.
-        </p>
-      ) : (
-        <InsightsPanel accessToken={token} />
-      )}
+      {body}
     </Card>
   );
 }

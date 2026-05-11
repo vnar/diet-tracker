@@ -13,8 +13,8 @@ import { NaturalMealSheet } from "@/components/v2/meals/NaturalMealSheet";
 import { EnergyBalanceCard } from "@/components/v2/activity/EnergyBalanceCard";
 import { DashboardKpiRow } from "@/components/DashboardKpiRow";
 import { WeightChart } from "@/components/WeightChart";
-import { AIInsights } from "@/components/AIInsights";
-import { PhotoTracker } from "@/components/PhotoTracker";
+import { ProgressPhotoTrackerProvider, PhotoTrackerGallery } from "@/components/PhotoTracker";
+import { DashboardAiInsightsHub } from "@/components/v2/insights/DashboardAiInsightsHub";
 import { WeightHistoryTable } from "@/components/WeightHistoryTable";
 import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
@@ -385,7 +385,8 @@ export function HealthDashboard() {
             <WeightChart />
           </motion.section>
 
-          <div className="ui-dashboard-grid-3">
+          <ProgressPhotoTrackerProvider>
+            <div className="ui-dashboard-grid-3">
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
               <p className="ui-label mb-0 min-h-[1.25rem]">Logging + meals</p>
               <DailyInput
@@ -440,7 +441,7 @@ export function HealthDashboard() {
               />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
-              <p className="ui-label mb-0 min-h-[1.25rem]">Activity + insights</p>
+              <p className="ui-label mb-0 min-h-[1.25rem]">Activity</p>
               <TodayActivityCard />
               <EnergyBalanceCard
                 day={todayKey ?? formatDateKeyLocal(new Date())}
@@ -449,15 +450,19 @@ export function HealthDashboard() {
                 getAccessToken={getAccessToken}
                 initialCalibrationFactor={settings.activityCalibrationFactor}
               />
-              <AIInsights />
             </motion.section>
             <motion.section {...fadeInUp} className="flex min-h-0 min-w-0 flex-col gap-3">
               <p className="ui-label mb-0 min-h-[1.25rem]">Photos</p>
               <div className="min-h-0 min-w-0 flex-1">
-                <PhotoTracker />
+                <PhotoTrackerGallery />
               </div>
             </motion.section>
-          </div>
+            </div>
+
+            <motion.section {...fadeInUp}>
+              <DashboardAiInsightsHub />
+            </motion.section>
+          </ProgressPhotoTrackerProvider>
 
           <motion.section {...fadeInUp} id="dashboard-history">
             <p className="ui-label mb-2">Review + history</p>
