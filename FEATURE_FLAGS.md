@@ -32,6 +32,12 @@
 - **Scope:** billing surface enablement for future paywall and checkout flows.
 - **Env keys supported:** `FF_BILLING_ENABLED`, `NEXT_PUBLIC_FF_BILLING_ENABLED`.
 
+### `FF_PRO_MONETIZATION`
+
+- **Default:** `false` when unset (opt-in: set `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` and/or per-user override `FF_PRO_MONETIZATION` in `FeatureFlagOverrides`).
+- **Scope:** Client-side Pro gates for NL meal parse, photo food estimate, and voice parse soft caps; `/account/billing` checkout CTA when combined with `FF_BILLING_ENABLED` or this flag. Requires API `GET /settings` `subscription` snapshot and deployed `POST /v2/billing/checkout-session` / `POST /v2/billing/portal` with `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY`.
+- **Env keys supported:** `FF_PRO_MONETIZATION`, `NEXT_PUBLIC_FF_PRO_MONETIZATION`.
+
 ### `FF_VOICE_DAILY_LOGGING`
 
 - **Default:** `true` when unset (opt-out: set `FF_VOICE_DAILY_LOGGING=false` / `NEXT_PUBLIC_FF_VOICE_DAILY_LOGGING=false` to disable).
@@ -71,6 +77,6 @@
 ### `FF_PERSONALIZED_AI_COACHING`
 
 - **Default:** `true` (CDK sets Lambda `FF_PERSONALIZED_AI_COACHING` to `true` unless deploy uses `FF_PERSONALIZED_AI_COACHING=false` — opt-out like `FF_MEAL_LIBRARY`).
-- **Scope:** Adds `personalizedCoaching` to `GET /v2/insights`: rule-based nudges from normalized entry/settings data (weight, calories, sleep, habits, goals), explainability strings, safety copy, and Pro gating (paid active/trialing plans only). Feedback supports `helpful` / `not_helpful` / `dismiss` (stored on `INSIGHT_FEEDBACK`); analytics: `ai_nudge_generated`, `ai_nudge_viewed`, `ai_nudge_helpful`, `ai_nudge_dismissed`, `ai_nudge_upgrade_clicked`.
+- **Scope:** Adds `personalizedCoaching` to `GET /v2/insights`: rule-based nudges from normalized entry/settings data (weight, calories, sleep, habits, goals), explainability strings, safety copy, and Pro gating (paid active/trialing plans only). Feedback supports `helpful` / `not_helpful` / `dismiss` (stored on `INSIGHT_FEEDBACK`); analytics: `ai_nudge_generated`, `ai_nudge_viewed`, `ai_nudge_helpful`, `ai_nudge_dismissed`, plus funnel events `paywall_viewed` / `upgrade_clicked` when the coaching gate is shown.
 - **Env keys:** `FF_PERSONALIZED_AI_COACHING`, `NEXT_PUBLIC_FF_PERSONALIZED_AI_COACHING`. Per-user overrides: `FF_PERSONALIZED_AI_COACHING` in `FeatureFlagOverrides` (client) and `isPersonalizedAiCoachingEnabled` for Next attachment when env is unset.
 - **Future:** `LlmNudgeProvider` stub in `lib/aiNudges/providers.ts` for optional LLM-backed nudges without changing the API envelope.

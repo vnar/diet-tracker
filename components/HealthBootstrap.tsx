@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
+import { SubscriptionProvider, useSubscriptionSnapshot } from "@/components/v2/billing/SubscriptionContext";
 import { sortEntriesByDateAsc } from "@/lib/calculations";
 import {
   getFeatureFlagOverrides,
@@ -29,6 +30,9 @@ function mergeNextPublicFeatureFlags(
   const bill = process.env.NEXT_PUBLIC_FF_BILLING_ENABLED;
   if (bill === "true") out.FF_BILLING_ENABLED = true;
   if (bill === "false") out.FF_BILLING_ENABLED = false;
+  const proMon = process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION;
+  if (proMon === "true") out.FF_PRO_MONETIZATION = true;
+  if (proMon === "false") out.FF_PRO_MONETIZATION = false;
   const bodyAi = process.env.NEXT_PUBLIC_FF_BODY_COMPARE_AI;
   if (bodyAi === "true") out.FF_BODY_COMPARE_AI = true;
   if (bodyAi === "false") out.FF_BODY_COMPARE_AI = false;
@@ -38,17 +42,20 @@ function mergeNextPublicFeatureFlags(
   return out;
 }
 
-export function HealthBootstrap({ children }: { children: React.ReactNode }) {
+function HealthBootstrapInner({ children }: { children: React.ReactNode }) {
   const { status, getAccessToken, user } = useCognitoAuth();
+  const { setSubscription } = useSubscriptionSnapshot();
 
   useEffect(() => {
     if (!isAwsBackendEnabled()) {
       setHealthStorageMode(false);
+      setSubscription(null);
       return;
     }
 
     if (status !== "authenticated") {
       setHealthStorageMode(false);
+      setSubscription(null);
       if (user?.id) clearUserFlagOverrides(user.id);
       return;
     }
@@ -93,12 +100,14 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
         useHealthStore.setState({
           settings: settingsResult.data.settings,
         });
+        setSubscription(settingsResult.data.subscription ?? null);
       } else {
         const retry = await getSettings(accessToken);
         if (retry.ok) {
           useHealthStore.setState({
             settings: retry.data.settings,
           });
+          setSubscription(retry.data.subscription ?? null);
         }
       }
 
@@ -107,7 +116,15 @@ export function HealthBootstrap({ children }: { children: React.ReactNode }) {
         setUserFlagOverrides(user.id, mergeNextPublicFeatureFlags(base));
       }
     })();
-  }, [getAccessToken, status, user?.id]);
+  }, [getAccessToken, status, user?.id, setSubscription]);
 
   return <>{children}</>;
+}
+
+export function HealthBootstrap({ children }: { children: React.ReactNode }) {
+  return (
+    <SubscriptionProvider>
+      <HealthBootstrapInner>{children}</HealthBootstrapInner>
+    </SubscriptionProvider>
+  );
 }

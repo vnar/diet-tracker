@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { ProGateModal } from "@/components/v2/billing/ProGateModal";
 import { trackMealStickiness } from "@/lib/mealStickinessAnalytics";
 import type { DailyInputCaloriesAccessoryContext } from "@/components/DailyInput";
 import {
@@ -28,6 +29,8 @@ type Props = DailyInputCaloriesAccessoryContext & {
   /** When two instances mount (e.g. today + past days), pass unique ids to avoid duplicate DOM ids. */
   fileInputId?: string;
   errorElementId?: string;
+  /** Pro monetization: block photo→estimate flow for free users (saved data unchanged). */
+  proPhotoFoodEstimateBlocked?: boolean;
 };
 
 const DEFAULT_FOOD_PHOTO_INPUT_ID = "food-photo-meal-file";
@@ -62,6 +65,7 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
   const [quickMatch, setQuickMatch] = useState<MealLibraryRow | null>(null);
   const [quickMatchDismissed, setQuickMatchDismissed] = useState(false);
   const [nutritionRefreshFailedForName, setNutritionRefreshFailedForName] = useState<string | null>(null);
+  const [proGateOpen, setProGateOpen] = useState(false);
 
   useEffect(() => {
     if (!dialog) return;
@@ -378,25 +382,45 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
   return (
     <>
       <div className="relative flex shrink-0">
-        <input
-          ref={inputRef}
-          id={fileInputId}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-          className="sr-only"
-          onChange={onFile}
-          tabIndex={-1}
-          aria-hidden
-        />
-        <label
-          htmlFor={fileInputId}
-          className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy || saving ? "pointer-events-none opacity-50" : ""}`}
-          aria-label="Log food from photo"
-          aria-busy={busy || saving}
-          aria-describedby={err ? errorElementId : undefined}
-        >
-          <Camera className="h-4 w-4" aria-hidden />
-        </label>
+        {props.proPhotoFoodEstimateBlocked ? (
+          <button
+            type="button"
+            className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-violet-500/50 hover:text-violet-200 ${busy || saving ? "pointer-events-none opacity-50" : ""}`}
+            aria-label="Log food from photo (Pro)"
+            aria-busy={busy || saving}
+            onClick={() => {
+              track("pro_feature_blocked", {
+                feature: "photo_food_estimate",
+                surface: "food_photo_calories",
+              });
+              setProGateOpen(true);
+            }}
+          >
+            <Camera className="h-4 w-4" aria-hidden />
+          </button>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              id={fileInputId}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+              className="sr-only"
+              onChange={onFile}
+              tabIndex={-1}
+              aria-hidden
+            />
+            <label
+              htmlFor={fileInputId}
+              className={`flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 px-2 text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-400 ${busy || saving ? "pointer-events-none opacity-50" : ""}`}
+              aria-label="Log food from photo"
+              aria-busy={busy || saving}
+              aria-describedby={err ? errorElementId : undefined}
+            >
+              <Camera className="h-4 w-4" aria-hidden />
+            </label>
+          </>
+        )}
         {err ? (
           <span
             id={errorElementId}
@@ -407,6 +431,12 @@ export function FoodPhotoCaloriesAccessory(props: Props) {
           </span>
         ) : null}
       </div>
+      <ProGateModal
+        open={proGateOpen}
+        onClose={() => setProGateOpen(false)}
+        featureKey="photo_food_estimate"
+        surface="food_photo_calories"
+      />
       {dialog && typeof document !== "undefined"
         ? createPortal(
             <div

@@ -1,6 +1,7 @@
 "use client";
 
 import type { DailyEntry, ProgressPhoto, UserSettings } from "@/lib/types";
+import type { SubscriptionSnapshot } from "@/lib/billing/types";
 import type { PersonalizedCoachingApiPayload } from "@/lib/aiNudges/types";
 import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
@@ -163,12 +164,40 @@ export async function deleteEntry(date: string, accessToken?: string) {
   );
 }
 
+export type SettingsApiResponse = {
+  settings: UserSettings;
+  /** Present when API returns subscription snapshot (additive GET /settings). */
+  subscription?: SubscriptionSnapshot | null;
+};
+
 export async function getSettings(accessToken?: string) {
-  return fetchJson<{ settings: UserSettings }>(
+  return fetchJson<SettingsApiResponse>(
     "/settings",
     undefined,
     true,
     accessToken
+  );
+}
+
+export async function postBillingCheckoutSession(priceId: string, accessToken: string) {
+  return fetchJson<{ url: string }>(
+    "/v2/billing/checkout-session",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceId }),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function postBillingPortalSession(accessToken: string) {
+  return fetchJson<{ url: string }>(
+    "/v2/billing/portal",
+    { method: "POST" },
+    true,
+    accessToken,
   );
 }
 

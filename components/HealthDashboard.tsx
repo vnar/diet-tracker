@@ -38,12 +38,15 @@ import {
   isNlMealParseEnabled,
   isPhotoFoodLogEnabled,
   isVoiceDailyLoggingEnabled,
+  isProMonetizationEnabled,
 } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { formatDateKeyLocal, getEntryForDate } from "@/lib/calculations";
 import { getDayTotals } from "@/lib/meals/dayTotals";
 import { track } from "@/lib/analytics";
+import { useSubscriptionSnapshot } from "@/components/v2/billing/SubscriptionContext";
+import { shouldGateProFeature } from "@/lib/billing/proGate";
 import { COACH_TONE_OPTIONS, normalizeCoachTone, type CoachTone } from "@/lib/coachTone";
 import { goalEditedFieldNames } from "@/lib/weightTrendAnalytics";
 
@@ -55,6 +58,7 @@ const fadeInUp = {
 
 export function HealthDashboard() {
   useFeatureFlagOverridesEpoch();
+  const { subscription, setSubscription } = useSubscriptionSnapshot();
   const todayKey = useClientTodayKey();
   const entries = useHealthStore((s) => s.entries);
   const settings = useHealthStore((s) => s.settings);
@@ -69,6 +73,11 @@ export function HealthDashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const { status, getAccessToken, user } = useCognitoAuth();
+  const proMonetizationOn = Boolean(user?.id && isProMonetizationEnabled(user.id));
+  const gateProSurfaceFeatures = useMemo(
+    () => shouldGateProFeature(proMonetizationOn, subscription),
+    [proMonetizationOn, subscription],
+  );
   const [adminUsersOpen, setAdminUsersOpen] = useState(false);
   const showAdminUsers = isAppAdminViewer(user?.email);
   const [mealEntries, setMealEntries] = useState<DayMealEntryRow[]>([]);
@@ -164,6 +173,7 @@ export function HealthDashboard() {
     if (!result.ok) return { ok: false, error: result.error };
 
     useHealthStore.setState({ settings: result.data.settings });
+    setSubscription(result.data.subscription ?? null);
     if (options?.applyToForm !== false) {
       setStartWeight(String(result.data.settings.startWeight));
       setGoalWeight(String(result.data.settings.goalWeight));
@@ -521,6 +531,11 @@ export function HealthDashboard() {
                 voiceMealLibrarySyncEnabled={Boolean(
                   user?.id && isMealLibraryEnabled(user.id),
                 )}
+                voiceProGate={{
+                  enabled: proMonetizationOn,
+                  userId: user?.id,
+                  subscription,
+                }}
                 getVoiceAccessToken={getAccessToken}
                 onVoiceMealsLogged={refreshMeals}
                 onVoiceEnergyActivityPrefill={setVoiceEnergyPrefill}
@@ -551,6 +566,7 @@ export function HealthDashboard() {
                               getAccessToken={getAccessToken}
                               onLogged={refreshMeals}
                               compact
+                              proFeatureBlocked={gateProSurfaceFeatures}
                             />
                           ) : null}
                           {isMealLibraryEnabled(user.id) ? (
@@ -566,6 +582,7 @@ export function HealthDashboard() {
                               getAccessToken={getAccessToken}
                               mealLibraryEnabled={isMealLibraryEnabled(user.id)}
                               onMealsChanged={refreshMeals}
+                              proPhotoFoodEstimateBlocked={gateProSurfaceFeatures}
                             />
                           ) : null}
                         </div>

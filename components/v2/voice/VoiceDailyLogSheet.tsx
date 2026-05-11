@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { Mic, MicOff, Sparkles, X } from "lucide-react";
 import { postVoiceDailyLogParse } from "@/lib/frontend-api-client";
 import { inferMealTypeFromLocalTime } from "@/lib/meals/mealTypes";
@@ -9,6 +10,12 @@ import { inputToKg, kgToInput } from "@/lib/units";
 import type { VoiceDailyFormApply, VoiceDailyParsedFields, VoiceSpokenFoodItem } from "@/lib/voiceDailyLog/types";
 import { buildSpokenFoodMealsToLog } from "@/lib/voiceDailyLog/spokenFoodMealsFromReview";
 import { track } from "@/lib/analytics";
+import type { SubscriptionSnapshot } from "@/lib/billing/types";
+import { isProUnlocked } from "@/lib/billing/proGate";
+import {
+  incrementVoiceParsesThisMonth,
+  isVoiceParseOverFreeLimit,
+} from "@/lib/billing/freeTierUsage";
 
 /** Minimal Web Speech API surface (DOM lib typings omit `SpeechRecognition` in this toolchain). */
 type WebSpeechResultList = {
@@ -56,7 +63,8 @@ type VoiceError =
   | "parse_access"
   | "not_supported"
   | "unclear"
-  | "no_auth";
+  | "no_auth"
+  | "voice_free_cap";
 
 function classifyVoiceParseFailure(errorText: string): VoiceError {
   const low = errorText.toLowerCase();
@@ -104,6 +112,8 @@ function errorCopy(code: VoiceError | null): string | null {
       return "Add a bit more detail (for example weight and steps), then tap Parse.";
     case "no_auth":
       return "You need to be signed in (with the AWS backend enabled) to parse voice on this portal.";
+    case "voice_free_cap":
+      return "You’ve used this month’s free voice parses. Pro keeps voice logging generous — upgrade anytime; nothing you already saved is removed.";
     default:
       return null;
   }
@@ -138,6 +148,10 @@ type Props = {
   caloriesProteinReadOnly: boolean;
   /** When true, user can append parsed foods to the meal library + today’s meal log (additive). */
   mealLibraryEnabled?: boolean;
+  /** When true with a free user, enforce monthly parse cap (localStorage). */
+  proMonetizationEnabled?: boolean;
+  voiceGateUserId?: string;
+  subscription?: SubscriptionSnapshot | null;
   getAccessToken: () => string | null;
   onApply: (draft: VoiceDailyFormApply) => void;
 };
@@ -185,6 +199,9 @@ export function VoiceDailyLogSheet(props: Props) {
     unit,
     caloriesProteinReadOnly,
     mealLibraryEnabled = false,
+    proMonetizationEnabled = false,
+    voiceGateUserId,
+    subscription = null,
     getAccessToken,
     onApply,
   } = props;
@@ -323,6 +340,17 @@ export function VoiceDailyLogSheet(props: Props) {
       setError("no_auth");
       return;
     }
+    if (
+      proMonetizationEnabled &&
+      voiceGateUserId &&
+      !isProUnlocked(subscription) &&
+      isVoiceParseOverFreeLimit(voiceGateUserId)
+    ) {
+      track("pro_feature_blocked", { feature: "voice_daily_parse", surface: "voice_daily_log_sheet" });
+      setParseDetail(null);
+      setError("voice_free_cap");
+      return;
+    }
     if (!transcribedTrackedRef.current) {
       transcribedTrackedRef.current = true;
       track("voice_log_transcribed", { source: "typed_or_pasted" });
@@ -348,11 +376,22 @@ export function VoiceDailyLogSheet(props: Props) {
     setParsed(p);
     setReview(parsedToReviewStrings(p, unit));
     setSaveFoodToMealLog(Boolean(mealLibraryEnabled && p.foodItems.length > 0));
+    if (proMonetizationEnabled && voiceGateUserId && !isProUnlocked(subscription)) {
+      incrementVoiceParsesThisMonth(voiceGateUserId);
+    }
     track("voice_log_parsed", {
       confidence: p.confidence,
       unclear_count: p.unclearParts.length,
     });
-  }, [getAccessToken, transcript, unit, mealLibraryEnabled]);
+  }, [
+    getAccessToken,
+    transcript,
+    unit,
+    mealLibraryEnabled,
+    proMonetizationEnabled,
+    voiceGateUserId,
+    subscription,
+  ]);
 
   const handleApply = useCallback(() => {
     if (!review) return;
@@ -480,14 +519,40 @@ export function VoiceDailyLogSheet(props: Props) {
         </p>
 
         {error || parseDetail ? (
-          <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
-            {error ? errorCopy(error) : null}
-            {parseDetail ? (
-              <span className="mt-1 block whitespace-pre-wrap break-words font-mono text-[10px] text-rose-100/90">
-                {parseDetail}
-              </span>
+          <div className="mb-3 space-y-2">
+            <p
+              className={`rounded-lg border px-3 py-2 text-[11px] ${
+                error === "voice_free_cap"
+                  ? "border-violet-500/30 bg-violet-950/40 text-violet-100"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-200"
+              }`}
+            >
+              {error ? errorCopy(error) : null}
+              {parseDetail ? (
+                <span
+                  className={`mt-1 block whitespace-pre-wrap break-words font-mono text-[10px] ${
+                    error === "voice_free_cap" ? "text-violet-200/90" : "text-rose-100/90"
+                  }`}
+                >
+                  {parseDetail}
+                </span>
+              ) : null}
+            </p>
+            {error === "voice_free_cap" ? (
+              <Link
+                href="/account/billing"
+                className="inline-flex text-[12px] font-semibold text-sky-300 hover:text-sky-200"
+                onClick={() =>
+                  track("upgrade_clicked", {
+                    feature: "voice_daily_parse",
+                    surface: "voice_daily_log_sheet",
+                  })
+                }
+              >
+                View Pro plans →
+              </Link>
             ) : null}
-          </p>
+          </div>
         ) : null}
 
         {lowConfidence ? (

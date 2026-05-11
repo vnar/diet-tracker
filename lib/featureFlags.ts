@@ -139,3 +139,18 @@ export function isVoiceDailyLoggingEnabled(userId?: string): boolean {
   if (explicit === false) return false;
   return true;
 }
+
+/**
+ * Pro paywall + Stripe checkout on the API (opt-in). Default OFF unless env explicitly enables.
+ * Set `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` and deploy Lambda with Stripe keys + routes.
+ */
+export function isProMonetizationEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_PRO_MONETIZATION"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("PRO_MONETIZATION");
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION === "true";
+}

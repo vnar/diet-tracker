@@ -17,6 +17,7 @@ import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
 import { VoiceDailyLogSheet } from "@/components/v2/voice/VoiceDailyLogSheet";
 import type { VoiceDailyFormApply } from "@/lib/voiceDailyLog/types";
+import type { SubscriptionSnapshot } from "@/lib/billing/types";
 import {
   isAwsBackendEnabled,
   postDayMealEntry,
@@ -40,6 +41,7 @@ export function DailyInput({
   caloriesProteinAggregate,
   voiceDailyLogEnabled,
   voiceMealLibrarySyncEnabled,
+  voiceProGate,
   getVoiceAccessToken,
   onVoiceMealsLogged,
   onVoiceEnergyActivityPrefill,
@@ -56,6 +58,12 @@ export function DailyInput({
   voiceDailyLogEnabled?: boolean;
   /** When true, voice can append parsed foods to meal library + today’s log (additive). */
   voiceMealLibrarySyncEnabled?: boolean;
+  /** Pro monetization + subscription snapshot for voice parse soft caps (client). */
+  voiceProGate?: {
+    enabled: boolean;
+    userId?: string;
+    subscription: SubscriptionSnapshot | null;
+  };
   getVoiceAccessToken?: () => string | null;
   /** After voice appends meals via API, refresh meal totals (e.g. parent refetches day meals). */
   onVoiceMealsLogged?: () => void;
@@ -461,6 +469,9 @@ export function DailyInput({
                 unit={u}
                 caloriesProteinReadOnly={Boolean(caloriesProteinAggregate?.readOnly)}
                 mealLibraryEnabled={Boolean(voiceMealLibrarySyncEnabled)}
+                proMonetizationEnabled={Boolean(voiceProGate?.enabled)}
+                voiceGateUserId={voiceProGate?.userId}
+                subscription={voiceProGate?.subscription ?? null}
                 getAccessToken={getVoiceAccessToken}
                 onApply={applyVoiceDaily}
               />

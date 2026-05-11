@@ -4,16 +4,21 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, X } from "lucide-react";
 import { NaturalMealInput } from "@/components/v2/meals/NaturalMealInput";
+import { ProGateModal } from "@/components/v2/billing/ProGateModal";
+import { track } from "@/lib/analytics";
 
 type Props = {
   day: string;
   getAccessToken: () => string | null;
   onLogged: () => void;
   compact?: boolean;
+  /** When Pro monetization is on and user is not Pro, show upgrade path instead of the NL flow. */
+  proFeatureBlocked?: boolean;
 };
 
 export function NaturalMealSheet(props: Props) {
   const [open, setOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -29,7 +34,17 @@ export function NaturalMealSheet(props: Props) {
       <div className={props.compact ? "group relative" : "mb-3"}>
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            if (props.proFeatureBlocked) {
+              track("pro_feature_blocked", {
+                feature: "nl_meal_parse",
+                surface: "natural_meal_sheet",
+              });
+              setGateOpen(true);
+              return;
+            }
+            setOpen(true);
+          }}
           className={
             props.compact
               ? "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
@@ -47,6 +62,12 @@ export function NaturalMealSheet(props: Props) {
           </span>
         ) : null}
       </div>
+      <ProGateModal
+        open={gateOpen}
+        onClose={() => setGateOpen(false)}
+        featureKey="nl_meal_parse"
+        surface="natural_meal_sheet"
+      />
       {open && typeof document !== "undefined"
         ? createPortal(
             <div

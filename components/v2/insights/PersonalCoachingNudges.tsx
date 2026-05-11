@@ -45,6 +45,11 @@ export function PersonalCoachingNudges(props: {
     track("ai_nudge_generated", { count: props.coaching.nudges.length, gated: false });
   }, [props.coaching.gated, props.coaching.nudges.length]);
 
+  useEffect(() => {
+    if (!props.coaching.gated) return;
+    track("paywall_viewed", { feature: "personalized_coaching", surface: "insights_coaching_gate" });
+  }, [props.coaching.gated]);
+
   if (props.coaching.gated) {
     return (
       <div
@@ -67,7 +72,12 @@ export function PersonalCoachingNudges(props: {
             <Link
               href="/account/billing"
               className="inline-flex items-center gap-1 rounded-md text-[12px] font-semibold text-sky-300 transition hover:text-sky-200"
-              onClick={() => track("ai_nudge_upgrade_clicked", { from: "insights_coaching" })}
+              onClick={() =>
+                track("upgrade_clicked", {
+                  feature: "personalized_coaching",
+                  surface: "insights_coaching_gate",
+                })
+              }
             >
               View plans
               <span aria-hidden className="text-sky-400/80">

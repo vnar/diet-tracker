@@ -45,6 +45,7 @@ import {
   handleV2MealsSuggestMatch,
 } from "./meals-api";
 import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
+import { handleBillingCheckoutSession, handleBillingPortalSession } from "./billing-api";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -1031,6 +1032,37 @@ async function deleteEntry(userId: string, query: Record<string, string | undefi
   return json(200, { ok: true, date });
 }
 
+async function loadSubscriptionSnapshot(userId: string): Promise<{
+  plan: string;
+  status: string;
+  currentPeriodEnd: string | null;
+}> {
+  const subsTable = process.env.SUBSCRIPTIONS_TABLE_NAME;
+  if (!subsTable) {
+    return { plan: "free", status: "inactive", currentPeriodEnd: null };
+  }
+  try {
+    const subOut = await ddb.send(
+      new GetItemCommand({
+        TableName: subsTable,
+        Key: { userId: { S: userId } },
+        ConsistentRead: true,
+      }),
+    );
+    if (!subOut.Item) {
+      return { plan: "free", status: "inactive", currentPeriodEnd: null };
+    }
+    const cpe = subOut.Item.currentPeriodEnd?.S?.trim();
+    return {
+      plan: subOut.Item.plan?.S ?? "free",
+      status: subOut.Item.status?.S ?? "inactive",
+      currentPeriodEnd: cpe && cpe.length > 0 ? cpe : null,
+    };
+  } catch {
+    return { plan: "free", status: "inactive", currentPeriodEnd: null };
+  }
+}
+
 async function getSettings(userId: string): Promise<HttpResult> {
   const tableName = getRequiredEnv("SETTINGS_TABLE_NAME", settingsTableName);
   const out = await ddb.send(
@@ -1039,6 +1071,8 @@ async function getSettings(userId: string): Promise<HttpResult> {
       Key: { userId: { S: userId } },
     }),
   );
+
+  const subscription = await loadSubscriptionSnapshot(userId);
 
   if (!out.Item) {
     const settings: StoredSettings = {
@@ -1072,6 +1106,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
         plateau: undefined,
         activityCalibrationFactor: settings.activityCalibrationFactor ?? 1,
       },
+      subscription,
     });
   }
 
@@ -1093,6 +1128,7 @@ async function getSettings(userId: string): Promise<HttpResult> {
       forecastGeneratedAt: out.Item.forecastGeneratedAt?.S,
       forecastDisclaimerAccepted: Number(out.Item.forecastDisclaimerAccepted?.N ?? "0") === 1,
     },
+    subscription,
   });
 }
 
@@ -1774,6 +1810,14 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       if (method === "PATCH") {
         return patchSettings(userId, event);
       }
+    }
+
+    if (event.rawPath === "/v2/billing/checkout-session" && method === "POST") {
+      return handleBillingCheckoutSession(userId, event);
+    }
+
+    if (event.rawPath === "/v2/billing/portal" && method === "POST") {
+      return handleBillingPortalSession(userId);
     }
 
     if (event.rawPath === "/stats" && method === "GET") {

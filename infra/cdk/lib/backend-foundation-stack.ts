@@ -284,6 +284,9 @@ export class BackendFoundationStack extends cdk.Stack {
     /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
+    /** Set at deploy time; empty disables Stripe routes (503) until configured. */
+    const stripeSecretKeyDeploy = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+    const billingAppUrlDeploy = process.env.BILLING_APP_URL?.trim() ?? process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
     const mealNlParseLambda = new NodejsFunction(this, "MealNlParseLambda", {
       functionName: `${this.stackName}-meal-nl-parse`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -342,6 +345,8 @@ export class BackendFoundationStack extends cdk.Stack {
         FF_BODY_COMPARE_AI: bodyCompareAiEnv,
         FF_PERSONALIZED_AI_COACHING: personalizedAiCoachingEnv,
         ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
+        STRIPE_SECRET_KEY: stripeSecretKeyDeploy,
+        ...(billingAppUrlDeploy ? { BILLING_APP_URL: billingAppUrlDeploy } : {}),
         ...(anthropicFoodVisionModel
           ? { ANTHROPIC_FOOD_VISION_MODEL: anthropicFoodVisionModel }
           : {}),
@@ -423,6 +428,8 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "GET /feature-flags", id: "FeatureFlagsGetRoute" },
       { routeKey: "GET /admin/flags", id: "AdminFlagsGetRoute" },
       { routeKey: "PUT /admin/flags", id: "AdminFlagsPutRoute" },
+      { routeKey: "POST /v2/billing/checkout-session", id: "BillingCheckoutSessionPostRoute" },
+      { routeKey: "POST /v2/billing/portal", id: "BillingPortalPostRoute" },
     ];
 
     for (const route of securedRoutes) {
