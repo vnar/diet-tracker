@@ -1,8 +1,9 @@
 /**
  * POST /v2/weekly-report/send-email — sends HTML to the caller's verified Cognito email via SES.
  * Uses TRANSACTIONAL_EMAIL_FROM when set; otherwise verified default ojashealth2026@gmail.com. Disabled when FF_WEEKLY_REPORT_EMAIL=false on the function.
- * Uses SendRawEmail (multipart/alternative + deliverability headers). Gmail inbox placement still requires
- * a custom domain + SES domain identity + DKIM/SPF/DMARC; freemail From addresses via SES often land in spam.
+ * Uses SendRawEmail (multipart/alternative + deliverability headers). User-initiated sends omit list-bulk
+ * headers (List-ID / Auto-Submitted / List-Unsubscribe) so Gmail is less likely to treat them as bulk.
+ * For best inbox placement, use a domain-aligned From + SES DKIM (not consumer @gmail.com).
  */
 import { CognitoIdentityProviderClient, GetUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { validateWeeklyReportEmailPayload } from "../../../lib/email/weeklyReportEmailPayload";
@@ -86,6 +87,7 @@ export async function handlePostV2WeeklyReportSendEmail(
       subject: subj,
       html: htmlBody,
       textPlain: textBody?.trim(),
+      emailKind: "transactional",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

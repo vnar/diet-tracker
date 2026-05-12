@@ -124,16 +124,16 @@ describe("buildMultipartAlternativeRfc822", () => {
     expect(mailto).not.toContain("List-Unsubscribe-Post:");
   });
 
-  it("adds List-ID and Auto-Submitted when brandListDomain set", () => {
+  it("omits list semantics when brandListDomain omitted", () => {
     const raw = buildMultipartAlternativeRfc822({
       from: "a@b.co",
       to: "c@d.co",
       subject: "S",
       textPlain: "t",
       html: "<p>x</p>",
-      brandListDomain: "ojas-health.com",
     });
-    expect(raw).toContain('List-ID: "Ojas Health weekly digest" <weekly.ojas-health.com>');
-    expect(raw).toContain("Auto-Submitted: auto-generated");
+    expect(raw).not.toContain("List-ID:");
+    expect(raw).not.toContain("Auto-Submitted:");
+    expect(raw).not.toContain("List-Unsubscribe:");
   });
 });

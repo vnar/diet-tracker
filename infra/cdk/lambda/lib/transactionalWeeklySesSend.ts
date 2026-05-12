@@ -57,12 +57,19 @@ export async function sendTransactionalWeeklyReportMime(opts: {
   subject: string;
   html: string;
   textPlain?: string;
+  /**
+   * `transactional` = user tapped “Send email” — omit List-ID / Auto-Submitted / List-Unsubscribe
+   * so the message does not mimic bulk list mail (better inbox placement with freemail From).
+   * `digest` = scheduled Monday job — keep list semantics for mailbox classification.
+   */
+  emailKind?: "digest" | "transactional";
 }): Promise<void> {
   const from = transactionalFrom();
   if (!from) throw new Error("TRANSACTIONAL_EMAIL_FROM is not configured");
   const textPlain = opts.textPlain?.trim() ? opts.textPlain.trim() : htmlToPlainTextFallback(opts.html);
   const midDomain = resolveMessageIdDomain(from, transactionalMessageIdDomain());
   const messageId = midDomain ? buildMessageId(midDomain) : undefined;
+  const digestLike = opts.emailKind !== "transactional";
   const rawMime = buildMultipartAlternativeRfc822({
     from,
     fromDisplayName: transactionalFromDisplayName(),
@@ -72,9 +79,9 @@ export async function sendTransactionalWeeklyReportMime(opts: {
     html: opts.html,
     replyTo: transactionalReplyTo(),
     messageId,
-    listUnsubscribe: resolvedListUnsubscribeUrl(),
-    listUnsubscribePost: transactionalListUnsubscribeOneClick(),
-    brandListDomain: transactionalBrandListDomain(),
+    listUnsubscribe: digestLike ? resolvedListUnsubscribeUrl() : undefined,
+    listUnsubscribePost: digestLike ? transactionalListUnsubscribeOneClick() : false,
+    brandListDomain: digestLike ? transactionalBrandListDomain() : undefined,
   });
   await ses.send(
     new SendRawEmailCommand({
