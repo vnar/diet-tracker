@@ -47,11 +47,11 @@ describe("buildWeeklyReportFromRules", () => {
     const doc = buildWeeklyReportFromRules(agg);
     const html = buildWeeklyReportEmailHtml(doc);
     expect(html).toMatch(/<!DOCTYPE html>/i);
-    expect(html).toContain("This week");
+    expect(html).toContain("What stood out");
     expect(html).toContain(doc.sections.nextExperiment.title);
     const txt = buildWeeklyReportEmailPlainText(doc);
-    expect(txt).toContain("This week");
-    expect(txt).toContain("Next week");
+    expect(txt).toContain("What stood out");
+    expect(txt).toContain("One thing to try next");
   });
 
   it("email HTML includes AI insights block when attached", () => {
@@ -73,11 +73,11 @@ describe("buildWeeklyReportFromRules", () => {
       ],
     };
     const html = buildWeeklyReportEmailHtml(withAi);
-    expect(html).toContain("AI insights for you");
+    expect(html).toContain("A few reads from your week");
     expect(html).toContain("Protein anchor");
-    expect(html).toContain("AI refined");
+    expect(html).toContain("Touched up with AI");
     const txt = buildWeeklyReportEmailPlainText(withAi);
-    expect(txt).toContain("AI insights for you");
+    expect(txt).toContain("A few reads from your week");
     expect(txt).toContain("Protein anchor");
   });
 });
