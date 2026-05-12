@@ -45,6 +45,7 @@ const lambda = __importStar(require("aws-cdk-lib/aws-lambda"));
 const aws_lambda_nodejs_1 = require("aws-cdk-lib/aws-lambda-nodejs");
 const s3 = __importStar(require("aws-cdk-lib/aws-s3"));
 const path = __importStar(require("node:path"));
+const defaultTransactionalFrom_1 = require("../../../lib/email/defaultTransactionalFrom");
 /** Comma-separated https origins allowed to PUT/GET progress/food photos via presigned URLs (e.g. Amplify https://main.d123.amplifyapp.com). */
 function photoCorsExtraOriginsFromEnv() {
     const raw = process.env.PHOTO_CORS_EXTRA_ORIGINS ?? "";
@@ -300,7 +301,7 @@ class BackendFoundationStack extends cdk.Stack {
         /** Opt-out: weekly SES send route unless FF_WEEKLY_REPORT_EMAIL=false. Requires TRANSACTIONAL_EMAIL_FROM. */
         const weeklyReportEmailEnv = process.env.FF_WEEKLY_REPORT_EMAIL === "false" ? "false" : "true";
         /** Default SES From when unset; verify in SES. Override with TRANSACTIONAL_EMAIL_FROM. */
-        const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() || "ojashealth2026@gmail.com";
+        const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() || defaultTransactionalFrom_1.DEFAULT_TRANSACTIONAL_EMAIL_FROM;
         const transactionalEmailFromNameDeploy = process.env.TRANSACTIONAL_EMAIL_FROM_NAME?.trim() || "Ojas Health";
         const transactionalEmailReplyToDeploy = process.env.TRANSACTIONAL_EMAIL_REPLY_TO?.trim() ?? "";
         const transactionalEmailMessageIdDomainDeploy = process.env.TRANSACTIONAL_EMAIL_MESSAGE_ID_DOMAIN?.trim() ?? "";

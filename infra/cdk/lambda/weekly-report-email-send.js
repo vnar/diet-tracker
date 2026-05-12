@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handlePostV2WeeklyReportSendEmail = handlePostV2WeeklyReportSendEmail;
 /**
  * POST /v2/weekly-report/send-email — sends HTML to the caller's verified Cognito email via SES.
- * Requires TRANSACTIONAL_EMAIL_FROM (verified SES identity). Disabled when FF_WEEKLY_REPORT_EMAIL=false.
+ * Requires TRANSACTIONAL_EMAIL_FROM (verified SES identity) or product default. Disabled when FF_WEEKLY_REPORT_EMAIL=false.
  * Uses SendRawEmail (multipart/alternative + deliverability headers). Gmail inbox placement still requires
  * a custom domain + SES domain identity + DKIM/SPF/DMARC; freemail From addresses via SES often land in spam.
  */
@@ -27,10 +27,6 @@ function weeklyReportEmailEnabled() {
 async function handlePostV2WeeklyReportSendEmail(accessToken, event, json) {
     if (!weeklyReportEmailEnabled()) {
         return json(403, { error: "Weekly report email is disabled for this deployment." });
-    }
-    const from = (process.env.TRANSACTIONAL_EMAIL_FROM ?? "").trim();
-    if (!from) {
-        return json(503, { error: "Transactional email is not configured (TRANSACTIONAL_EMAIL_FROM)." });
     }
     if (!accessToken) {
         return json(401, { error: "Missing access token." });

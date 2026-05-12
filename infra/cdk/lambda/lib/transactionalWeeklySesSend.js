@@ -5,10 +5,11 @@ exports.sendTransactionalWeeklyReportMime = sendTransactionalWeeklyReportMime;
  * Shared SES SendRawEmail path for weekly report HTML (user-initiated API + scheduled digest).
  */
 const client_ses_1 = require("@aws-sdk/client-ses");
+const defaultTransactionalFrom_1 = require("../../../../lib/email/defaultTransactionalFrom");
 const rfc822MultipartAlternative_1 = require("../../../../lib/email/rfc822MultipartAlternative");
 const ses = new client_ses_1.SESClient({});
 function transactionalFrom() {
-    return (process.env.TRANSACTIONAL_EMAIL_FROM ?? "").trim();
+    return (0, defaultTransactionalFrom_1.resolveTransactionalEmailFrom)();
 }
 function transactionalFromDisplayName() {
     return (process.env.TRANSACTIONAL_EMAIL_FROM_NAME ?? "Ojas Health").trim() || "Ojas Health";

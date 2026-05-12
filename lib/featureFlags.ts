@@ -171,8 +171,8 @@ export function isWeeklyReportEnabled(userId?: string): boolean {
 
 /**
  * POST /v2/weekly-report/send-email (SES to Cognito user's verified email). Default ON when unset (opt-out:
- * `FF_WEEKLY_REPORT_EMAIL=false` / `NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL=false`). Lambda must still set
- * `TRANSACTIONAL_EMAIL_FROM` (verified SES identity) or the route returns 503.
+ * `FF_WEEKLY_REPORT_EMAIL=false` / `NEXT_PUBLIC_FF_WEEKLY_REPORT_EMAIL=false`). Lambda uses
+ * `TRANSACTIONAL_EMAIL_FROM` when set, otherwise the verified product default `ojashealth2026@gmail.com`.
  */
 export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
   if (userId) {

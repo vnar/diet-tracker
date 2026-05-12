@@ -2,6 +2,7 @@
  * Shared SES SendRawEmail path for weekly report HTML (user-initiated API + scheduled digest).
  */
 import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
+import { resolveTransactionalEmailFrom } from "@/lib/email/defaultTransactionalFrom";
 import {
   buildMessageId,
   buildMultipartAlternativeRfc822,
@@ -12,7 +13,7 @@ import {
 const ses = new SESClient({});
 
 function transactionalFrom(): string {
-  return (process.env.TRANSACTIONAL_EMAIL_FROM ?? "").trim();
+  return resolveTransactionalEmailFrom();
 }
 
 function transactionalFromDisplayName(): string {

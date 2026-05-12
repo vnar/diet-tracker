@@ -1,6 +1,6 @@
 /**
  * POST /v2/weekly-report/send-email — sends HTML to the caller's verified Cognito email via SES.
- * Requires TRANSACTIONAL_EMAIL_FROM (verified SES identity). Disabled when FF_WEEKLY_REPORT_EMAIL=false on the function.
+ * Uses TRANSACTIONAL_EMAIL_FROM when set; otherwise verified default ojashealth2026@gmail.com. Disabled when FF_WEEKLY_REPORT_EMAIL=false on the function.
  * Uses SendRawEmail (multipart/alternative + deliverability headers). Gmail inbox placement still requires
  * a custom domain + SES domain identity + DKIM/SPF/DMARC; freemail From addresses via SES often land in spam.
  */
@@ -42,10 +42,6 @@ export async function handlePostV2WeeklyReportSendEmail(
 ): Promise<HttpResult> {
   if (!weeklyReportEmailEnabled()) {
     return json(403, { error: "Weekly report email is disabled for this deployment." });
-  }
-  const from = (process.env.TRANSACTIONAL_EMAIL_FROM ?? "").trim();
-  if (!from) {
-    return json(503, { error: "Transactional email is not configured (TRANSACTIONAL_EMAIL_FROM)." });
   }
   if (!accessToken) {
     return json(401, { error: "Missing access token." });
