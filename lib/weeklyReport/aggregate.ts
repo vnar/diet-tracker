@@ -1,8 +1,8 @@
-import type { DailyEntry, ProgressPhoto, UserSettings } from "@/lib/types";
-import { addDaysKey, parseDateKey, sortEntriesByDateAsc } from "@/lib/calculations";
-import { normalizeCoachTone } from "@/lib/coachTone";
-import { isDateInInclusiveRange, weekWindowInclusive } from "@/lib/weeklyReport/dateRange";
-import type { WeeklyDayRollup, WeeklyReportAggregate } from "@/lib/weeklyReport/types";
+import type { DailyEntry, ProgressPhoto, UserSettings } from "../types";
+import { addDaysKey, parseDateKey, sortEntriesByDateAsc } from "../calculations";
+import { normalizeCoachTone } from "../coachTone";
+import { isDateInInclusiveRange, weekWindowInclusive } from "./dateRange";
+import type { WeeklyDayRollup, WeeklyReportAggregate } from "./types";
 
 const MED_NOTE_RE =
   /\b(med|meds|medication|medicines?|pill|pills|tablet|dose|dosage|\bmg\b|\bmcg\b|prescription|\brx\b|side effect|side-effect|taper|insulin|ssri|snri|antibiotic|steroid)\b/i;

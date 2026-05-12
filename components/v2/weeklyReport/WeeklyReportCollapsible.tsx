@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Loader2, Mail, RotateCcw } from "lucide-react";
+import { Calendar, ChevronDown, Loader2, Mail } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { usePatchSettings, useRefreshEntries } from "@/hooks/useHealthActions";
 import { useHealthStore } from "@/lib/store";
@@ -79,6 +79,22 @@ export function WeeklyReportCollapsible() {
   const [includeAiInsightsInEmail, setIncludeAiInsightsInEmail] = useState(true);
   const [sessionHidden, setSessionHidden] = useState(false);
   const viewedKeyRef = useRef<string | null>(null);
+  const weekEndDateInputRef = useRef<HTMLInputElement>(null);
+
+  const openWeekEndDatePicker = useCallback(() => {
+    const el = weekEndDateInputRef.current;
+    if (!el) return;
+    try {
+      if (typeof el.showPicker === "function") {
+        el.showPicker();
+        return;
+      }
+    } catch {
+      /* showPicker can throw outside a user gesture in some builds */
+    }
+    el.focus();
+    el.click();
+  }, []);
 
   const weekMeta = useMemo(() => weekWindowInclusive(weekEnd), [weekEnd]);
   const dismissKey = `ojas-weekly-report-dismissed-${weekMeta.weekStart}`;
@@ -280,21 +296,36 @@ export function WeeklyReportCollapsible() {
       </summary>
       <div className="border-t border-zinc-800/80 px-3 pb-3 pt-2.5 text-sm text-zinc-200">
         <div className="flex flex-wrap items-end gap-2">
-          <label className="block min-w-[9.5rem]">
+          <label className="block min-w-[11rem] max-w-[14rem] flex-1 sm:min-w-[12rem]">
             <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
               Week ends
             </span>
-            <input
-              type="date"
-              value={weekEnd}
-              max={defaultWeeklyReportEndDate()}
-              onChange={(e) => {
-                setWeekEnd(e.target.value || defaultWeeklyReportEndDate());
-                setReport(null);
-                viewedKeyRef.current = null;
-              }}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100"
-            />
+            <div className="flex rounded-lg border border-zinc-700 bg-zinc-900 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/80">
+              <input
+                ref={weekEndDateInputRef}
+                type="date"
+                value={weekEnd}
+                max={defaultWeeklyReportEndDate()}
+                onChange={(e) => {
+                  setWeekEnd(e.target.value || defaultWeeklyReportEndDate());
+                  setReport(null);
+                  viewedKeyRef.current = null;
+                }}
+                className="min-w-0 flex-1 cursor-text rounded-l-lg border-0 bg-transparent px-2 py-1.5 text-xs text-zinc-100 [color-scheme:dark] focus:outline-none focus:ring-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-90 [&::-webkit-calendar-picker-indicator]:invert"
+              />
+              <button
+                type="button"
+                aria-label="Choose week end date"
+                title="Open calendar"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openWeekEndDatePicker();
+                }}
+                className="flex shrink-0 items-center justify-center rounded-r-lg border-l border-zinc-700/90 px-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+              >
+                <Calendar className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
           </label>
           <button
             type="button"

@@ -1,4 +1,4 @@
-import { addDaysKey, formatDateKeyLocal, parseDateKey } from "@/lib/calculations";
+import { addDaysKey, formatDateKeyLocal, parseDateKey } from "../calculations";
 
 /** Inclusive local-calendar window of seven days ending on `weekEnd` (YYYY-MM-DD). */
 export function weekWindowInclusive(weekEnd: string): { weekStart: string; weekEnd: string } {

@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeeklyReportCollapsible } from "@/components/v2/weeklyReport/WeeklyReportCollapsible";
 import { clearUserFlagOverrides, setUserFlagOverrides } from "@/lib/featureFlags";
@@ -60,6 +61,13 @@ describe("WeeklyReportCollapsible", () => {
   it("renders when weekly report is on by default", () => {
     render(<WeeklyReportCollapsible />);
     expect(screen.getByText("Weekly recap")).toBeInTheDocument();
+  });
+
+  it("shows calendar control for week end after opening details", async () => {
+    const user = userEvent.setup();
+    render(<WeeklyReportCollapsible />);
+    await user.click(screen.getByText("Weekly recap"));
+    expect(screen.getByRole("button", { name: /choose week end date/i })).toBeInTheDocument();
   });
 
   it("renders when per-user override enables flag with public env false", () => {
