@@ -362,14 +362,14 @@ function normalizeEmailForAdminMatch(email) {
     return lower;
 }
 function getAdminAllowListNormalized() {
-    const raw = process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
+    const raw = process.env.ADMIN_EMAILS?.trim() || "ojashealth2026@gmail.com";
     const parts = raw
         .split(",")
         .map((s) => normalizeEmailForAdminMatch(s.trim()))
         .filter(Boolean);
     const set = new Set(parts);
     if (set.size === 0) {
-        set.add(normalizeEmailForAdminMatch("viharnar@gmail.com"));
+        set.add(normalizeEmailForAdminMatch("ojashealth2026@gmail.com"));
     }
     return set;
 }

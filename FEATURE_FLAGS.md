@@ -80,7 +80,7 @@
 - **Scope:** AI Weekly Report Card — seven-day aggregate from logs (weight, check-ins, meals, calories/protein, steps/sleep, habit toggles, optional medication-keyword hint in notes, progress photo count), rule-based sections (what changed / helped / harder / one experiment), coach tone from settings, in-app **Weekly recap** block inside the **Insights** card on the dashboard (below Coaching / Photo compare), and copy-friendly HTML/plain text. Analytics: `weekly_report_generated`, `weekly_report_viewed`, `weekly_report_email_opened` (email export preview), `weekly_report_email_send_clicked`, `weekly_report_email_sent`, `weekly_report_email_failed`, `next_experiment_clicked`, `weekly_report_dismissed`.
 - **Env keys supported:** `FF_WEEKLY_REPORT`, `NEXT_PUBLIC_FF_WEEKLY_REPORT`.
 - **LLM:** Rule-based only in v1; optional LLM refinement can be added later without changing the aggregate contract.
-- **Dev:** Regenerate static sample HTML (banner for Vihar Nar / viharnar@gmail.com): `npm run gen:weekly-email-preview` → `public/email-previews/weekly-report-sample-vihar-nar.html` (open locally or at `/email-previews/weekly-report-sample-vihar-nar.html` when hosted). Not a real email send.
+- **Dev:** Regenerate static sample HTML (sample banner): `npm run gen:weekly-email-preview` → `public/email-previews/weekly-report-sample-vihar-nar.html` (open locally or at `/email-previews/weekly-report-sample-vihar-nar.html` when hosted). Not a real email send.
 
 ### `FF_WEEKLY_DIGEST_SCHEDULER`
 

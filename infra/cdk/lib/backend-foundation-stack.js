@@ -286,8 +286,8 @@ class BackendFoundationStack extends cdk.Stack {
             actions: ["ses:SendEmail", "ses:SendRawEmail"],
             resources: ["*"],
         }));
-        // Default matches app owner; override with ADMIN_EMAILS=... at deploy time if needed.
-        const adminEmailsDeploy = process.env.ADMIN_EMAILS?.trim() || "viharnar@gmail.com";
+        // Default admin allowlist; override with ADMIN_EMAILS=... at deploy time (comma-separated).
+        const adminEmailsDeploy = process.env.ADMIN_EMAILS?.trim() || "ojashealth2026@gmail.com";
         /** Set to "false" on deploy machine to ship Lambda with LLM refine disabled. Key must be set on the function in AWS (not here) so it never appears in CloudFormation. */
         const insightsLlmRefineEnv = process.env.INSIGHTS_LLM_REFINE === "false" ? "false" : "true";
         /** Opt-out: enabled unless deploy explicitly sets FF_* to "false" (test portal friendly). */
@@ -299,7 +299,8 @@ class BackendFoundationStack extends cdk.Stack {
         const personalizedAiCoachingEnv = process.env.FF_PERSONALIZED_AI_COACHING === "false" ? "false" : "true";
         /** Opt-out: weekly SES send route unless FF_WEEKLY_REPORT_EMAIL=false. Requires TRANSACTIONAL_EMAIL_FROM. */
         const weeklyReportEmailEnv = process.env.FF_WEEKLY_REPORT_EMAIL === "false" ? "false" : "true";
-        const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() ?? "";
+        /** Default SES From when unset; verify in SES. Override with TRANSACTIONAL_EMAIL_FROM. */
+        const transactionalEmailFromDeploy = process.env.TRANSACTIONAL_EMAIL_FROM?.trim() || "ojashealth2026@gmail.com";
         const transactionalEmailFromNameDeploy = process.env.TRANSACTIONAL_EMAIL_FROM_NAME?.trim() || "Ojas Health";
         const transactionalEmailReplyToDeploy = process.env.TRANSACTIONAL_EMAIL_REPLY_TO?.trim() ?? "";
         const transactionalEmailMessageIdDomainDeploy = process.env.TRANSACTIONAL_EMAIL_MESSAGE_ID_DOMAIN?.trim() ?? "";

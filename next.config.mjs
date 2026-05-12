@@ -17,7 +17,7 @@ const nextConfig = {
   env: {
     // Fallback so admin UI works if Amplify omits the var; API still enforces ADMIN_EMAILS on Lambda.
     NEXT_PUBLIC_ADMIN_EMAILS:
-      process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "viharnar@gmail.com",
+      process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "ojashealth2026@gmail.com",
   },
 };
 

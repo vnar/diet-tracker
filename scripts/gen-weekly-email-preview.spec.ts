@@ -70,7 +70,7 @@ describe("weekly report email preview generator", () => {
       const inner = buildWeeklyReportEmailHtml(doc);
       const banner = `
   <div style="max-width:560px;margin:0 auto 16px;padding:12px 16px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:13px;color:#065f46;">
-    <strong>Sample email preview</strong> for <strong>Vihar Nar</strong> (viharnar@gmail.com) — not sent from Ojas-Health.
+    <strong>Sample email preview</strong> for <strong>Ojas Health</strong> (ojashealth2026@gmail.com) — not sent from Ojas-Health.
     Open in a browser; in production use the app&apos;s <strong>Email-ready export</strong> for your own logs.
   </div>
 `;

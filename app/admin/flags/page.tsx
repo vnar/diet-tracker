@@ -9,7 +9,13 @@ import {
   putAdminFlagOverride,
 } from "@/lib/frontend-api-client";
 
-const HARDCODED_ADMIN_EMAIL = "viharnar@gmail.com";
+function clientAdminEmails(): string[] {
+  const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "ojashealth2026@gmail.com";
+  return raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 type FlagOverrideRow = {
   userId: string;
@@ -27,10 +33,11 @@ export default function AdminFlagsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
-  const isAdmin = useMemo(
-    () => user?.email?.toLowerCase() === HARDCODED_ADMIN_EMAIL,
-    [user?.email],
-  );
+  const isAdmin = useMemo(() => {
+    const e = user?.email?.toLowerCase();
+    if (!e) return false;
+    return clientAdminEmails().includes(e);
+  }, [user?.email]);
 
   async function loadOverrides() {
     if (!targetUserId.trim()) {
