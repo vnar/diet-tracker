@@ -221,9 +221,9 @@ export function WeeklyReportCollapsible() {
         }
       }
 
-      const htmlBody = buildWeeklyReportEmailHtml(docForEmail);
-      const textBody = buildWeeklyReportEmailPlainText(docForEmail);
-      const baseSubject = `Ojas weekly (${report.aggregate.weekStart}–${report.aggregate.weekEnd})`;
+      const htmlBody = buildWeeklyReportEmailHtml(docForEmail, { deliverabilityNotice: "userTapSend" });
+      const textBody = buildWeeklyReportEmailPlainText(docForEmail, { deliverabilityNotice: "userTapSend" });
+      const baseSubject = `[Ojas Health] Your recap (${report.aggregate.weekStart}–${report.aggregate.weekEnd})`;
       const subject = reason === "resend" ? `${baseSubject} (copy)` : baseSubject;
       const r = await postV2WeeklyReportSendEmail({ htmlBody, textBody, subject }, token);
       setEmailBusy(false);

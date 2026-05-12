@@ -1,9 +1,50 @@
-import type { WeeklyReportDocument } from "@/lib/weeklyReport/types";
+import type { WeeklyReportDocument } from "./types";
 import {
   buildHumanEmailWeeklyBullets,
   humanEmailFooterNote,
   humanEmailLead,
-} from "@/lib/weeklyReport/emailHumanCopy";
+} from "./emailHumanCopy";
+
+/** When set, prepends a visible “transactional / consent” block for outbound email only (not in-app preview). */
+export type WeeklyReportEmailDeliverabilityNotice = "userTapSend" | "scheduledDigest";
+
+export type BuildWeeklyReportEmailOptions = {
+  deliverabilityNotice?: WeeklyReportEmailDeliverabilityNotice;
+};
+
+function deliverabilityNoticeHtml(kind: WeeklyReportEmailDeliverabilityNotice): string {
+  const box =
+    "margin:0 0 18px;padding:12px 14px;border-radius:10px;border:1px solid #bbf7d0;background:#ecfdf5;font-size:13px;line-height:1.5;color:#166534;";
+  const title = "display:block;margin-bottom:6px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#14532d;";
+  const link = "color:#047857;text-decoration:underline;";
+  if (kind === "userTapSend") {
+    return `<div role="note" style="${box}">
+      <strong style="${title}">Why you received this</strong>
+      You asked Ojas Health to send this recap from the app (Send to my inbox). It is a personal summary from your logs—not a marketing list.
+      <span style="display:block;margin-top:8px;font-size:12px;color:#15803d;">More: <a href="https://ojas-health.com/" style="${link}">ojas-health.com</a></span>
+    </div>`;
+  }
+  return `<div role="note" style="${box}">
+    <strong style="${title}">Why you received this</strong>
+    Weekly recap emails are turned on in your Ojas Health settings. We only send this because you opted in.
+    <span style="display:block;margin-top:8px;font-size:12px;color:#15803d;">Manage in the app or visit <a href="https://ojas-health.com/" style="${link}">ojas-health.com</a></span>
+  </div>`;
+}
+
+function deliverabilityNoticePlain(kind: WeeklyReportEmailDeliverabilityNotice): string {
+  if (kind === "userTapSend") {
+    return [
+      "Why you received this",
+      "You asked Ojas Health to send this recap from the app (Send to my inbox). Personal summary from your logs—not marketing.",
+      "https://ojas-health.com/",
+    ].join("\n");
+  }
+  return [
+    "Why you received this",
+    "Weekly recap emails are turned on in your Ojas Health settings. We only send because you opted in.",
+    "https://ojas-health.com/",
+  ].join("\n");
+}
 
 function esc(s: string): string {
   return s
@@ -46,17 +87,24 @@ function aiInsightsEmailBlock(insights: NonNullable<WeeklyReportDocument["aiInsi
 }
 
 /** Minimal inline-CSS HTML suitable for email clients (best-effort). Human-centric copy, not clinical report strings. */
-export function buildWeeklyReportEmailHtml(doc: WeeklyReportDocument): string {
+export function buildWeeklyReportEmailHtml(
+  doc: WeeklyReportDocument,
+  options?: BuildWeeklyReportEmailOptions,
+): string {
   const { sections, aggregate: agg } = doc;
   const exp = sections.nextExperiment;
   const aiBlock = doc.aiInsightsForEmail?.length ? aiInsightsEmailBlock(doc.aiInsightsForEmail) : "";
   const lead = humanEmailLead(doc);
   const bullets = buildHumanEmailWeeklyBullets(doc);
+  const noticeBlock = options?.deliverabilityNotice
+    ? deliverabilityNoticeHtml(options.deliverabilityNotice)
+    : "";
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><title>${esc(lead.title)}</title></head>
 <body style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#ececef;color:#18181b;padding:24px;">
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #e4e4e7;overflow:hidden;">
     <tr><td style="padding:26px 24px 22px;">
+      ${noticeBlock}
       <p style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#71717a;">Ojas weekly</p>
       <h1 style="font-size:22px;margin:0 0 12px;line-height:1.25;color:#18181b;font-weight:700;">${esc(lead.title)}</h1>
       <p style="margin:0 0 22px;color:#52525b;font-size:15px;line-height:1.55;">${esc(lead.tagline)}</p>
@@ -74,10 +122,16 @@ export function buildWeeklyReportEmailHtml(doc: WeeklyReportDocument): string {
 </body></html>`;
 }
 
-export function buildWeeklyReportEmailPlainText(doc: WeeklyReportDocument): string {
+export function buildWeeklyReportEmailPlainText(
+  doc: WeeklyReportDocument,
+  options?: BuildWeeklyReportEmailOptions,
+): string {
   const exp = doc.sections.nextExperiment;
   const lead = humanEmailLead(doc);
   const bullets = buildHumanEmailWeeklyBullets(doc);
+  const noticePrefix = options?.deliverabilityNotice
+    ? `${deliverabilityNoticePlain(options.deliverabilityNotice)}\n\n`
+    : "";
   const aiLines =
     doc.aiInsightsForEmail?.map((row, i) => {
       const src = row.source === "llm" ? " (touched up with AI)" : "";
@@ -90,7 +144,7 @@ export function buildWeeklyReportEmailPlainText(doc: WeeklyReportDocument): stri
       : "";
   const bulletBlock = bullets.map((l) => `• ${l}`).join("\n");
   const parts = [
-    `Ojas weekly\n${lead.title}\n${lead.tagline}\n`,
+    `${noticePrefix}Ojas weekly\n${lead.title}\n${lead.tagline}\n`,
     aiBlock,
     `What stood out\n${bulletBlock}\n`,
     `One thing to try next\n${exp.title}\n${exp.description}\n`,

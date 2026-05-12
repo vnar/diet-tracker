@@ -247,9 +247,9 @@ export async function handler(): Promise<{
             photos,
           });
           const doc = buildWeeklyReportFromRules(agg);
-          const html = buildWeeklyReportEmailHtml(doc);
-          const text = buildWeeklyReportEmailPlainText(doc);
-          const subject = `Ojas weekly report (${doc.aggregate.weekStart}–${doc.aggregate.weekEnd})`;
+          const html = buildWeeklyReportEmailHtml(doc, { deliverabilityNotice: "scheduledDigest" });
+          const text = buildWeeklyReportEmailPlainText(doc, { deliverabilityNotice: "scheduledDigest" });
+          const subject = `[Ojas Health] Weekly recap (${doc.aggregate.weekStart}–${doc.aggregate.weekEnd})`;
 
           await sendTransactionalWeeklyReportMime({ to: email, subject, html, textPlain: text });
           await markDigestSent(digestLogTable, sub, weekStart, email);
