@@ -2,7 +2,7 @@
  * Shared SES SendRawEmail path for weekly report HTML (user-initiated API + scheduled digest).
  */
 import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
-import { resolveTransactionalEmailFrom } from "@/lib/email/defaultTransactionalFrom";
+import { resolveTransactionalEmailFrom } from "../../../../lib/email/defaultTransactionalFrom";
 import {
   buildMessageId,
   buildMultipartAlternativeRfc822,

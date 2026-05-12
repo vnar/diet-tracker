@@ -10,7 +10,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from "node:path";
-import { DEFAULT_TRANSACTIONAL_EMAIL_FROM } from "@/lib/email/defaultTransactionalFrom";
+import { DEFAULT_TRANSACTIONAL_EMAIL_FROM } from "../../../lib/email/defaultTransactionalFrom";
 
 /** Comma-separated https origins allowed to PUT/GET progress/food photos via presigned URLs (e.g. Amplify https://main.d123.amplifyapp.com). */
 function photoCorsExtraOriginsFromEnv(): string[] {
