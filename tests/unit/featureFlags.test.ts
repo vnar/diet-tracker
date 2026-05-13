@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearUserFlagOverrides,
+  isCareCircleTeaserEnabled,
   isEnabled,
   isInsightsSourceLabelEnabled,
   isPersonalizedAiCoachingEnabled,
@@ -99,10 +100,26 @@ describe("voice daily logging flag", () => {
   });
 });
 
-describe("defaults on when unset (roadmap, CSV, Pro web)", () => {
+describe("roadmapEval: working vs teaser defaults", () => {
   beforeEach(() => {
     delete process.env.FF_WEIGHT_LOG_STREAK;
     delete process.env.NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK;
+    delete process.env.FF_CARE_CIRCLE_TEASER;
+    delete process.env.NEXT_PUBLIC_FF_CARE_CIRCLE_TEASER;
+    clearUserFlagOverrides();
+  });
+
+  it("enables working roadmap flags when env unset", () => {
+    expect(isWeightLogStreakEnabled("u1")).toBe(true);
+  });
+
+  it("keeps teaser roadmap flags off when env unset", () => {
+    expect(isCareCircleTeaserEnabled("u1")).toBe(false);
+  });
+});
+
+describe("defaults on when unset (CSV, Pro web)", () => {
+  beforeEach(() => {
     delete process.env.FF_WEIGHT_CSV_EXPORT;
     delete process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT;
     delete process.env.FF_PRO_MONETIZATION;
@@ -110,17 +127,14 @@ describe("defaults on when unset (roadmap, CSV, Pro web)", () => {
     clearUserFlagOverrides();
   });
 
-  it("enables weight streak, CSV export, and Pro monetization when env unset", () => {
-    expect(isWeightLogStreakEnabled("u-road")).toBe(true);
+  it("enables CSV export and Pro monetization when env unset", () => {
     expect(isWeightCsvExportEnabled("u-road")).toBe(true);
     expect(isProMonetizationEnabled("u-road")).toBe(true);
   });
 
-  it("respects explicit env false for roadmap and monetization flags", () => {
-    process.env.FF_WEIGHT_LOG_STREAK = "false";
+  it("respects explicit env false for CSV and Pro", () => {
     process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT = "false";
     process.env.FF_PRO_MONETIZATION = "false";
-    expect(isWeightLogStreakEnabled()).toBe(false);
     expect(isWeightCsvExportEnabled()).toBe(false);
     expect(isProMonetizationEnabled()).toBe(false);
   });

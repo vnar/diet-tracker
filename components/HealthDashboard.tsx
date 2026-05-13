@@ -17,7 +17,8 @@ import { ProgressPhotoTrackerProvider, PhotoTrackerGallery } from "@/components/
 import { DashboardAiInsightsHub } from "@/components/v2/insights/DashboardAiInsightsHub";
 import { WeightHistoryTable } from "@/components/WeightHistoryTable";
 import { WeightCsvExportPanel } from "@/components/v2/export/WeightCsvExportPanel";
-import { DashboardRoadmapSections } from "@/components/v2/roadmap/DashboardRoadmapSections";
+import { RoadmapCollapsibleDock } from "@/components/v2/roadmap/RoadmapCollapsibleDock";
+import { GlobalOfflineStrip } from "@/components/v2/roadmap/GlobalOfflineStrip";
 import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -42,7 +43,6 @@ import {
   isVoiceDailyLoggingEnabled,
   isProMonetizationEnabled,
   isWeightCsvExportEnabled,
-  isAiTrustFooterEnabled,
 } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
@@ -545,11 +545,10 @@ export function HealthDashboard() {
         ) : null}
 
         <div className="ui-dashboard-stack">
+          <GlobalOfflineStrip />
           <motion.section {...fadeInUp}>
             <DashboardKpiRow />
           </motion.section>
-
-          <DashboardRoadmapSections userId={user?.id} />
 
           <motion.section {...fadeInUp}>
             <WeightChart />
@@ -653,17 +652,6 @@ export function HealthDashboard() {
             <motion.section {...fadeInUp}>
               <DashboardAiInsightsHub />
             </motion.section>
-            {status === "authenticated" && user?.id && isAiTrustFooterEnabled(user.id) ? (
-              <motion.section
-                {...fadeInUp}
-                className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-[11px] leading-relaxed text-zinc-500"
-              >
-                <p>
-                  AI-assisted summaries here are estimates and coaching tone only — not medical advice.
-                  Always verify numbers and decisions with a qualified professional.
-                </p>
-              </motion.section>
-            ) : null}
           </ProgressPhotoTrackerProvider>
 
           <motion.section {...fadeInUp} id="dashboard-history">
@@ -681,6 +669,8 @@ export function HealthDashboard() {
               ) : null}
             </motion.section>
           ) : null}
+
+          {status === "authenticated" && user?.id ? <RoadmapCollapsibleDock userId={user.id} /> : null}
         </div>
       </div>
 

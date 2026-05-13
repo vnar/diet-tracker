@@ -39,9 +39,10 @@ function readEnvFlag(flag: string): boolean | undefined {
 }
 
 /**
- * Roadmap / dashboard experiments: **ON when unset** (explicit `false` in env or per-user override turns off).
+ * Roadmap slots: `defaultWhenUnset` is **true** for shipped client tools, **false** for betas / teasers.
+ * Explicit env `true`/`false` and per-user overrides still win.
  */
-function isRoadmapOptIn(flagSuffixWithoutFF: string, userId?: string): boolean {
+function roadmapEval(flagSuffixWithoutFF: string, userId: string | undefined, defaultWhenUnset: boolean): boolean {
   const full = normalizeFlag(flagSuffixWithoutFF);
   if (userId) {
     const o = overrideCacheByUser.get(userId)?.[full];
@@ -50,7 +51,7 @@ function isRoadmapOptIn(flagSuffixWithoutFF: string, userId?: string): boolean {
   const v = readEnvFlag(flagSuffixWithoutFF);
   if (v === true) return true;
   if (v === false) return false;
-  return true;
+  return defaultWhenUnset;
 }
 
 export function setUserFlagOverrides(userId: string, overrides: OverrideMap): void {
@@ -214,75 +215,71 @@ export function isWeightCsvExportEnabled(userId?: string): boolean {
   return true;
 }
 
-/** Morning weight logging streak card on the dashboard. Default OFF. */
+/** Morning weight logging streak card. On by default when unset. */
 export function isWeightLogStreakEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("WEIGHT_LOG_STREAK", userId);
+  return roadmapEval("WEIGHT_LOG_STREAK", userId, true);
 }
 
 export function isCareCircleTeaserEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("CARE_CIRCLE_TEASER", userId);
+  return roadmapEval("CARE_CIRCLE_TEASER", userId, false);
 }
 
 export function isWearablesRoadmapEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("WEARABLES_ROADMAP", userId);
+  return roadmapEval("WEARABLES_ROADMAP", userId, false);
 }
 
 export function isLabsRoadmapEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("LABS_ROADMAP", userId);
+  return roadmapEval("LABS_ROADMAP", userId, false);
 }
 
 export function isCommunityRoadmapEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("COMMUNITY_ROADMAP", userId);
+  return roadmapEval("COMMUNITY_ROADMAP", userId, false);
 }
 
 export function isEmployerWellnessTeaserEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("EMPLOYER_WELLNESS_TEASER", userId);
+  return roadmapEval("EMPLOYER_WELLNESS_TEASER", userId, false);
 }
 
 export function isSsoForTeamsTeaserEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("SSO_FOR_TEAMS_TEASER", userId);
+  return roadmapEval("SSO_FOR_TEAMS_TEASER", userId, false);
 }
 
 export function isDeveloperHooksTeaserEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("DEVELOPER_HOOKS_TEASER", userId);
+  return roadmapEval("DEVELOPER_HOOKS_TEASER", userId, false);
 }
 
 export function isMealPlanTeaserEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("MEAL_PLAN_TEASER", userId);
+  return roadmapEval("MEAL_PLAN_TEASER", userId, true);
 }
 
 export function isProteinHintStripEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("PROTEIN_HINT_STRIP", userId);
+  return roadmapEval("PROTEIN_HINT_STRIP", userId, true);
 }
 
 export function isSleepWeekCardEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("SLEEP_WEEK_CARD", userId);
+  return roadmapEval("SLEEP_WEEK_CARD", userId, true);
 }
 
 export function isMedicationWellnessCardEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("MEDICATION_WELLNESS_CARD", userId);
+  return roadmapEval("MEDICATION_WELLNESS_CARD", userId, true);
 }
 
 export function isProValueStripEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("PRO_VALUE_STRIP", userId);
+  return roadmapEval("PRO_VALUE_STRIP", userId, true);
 }
 
 export function isReferralInviteEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("REFERRAL_INVITE", userId);
-}
-
-export function isOfflineAwarenessBannerEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("OFFLINE_AWARENESS_BANNER", userId);
+  return roadmapEval("REFERRAL_INVITE", userId, true);
 }
 
 export function isYearReviewPageEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("YEAR_REVIEW_PAGE", userId);
+  return roadmapEval("YEAR_REVIEW_PAGE", userId, true);
 }
 
 export function isAiTrustFooterEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("AI_TRUST_FOOTER", userId);
+  return roadmapEval("AI_TRUST_FOOTER", userId, true);
 }
 
 export function isLocaleRoadmapCardEnabled(userId?: string): boolean {
-  return isRoadmapOptIn("LOCALE_ROADMAP_CARD", userId);
+  return roadmapEval("LOCALE_ROADMAP_CARD", userId, false);
 }

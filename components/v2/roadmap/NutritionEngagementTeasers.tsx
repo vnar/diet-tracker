@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   isMealPlanTeaserEnabled,
-  isMedicationWellnessCardEnabled,
   isProteinHintStripEnabled,
   isProValueStripEnabled,
   isReferralInviteEnabled,
@@ -87,17 +86,6 @@ export function NutritionEngagementTeasers({ userId }: { userId: string }) {
           <RoadmapInfoCard eyebrow="Sleep" title="7-night average (logged hours)">
             <p className="text-2xl font-bold tabular-nums text-zinc-100">{sleepAvg.toFixed(1)} h / night</p>
             <p>Based on sleep hours you saved on each day. Wearable sync will improve this later.</p>
-          </RoadmapInfoCard>
-        </motion.section>
-      ) : null}
-
-      {isMedicationWellnessCardEnabled(userId) ? (
-        <motion.section {...fadeInUp} aria-label="Medication reminder">
-          <RoadmapInfoCard eyebrow="Medications" title="Stay consistent">
-            <p>
-              Use today&apos;s notes to jot down prescriptions or supplements you took — structured med
-              schedules are on the roadmap.
-            </p>
           </RoadmapInfoCard>
         </motion.section>
       ) : null}

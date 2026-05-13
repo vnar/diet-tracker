@@ -3,7 +3,8 @@
 ## Conventions
 
 - Flag names use `FF_*`.
-- **Client defaults (web `lib/featureFlags.ts`):** `isEnabled`, roadmap cards (`isRoadmapOptIn`), **weight CSV export**, and **Pro monetization** are **ON when unset** — set the corresponding `FF_*` or `NEXT_PUBLIC_FF_*` env to `false` (or a per-user override in `FeatureFlagOverrides`) to turn them **off**. Production should set explicit `false` for anything you do not want live.
+- **Roadmap (`roadmapEval` in `lib/featureFlags.ts`):** each flag has a **web default when unset** — **on** for shipped client tools (streak, meal ideas, protein hint, sleep recap, medication checklist, Pro strip, referral, year-review link, AI trust note, CSV export, Pro monetization), and **off** for betas (care-circle share panel, wearables guide, local lab preview, community label, employer, SSO, developer context, locale teaser). Set `FF_*` / `NEXT_PUBLIC_FF_*` to `true` or `false`, or use per-user `FeatureFlagOverrides`, to override.
+- **`isEnabled`:** unchanged — still **on** when unset for legacy product flags unless env says otherwise.
 - Per-user overrides are stored in `FeatureFlagOverrides` and can be managed via `/admin/flags`.
 
 ## Flags
@@ -112,30 +113,31 @@
 - **Env keys:** `FF_WEIGHT_CSV_EXPORT`, `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT`. Per-user overrides: `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`.
 - **Analytics:** `weight_csv_export` with `rows` and `unit`.
 
-### Roadmap dashboard opt-ins (web default **ON** when unset)
+### Roadmap dock (`roadmapEval`)
 
-Each flag uses `isRoadmapOptIn`: enable with `NEXT_PUBLIC_FF_<FLAG>=true` or `FF_<FLAG>=true`, or per-user `FeatureFlagOverrides` using the **`FF_…`** key name.
+Roadmap UI lives in a **collapsible “More tools & roadmap”** block at the bottom of the signed-in dashboard. **Working** tools default **on** when unset; **Coming soon** betas default **off** — set `NEXT_PUBLIC_FF_<FLAG>=true` to try a beta, or `=false` to hide a working tool.
 
-| Flag | Purpose |
-|------|---------|
-| `FF_WEIGHT_LOG_STREAK` | Morning weigh-in streak card |
-| `FF_CARE_CIRCLE_TEASER` | Care-circle / sharing preview |
-| `FF_WEARABLES_ROADMAP` | Wearables sync preview |
-| `FF_LABS_ROADMAP` | Labs / biomarkers preview |
-| `FF_COMMUNITY_ROADMAP` | Community challenges preview |
-| `FF_EMPLOYER_WELLNESS_TEASER` | Employer wellness preview |
-| `FF_SSO_FOR_TEAMS_TEASER` | Enterprise SSO preview |
-| `FF_DEVELOPER_HOOKS_TEASER` | Webhooks / dev ecosystem teaser |
-| `FF_MEAL_PLAN_TEASER` | Static high-protein meal ideas |
-| `FF_PROTEIN_HINT_STRIP` | Protein band nudge when today's logged protein is below ~90g |
-| `FF_SLEEP_WEEK_CARD` | 7-night average of logged sleep hours |
-| `FF_MEDICATION_WELLNESS_CARD` | Medication consistency copy |
-| `FF_PRO_VALUE_STRIP` | Pro value + link to `/account/billing` |
-| `FF_REFERRAL_INVITE` | Mailto referral helper |
-| `FF_OFFLINE_AWARENESS_BANNER` | Offline connection reminder (wrapper; inner banner only shows when offline) |
-| `FF_YEAR_REVIEW_PAGE` | Link card to `/year-review` |
-| `FF_AI_TRUST_FOOTER` | Short disclaimer under dashboard insights hub |
-| `FF_LOCALE_ROADMAP_CARD` | Localization / i18n roadmap teaser |
+| Flag | Default (unset) | What it does |
+|------|------------------|----------------|
+| `FF_WEIGHT_LOG_STREAK` | On | Morning weigh-in streak |
+| `FF_MEAL_PLAN_TEASER` | On | High-protein meal ideas |
+| `FF_PROTEIN_HINT_STRIP` | On | Protein hint from today’s log |
+| `FF_SLEEP_WEEK_CARD` | On | 7-night sleep average |
+| `FF_MEDICATION_WELLNESS_CARD` | On | Local checklist (device only) |
+| `FF_PRO_VALUE_STRIP` | On | Link to `/account/billing` |
+| `FF_REFERRAL_INVITE` | On | Mailto invite |
+| `FF_YEAR_REVIEW_PAGE` | On | Link to `/year-review` |
+| `FF_AI_TRUST_FOOTER` | On | AI disclaimer in the dock |
+| `FF_CARE_CIRCLE_TEASER` | Off | Copy 7-day summary to clipboard |
+| `FF_WEARABLES_ROADMAP` | Off | Apple / Google export how-to links |
+| `FF_LABS_ROADMAP` | Off | Local lab file preview (no upload) |
+| `FF_COMMUNITY_ROADMAP` | Off | Local challenge label |
+| `FF_EMPLOYER_WELLNESS_TEASER` | Off | Employer pilot interest |
+| `FF_SSO_FOR_TEAMS_TEASER` | Off | SSO roadmap interest |
+| `FF_DEVELOPER_HOOKS_TEASER` | Off | Build context + repo link |
+| `FF_LOCALE_ROADMAP_CARD` | Off | Localization interest |
+
+Offline mode: a strip appears **above the KPI row** whenever the browser reports offline (no flag).
 
 ### `FF_PERSONALIZED_AI_COACHING`
 
