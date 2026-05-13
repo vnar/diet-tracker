@@ -58,6 +58,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
