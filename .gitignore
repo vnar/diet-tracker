@@ -15,3 +15,16 @@ infra/cdk/node_modules
 # Accidental tsc emit next to sources (breaks Vitest / Node resolution)
 lib/aiNudges/index.js
 lib/aiNudges/index.d.ts
+lib/aiNudges/*.js
+lib/aiNudges/*.d.ts
+lib/activity/*.js
+lib/activity/*.d.ts
+lib/anthropic/*.js
+lib/anthropic/*.d.ts
+lib/meals/nlMealParseHeuristic.js
+lib/meals/nlMealParseHeuristic.d.ts
+lib/weeklyReport/*.js
+lib/weeklyReport/*.d.ts
+!lib/weeklyReport/emailFormat.d.ts
+# macOS duplicate filenames
+lib/**/* 2.js
