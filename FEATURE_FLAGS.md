@@ -99,6 +99,12 @@
 - **IAM:** CDK grants the API Lambda `ses:SendEmail` and `ses:SendRawEmail` (multipart/alternative + headers).
 - **Dependency:** `infra/cdk` must include `@aws-sdk/client-ses` — run `npm install` under `infra/cdk` (if `ENOTEMPTY` errors, remove `infra/cdk/node_modules` and reinstall).
 
+### `FF_WEIGHT_LOG_STREAK`
+
+- **Default:** `false` when unset (opt-in: `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK=true` or `FF_WEIGHT_LOG_STREAK=true`, or per-user `FF_WEIGHT_LOG_STREAK` in `FeatureFlagOverrides`).
+- **Scope:** Dashboard card showing consecutive days with a morning weight logged (ends near today; same-day grace if today not logged yet). Analytics: `weight_streak_card_viewed`.
+- **Env keys:** `FF_WEIGHT_LOG_STREAK`, `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK`.
+
 ### `FF_WEIGHT_CSV_EXPORT`
 
 - **Default:** `false` when unset (opt-in: set `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=true` and/or per-user override `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`).

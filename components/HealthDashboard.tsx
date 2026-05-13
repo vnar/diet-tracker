@@ -17,6 +17,7 @@ import { ProgressPhotoTrackerProvider, PhotoTrackerGallery } from "@/components/
 import { DashboardAiInsightsHub } from "@/components/v2/insights/DashboardAiInsightsHub";
 import { WeightHistoryTable } from "@/components/WeightHistoryTable";
 import { WeightCsvExportPanel } from "@/components/v2/export/WeightCsvExportPanel";
+import { DashboardRoadmapSections } from "@/components/v2/roadmap/DashboardRoadmapSections";
 import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -546,6 +547,8 @@ export function HealthDashboard() {
           <motion.section {...fadeInUp}>
             <DashboardKpiRow />
           </motion.section>
+
+          <DashboardRoadmapSections userId={user?.id} />
 
           <motion.section {...fadeInUp}>
             <WeightChart />

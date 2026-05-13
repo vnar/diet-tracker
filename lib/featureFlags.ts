@@ -38,6 +38,19 @@ function readEnvFlag(flag: string): boolean | undefined {
   return publicValue;
 }
 
+/** Roadmap / dashboard experiments: OFF unless env or per-user override explicitly enables. */
+function isRoadmapOptIn(flagSuffixWithoutFF: string, userId?: string): boolean {
+  const full = normalizeFlag(flagSuffixWithoutFF);
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.[full];
+    if (typeof o === "boolean") return o;
+  }
+  const v = readEnvFlag(flagSuffixWithoutFF);
+  if (v === true) return true;
+  if (v === false) return false;
+  return false;
+}
+
 export function setUserFlagOverrides(userId: string, overrides: OverrideMap): void {
   overrideCacheByUser.set(userId, { ...overrides });
   notifyFeatureFlagOverridesChanged();
@@ -197,4 +210,9 @@ export function isWeightCsvExportEnabled(userId?: string): boolean {
   if (explicit === true) return true;
   if (explicit === false) return false;
   return process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT === "true";
+}
+
+/** Morning weight logging streak card on the dashboard. Default OFF. */
+export function isWeightLogStreakEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("WEIGHT_LOG_STREAK", userId);
 }
