@@ -16,6 +16,7 @@ import { WeightChart } from "@/components/WeightChart";
 import { ProgressPhotoTrackerProvider, PhotoTrackerGallery } from "@/components/PhotoTracker";
 import { DashboardAiInsightsHub } from "@/components/v2/insights/DashboardAiInsightsHub";
 import { WeightHistoryTable } from "@/components/WeightHistoryTable";
+import { WeightCsvExportPanel } from "@/components/v2/export/WeightCsvExportPanel";
 import { PastDayGrid } from "@/components/PastDayGrid";
 import { TodayActivityCard } from "@/components/TodayActivityCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -39,6 +40,7 @@ import {
   isPhotoFoodLogEnabled,
   isVoiceDailyLoggingEnabled,
   isProMonetizationEnabled,
+  isWeightCsvExportEnabled,
 } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
@@ -74,6 +76,7 @@ export function HealthDashboard() {
   const [loadingSettings, setLoadingSettings] = useState(false);
   const { status, getAccessToken, user, identityEmailMismatch } = useCognitoAuth();
   const proMonetizationOn = Boolean(user?.id && isProMonetizationEnabled(user.id));
+  const weightCsvExportOn = Boolean(user?.id && isWeightCsvExportEnabled(user.id));
   const gateProSurfaceFeatures = useMemo(
     () => shouldGateProFeature(proMonetizationOn, subscription),
     [proMonetizationOn, subscription],
@@ -656,6 +659,11 @@ export function HealthDashboard() {
           {entryCount > 0 ? (
             <motion.section {...fadeInUp}>
               <WeightHistoryTable />
+              {weightCsvExportOn ? (
+                <div className="mt-3">
+                  <WeightCsvExportPanel />
+                </div>
+              ) : null}
             </motion.section>
           ) : null}
         </div>

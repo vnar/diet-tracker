@@ -99,6 +99,13 @@
 - **IAM:** CDK grants the API Lambda `ses:SendEmail` and `ses:SendRawEmail` (multipart/alternative + headers).
 - **Dependency:** `infra/cdk` must include `@aws-sdk/client-ses` — run `npm install` under `infra/cdk` (if `ENOTEMPTY` errors, remove `infra/cdk/node_modules` and reinstall).
 
+### `FF_WEIGHT_CSV_EXPORT`
+
+- **Default:** `false` when unset (opt-in: set `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=true` and/or per-user override `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`).
+- **Scope:** Below **History** on the dashboard when the user has at least one weight entry: a **Download CSV** control exports date, morning/night weights (in the user’s display unit), and notes. Client-side only from synced store data; no API change.
+- **Env keys:** `FF_WEIGHT_CSV_EXPORT`, `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT`. Per-user overrides: `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`.
+- **Analytics:** `weight_csv_export` with `rows` and `unit`.
+
 ### `FF_PERSONALIZED_AI_COACHING`
 
 - **Default:** `true` (CDK sets Lambda `FF_PERSONALIZED_AI_COACHING` to `true` unless deploy uses `FF_PERSONALIZED_AI_COACHING=false` — opt-out like `FF_MEAL_LIBRARY`).

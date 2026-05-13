@@ -183,3 +183,18 @@ export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
   if (explicit === false) return false;
   return true;
 }
+
+/**
+ * Dashboard: download weight history as CSV (client-side from synced entries).
+ * Default OFF; enable with `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=true` or server `FF_WEIGHT_CSV_EXPORT=true`, or per-user override.
+ */
+export function isWeightCsvExportEnabled(userId?: string): boolean {
+  if (userId) {
+    const o = overrideCacheByUser.get(userId)?.["FF_WEIGHT_CSV_EXPORT"];
+    if (typeof o === "boolean") return o;
+  }
+  const explicit = readEnvFlag("WEIGHT_CSV_EXPORT");
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT === "true";
+}
