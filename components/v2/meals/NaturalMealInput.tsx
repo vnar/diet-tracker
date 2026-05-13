@@ -32,6 +32,7 @@ import {
   postMealNlParse,
   type NlMealParseApiResponse,
 } from "@/lib/frontend-api-client";
+import { heuristicNlMealParse } from "@/lib/meals/nlMealParseHeuristic";
 
 const PURPLE = "#A78BFA";
 const G = "#3DDB7A";
@@ -146,6 +147,12 @@ export function NaturalMealInput(props: Props) {
     const res = await postMealNlParse(raw, token);
     setLoading(false);
     if (!res.ok) {
+      if (res.error === "AI is not configured.") {
+        const data = heuristicNlMealParse(raw);
+        setResult({ ...data, parseSource: "heuristic" });
+        track("meal_nl_parse_ok", { day: props.day, items: data.items.length, parseSource: "heuristic" });
+        return;
+      }
       const msg =
         res.error.includes("parse") || res.error.includes("422")
           ? "Couldn't parse that — try rephrasing"
@@ -157,7 +164,11 @@ export function NaturalMealInput(props: Props) {
       return;
     }
     setResult(res.data);
-    track("meal_nl_parse_ok", { day: props.day, items: res.data.items.length });
+    track("meal_nl_parse_ok", {
+      day: props.day,
+      items: res.data.items.length,
+      parseSource: res.data.parseSource ?? "llm",
+    });
   }
 
   function onParseClick() {
@@ -285,6 +296,13 @@ export function NaturalMealInput(props: Props) {
     const res = await postMealNlParse(nextText, token);
     setRowBusy(null);
     if (!res.ok) {
+      if (res.error === "AI is not configured.") {
+        const data = heuristicNlMealParse(nextText);
+        setParseInput(nextText);
+        setResult({ ...data, parseSource: "heuristic" });
+        setText(nextText);
+        return;
+      }
       setErr("Couldn't re-parse — try again");
       return;
     }
@@ -314,7 +332,7 @@ export function NaturalMealInput(props: Props) {
             className="text-[9px] font-bold uppercase tracking-[1px]"
             style={{ color: PURPLE }}
           >
-            AI parse
+            Smart parse
           </span>
         </span>
       </div>

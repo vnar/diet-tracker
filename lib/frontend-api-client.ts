@@ -400,6 +400,8 @@ export type NlMealParseApiResponse = {
   }>;
   meal_type_guess: MealType;
   notes: string | null;
+  /** `llm` = Anthropic; `heuristic` = built-in parser (no key or AI error). */
+  parseSource?: "llm" | "heuristic";
 };
 
 export async function postFoodMealComplete(

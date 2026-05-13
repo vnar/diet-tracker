@@ -7,6 +7,7 @@ import {
   type NlMealParseItem,
   type NlMealParseResponse,
 } from "../../../lib/meals/nlMealParseResult";
+import { heuristicNlMealParse } from "../../../lib/meals/nlMealParseHeuristic";
 
 type HttpEvent = {
   rawPath: string;
@@ -197,7 +198,6 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
   }
 
   if (!mealsTable) return json(500, { error: "Meals table not configured." });
-  if (!apiKey) return json(503, { error: "AI is not configured." });
 
   const raw = parseJsonBody(event);
   if (raw === null) return json(400, { error: "Invalid JSON" });
@@ -211,6 +211,24 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
   } catch (e) {
     console.error(JSON.stringify({ msg: "nl_meal_library_list_failed", error: String(e) }));
     return json(500, { error: "Could not read meal library." });
+  }
+
+  function jsonHeuristicResponse(data: NlMealParseResponse, source: "heuristic"): HttpResult {
+    const clamped = clampConfidence(data);
+    const items = enrichItems(clamped.items, lib);
+    return json(200, {
+      title: clamped.title,
+      confidence: clamped.confidence,
+      items,
+      meal_type_guess: clamped.meal_type_guess,
+      notes: clamped.notes,
+      parseSource: source,
+    });
+  }
+
+  if (!apiKey) {
+    const data = heuristicNlMealParse(text);
+    return jsonHeuristicResponse(data, "heuristic");
   }
 
   try {
@@ -237,9 +255,15 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
       items,
       meal_type_guess: data.meal_type_guess,
       notes: data.notes,
+      parseSource: "llm" as const,
     });
   } catch (e) {
     console.error(JSON.stringify({ msg: "nl_meal_anthropic_failed", error: e instanceof Error ? e.message : String(e) }));
-    return json(502, { error: "Couldn't reach AI — check connection" });
+    const fallback = heuristicNlMealParse(text);
+    const merged: NlMealParseResponse = {
+      ...fallback,
+      notes: `AI unavailable — ${fallback.notes ?? "verify portions."}`.trim(),
+    };
+    return jsonHeuristicResponse(merged, "heuristic");
   }
 }
