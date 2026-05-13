@@ -83,7 +83,7 @@ export function NaturalMealSheet(props: Props) {
                 className="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-950 p-3 shadow-2xl"
               >
                 <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <p className="text-sm font-semibold text-zinc-100">Log a meal</p>
+                  <p className="text-sm font-semibold text-zinc-100">Log a meal (AI)</p>
                   <button
                     type="button"
                     className="rounded-md p-1 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"

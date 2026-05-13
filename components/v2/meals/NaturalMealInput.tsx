@@ -316,7 +316,7 @@ export function NaturalMealInput(props: Props) {
       className={`rounded-xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-3 shadow-inner shadow-black/20 ${props.className ?? ""}`}
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13px] font-semibold text-zinc-100">Log a meal</p>
+        <p className="text-[13px] font-semibold text-zinc-100">Log a meal (AI)</p>
         <span
           className="inline-flex items-center gap-1.5 rounded-[20px] border px-2 py-0.5"
           style={{
@@ -332,7 +332,7 @@ export function NaturalMealInput(props: Props) {
             className="text-[9px] font-bold uppercase tracking-[1px]"
             style={{ color: PURPLE }}
           >
-            Smart parse
+            AI parse
           </span>
         </span>
       </div>
@@ -364,7 +364,7 @@ export function NaturalMealInput(props: Props) {
             style={{ backgroundColor: PURPLE }}
           >
             <Sparkles className="h-[13px] w-[13px]" strokeWidth={2.5} />
-            Parse
+            AI parse
           </button>
         </div>
       ) : (

@@ -162,7 +162,7 @@ export function EnergyBalanceCard(props: Props) {
       <div className="mb-2 flex items-center justify-between">
         <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">Energy balance (beta)</p>
         <span className="inline-flex items-center gap-1 text-[10px] text-violet-300">
-          <Sparkles className="h-3 w-3" /> smart estimate
+          <Sparkles className="h-3 w-3" /> AI estimate
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
