@@ -1,6 +1,7 @@
 import type { AttributeValue, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { QueryCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import Anthropic from "@anthropic-ai/sdk";
+import { estimateActivityBurnHeuristic } from "../../../lib/activity/burnHeuristic";
 
 export type HttpEvent = {
   body?: string | null;
@@ -57,7 +58,17 @@ export async function handleV2ActivityEstimateBurn(event: HttpEvent): Promise<Ht
   if (!Number.isFinite(weightKg) || weightKg <= 0) return json(400, { error: "Missing/invalid weightKg" });
 
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return json(503, { error: "AI is not configured." });
+  if (!apiKey) {
+    const h = estimateActivityBurnHeuristic(activityText, weightKg);
+    return json(200, {
+      activitySummary: h.activitySummary || activityText,
+      minutes: h.minutes,
+      met: h.met,
+      kcalBurn: h.kcalBurn,
+      confidence: h.confidence,
+      estimateSource: "heuristic" as const,
+    });
+  }
   const model = process.env.ANTHROPIC_ACTIVITY_MODEL?.trim() || "claude-haiku-4-5";
 
   try {
@@ -101,6 +112,7 @@ export async function handleV2ActivityEstimateBurn(event: HttpEvent): Promise<Ht
       met: Math.max(1, Math.round(met * 10) / 10),
       kcalBurn: Math.max(0, Math.round(kcal)),
       confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(100, Math.round(confidence))) : 70,
+      estimateSource: "llm" as const,
     });
   } catch (error) {
     console.error("activity_estimate_failed", error);

@@ -10,6 +10,7 @@ import {
   postActivityLog,
   type DayMealEntryRow,
 } from "@/lib/frontend-api-client";
+import { estimateActivityBurnHeuristic } from "@/lib/activity/burnHeuristic";
 
 function estimateBaselineBurn(weightKg: number): number {
   // Additive, stable heuristic: resting kcal/day ~ 22 kcal per kg.
@@ -19,32 +20,6 @@ function estimateBaselineBurn(weightKg: number): number {
 function estimateStepBurn(steps?: number): number {
   if (!steps || steps <= 0) return 0;
   return Math.round(steps * 0.04);
-}
-
-function estimateActivityBurn(text: string, weightKg: number): number {
-  const t = text.toLowerCase().trim();
-  if (!t) return 0;
-  const minMatch = t.match(/(\d+)\s*(min|mins|minute|minutes|hr|hrs|hour|hours)\b/);
-  let mins = 30;
-  if (minMatch) {
-    const n = Number(minMatch[1]);
-    const unit = minMatch[2] ?? "min";
-    mins = unit.startsWith("h") ? n * 60 : n;
-  }
-  const met =
-    t.includes("bike") || t.includes("cycling")
-      ? 7
-      : t.includes("mow") || t.includes("lawn")
-        ? 5
-        : t.includes("run") || t.includes("jog")
-          ? 8
-          : t.includes("walk")
-            ? 3.5
-            : t.includes("swim")
-              ? 6
-              : 4;
-  // kcal/min = MET * 3.5 * kg / 200
-  return Math.round((met * 3.5 * weightKg * mins) / 200);
 }
 
 type Props = {
@@ -77,7 +52,8 @@ export function EnergyBalanceCard(props: Props) {
   const [weeklyAvgNet, setWeeklyAvgNet] = useState<number | null>(null);
   const [weeklyTrend, setWeeklyTrend] = useState<"deficit" | "surplus" | "near_maintenance" | null>(null);
 
-  const activityBurnRaw = aiBurn ?? estimateActivityBurn(activityText, weightKg);
+  const heuristicPreview = estimateActivityBurnHeuristic(activityText, weightKg);
+  const activityBurnRaw = aiBurn ?? heuristicPreview.kcalBurn;
   const activityBurn = Math.round(activityBurnRaw * calibration);
   const baselineBurn = estimateBaselineBurn(weightKg);
   const totalBurn = baselineBurn + stepBurn + activityBurn;
@@ -94,6 +70,15 @@ export function EnergyBalanceCard(props: Props) {
     );
     setBusy(false);
     if (!res.ok) {
+      if (res.error === "AI is not configured.") {
+        const h = estimateActivityBurnHeuristic(activityText.trim(), weightKg);
+        setAiBurn(h.kcalBurn);
+        setAiConfidence(h.confidence);
+        setAiSummary(h.activitySummary);
+        setAiMinutes(h.minutes);
+        setAiMet(h.met);
+        return;
+      }
       setErr(res.error);
       return;
     }

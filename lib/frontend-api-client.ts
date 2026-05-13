@@ -710,6 +710,8 @@ export async function postActivityBurnEstimate(
     met: number;
     kcalBurn: number;
     confidence: number;
+    /** Present on newer API: llm = Anthropic, heuristic = built-in MET formula. */
+    estimateSource?: "llm" | "heuristic";
   }>(
     "/v2/activity/estimate-burn",
     {
