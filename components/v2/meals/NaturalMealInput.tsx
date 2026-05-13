@@ -439,6 +439,14 @@ export function NaturalMealInput(props: Props) {
             </span>
           </div>
 
+          {(result.parseSource ?? "llm") === "llm" ? (
+            <p className="border-b border-zinc-700/50 px-3 py-1.5 text-[10px] text-violet-300/90">Powered by Claude</p>
+          ) : (
+            <p className="border-b border-zinc-700/50 px-3 py-1.5 text-[10px] text-amber-200/90">
+              Offline estimate — verify numbers
+            </p>
+          )}
+
           {result.notes ? (
             <p className="border-b border-zinc-700/50 px-3 py-2 text-[10px] text-amber-200/90">{result.notes}</p>
           ) : null}

@@ -51,6 +51,7 @@ export function EnergyBalanceCard(props: Props) {
   const [calibration, setCalibration] = useState<number>(props.initialCalibrationFactor ?? 1);
   const [weeklyAvgNet, setWeeklyAvgNet] = useState<number | null>(null);
   const [weeklyTrend, setWeeklyTrend] = useState<"deficit" | "surplus" | "near_maintenance" | null>(null);
+  const [estimateSource, setEstimateSource] = useState<"llm" | "heuristic" | null>(null);
 
   const heuristicPreview = estimateActivityBurnHeuristic(activityText, weightKg);
   const activityBurnRaw = aiBurn ?? heuristicPreview.kcalBurn;
@@ -77,6 +78,7 @@ export function EnergyBalanceCard(props: Props) {
         setAiSummary(h.activitySummary);
         setAiMinutes(h.minutes);
         setAiMet(h.met);
+        setEstimateSource("heuristic");
         return;
       }
       setErr(res.error);
@@ -87,6 +89,7 @@ export function EnergyBalanceCard(props: Props) {
     setAiSummary(res.data.activitySummary);
     setAiMinutes(res.data.minutes);
     setAiMet(res.data.met);
+    setEstimateSource(res.data.estimateSource ?? "llm");
   }
 
   async function saveActivityEstimate() {
@@ -152,6 +155,7 @@ export function EnergyBalanceCard(props: Props) {
     setAiSummary("");
     setAiMinutes(0);
     setAiMet(0);
+    setEstimateSource(null);
     props.onVoiceActivityPrefillConsumed?.();
   }, [props.voiceActivityPrefill]);
 
@@ -203,6 +207,17 @@ export function EnergyBalanceCard(props: Props) {
         <p className="mt-1 text-[10px] text-zinc-400">
           {aiSummary}
           {aiConfidence != null ? ` · ${aiConfidence}% confidence` : ""}
+        </p>
+      ) : null}
+      {aiBurn != null ? (
+        <p
+          className={`mt-1 text-[10px] ${
+            (estimateSource ?? "llm") === "heuristic" ? "text-amber-200/90" : "text-violet-300/90"
+          }`}
+        >
+          {(estimateSource ?? "llm") === "heuristic"
+            ? "Offline estimate — verify numbers"
+            : "Powered by Claude"}
         </p>
       ) : null}
       {err ? <p className="mt-1 text-[10px] text-rose-300">{err}</p> : null}
