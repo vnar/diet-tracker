@@ -18,17 +18,19 @@ const fadeInUp = {
 
 export function WorkingRoadmapFeatures({ userId }: { userId: string }) {
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {isWeightLogStreakEnabled(userId) ? (
-        <motion.section {...fadeInUp} aria-label="Weight logging streak">
-          <WeightStreakCard />
+        <motion.section {...fadeInUp} className="h-full min-h-0 sm:col-span-2" aria-label="Weight logging streak">
+          <WeightStreakCard compact />
         </motion.section>
       ) : null}
 
-      <NutritionEngagementTeasers userId={userId} />
+      <div className="grid grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-2">
+        <NutritionEngagementTeasers userId={userId} />
+      </div>
 
       {isMedicationWellnessCardEnabled(userId) ? (
-        <motion.section {...fadeInUp} aria-label="Medication checklist">
+        <motion.section {...fadeInUp} className="h-full min-h-0" aria-label="Medication checklist">
           <MedicationChecklistCard />
         </motion.section>
       ) : null}
@@ -36,7 +38,7 @@ export function WorkingRoadmapFeatures({ userId }: { userId: string }) {
       {isAiTrustFooterEnabled(userId) ? (
         <motion.section
           {...fadeInUp}
-          className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-[11px] leading-relaxed text-zinc-500"
+          className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2.5 py-2 text-[10px] leading-relaxed text-zinc-500 sm:col-span-2"
           aria-label="AI trust note"
         >
           <p>

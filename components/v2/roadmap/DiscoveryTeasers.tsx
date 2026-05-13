@@ -20,9 +20,9 @@ import { DeveloperContextPanel } from "@/components/v2/roadmap/DeveloperContextP
 
 export function DiscoveryTeasers({ userId }: { userId: string }) {
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {isCareCircleTeaserEnabled(userId) ? (
-        <div aria-label="Care circle sharing">
+        <div className="h-full min-h-0" aria-label="Care circle sharing">
           <CareCircleSharePanel />
         </div>
       ) : null}
