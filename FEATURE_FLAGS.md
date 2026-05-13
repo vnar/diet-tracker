@@ -35,7 +35,7 @@
 
 ### `FF_PRO_MONETIZATION`
 
-- **Default (web):** `true` when unset — set `FF_PRO_MONETIZATION=false` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=false` or per-user override to disable.
+- **Default (web):** `false` when unset — set `FF_PRO_MONETIZATION=true` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` or per-user override to enable paywalls.
 - **Scope:** Client-side Pro gates for NL meal parse, photo food estimate, and voice parse soft caps; `/account/billing` checkout CTA when combined with `FF_BILLING_ENABLED` or this flag. Requires API `GET /settings` `subscription` snapshot and deployed `POST /v2/billing/checkout-session` / `POST /v2/billing/portal` with `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY`.
 - **Env keys supported:** `FF_PRO_MONETIZATION`, `NEXT_PUBLIC_FF_PRO_MONETIZATION`.
 

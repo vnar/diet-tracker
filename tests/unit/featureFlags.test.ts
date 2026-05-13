@@ -118,7 +118,7 @@ describe("roadmapEval: working vs teaser defaults", () => {
   });
 });
 
-describe("defaults on when unset (CSV, Pro web)", () => {
+describe("defaults on when unset (CSV export)", () => {
   beforeEach(() => {
     delete process.env.FF_WEIGHT_CSV_EXPORT;
     delete process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT;
@@ -127,9 +127,9 @@ describe("defaults on when unset (CSV, Pro web)", () => {
     clearUserFlagOverrides();
   });
 
-  it("enables CSV export and Pro monetization when env unset", () => {
+  it("enables CSV export when env unset and keeps Pro monetization off", () => {
     expect(isWeightCsvExportEnabled("u-road")).toBe(true);
-    expect(isProMonetizationEnabled("u-road")).toBe(true);
+    expect(isProMonetizationEnabled("u-road")).toBe(false);
   });
 
   it("respects explicit env false for CSV and Pro", () => {
@@ -137,5 +137,10 @@ describe("defaults on when unset (CSV, Pro web)", () => {
     process.env.FF_PRO_MONETIZATION = "false";
     expect(isWeightCsvExportEnabled()).toBe(false);
     expect(isProMonetizationEnabled()).toBe(false);
+  });
+
+  it("enables Pro monetization when env is explicitly true", () => {
+    process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION = "true";
+    expect(isProMonetizationEnabled("u-road")).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { MARKETING_DEFAULT_METADATA, MARKETING_SITE_URL } from "@/lib/marketing/siteCopy";
 import { Plus_Jakarta_Sans, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppFooter } from "@/components/AppFooter";
@@ -30,8 +31,24 @@ const fontInsightDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Ojas-Health",
-  description: "Daily awareness dashboard for weight and habits",
+  metadataBase: new URL(MARKETING_SITE_URL),
+  title: {
+    default: MARKETING_DEFAULT_METADATA.title,
+    template: "%s · Ojas Health",
+  },
+  description: MARKETING_DEFAULT_METADATA.description,
+  openGraph: {
+    type: "website",
+    url: MARKETING_SITE_URL,
+    title: MARKETING_DEFAULT_METADATA.openGraphTitle,
+    description: MARKETING_DEFAULT_METADATA.openGraphDescription,
+    siteName: "Ojas Health",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: MARKETING_DEFAULT_METADATA.openGraphTitle,
+    description: MARKETING_DEFAULT_METADATA.openGraphDescription,
+  },
 };
 
 export const viewport: Viewport = {
