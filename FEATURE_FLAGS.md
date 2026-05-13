@@ -135,6 +135,7 @@ Each flag uses `isRoadmapOptIn`: enable with `NEXT_PUBLIC_FF_<FLAG>=true` or `FF
 | `FF_OFFLINE_AWARENESS_BANNER` | Offline connection reminder (wrapper; inner banner only shows when offline) |
 | `FF_YEAR_REVIEW_PAGE` | Link card to `/year-review` |
 | `FF_AI_TRUST_FOOTER` | Short disclaimer under dashboard insights hub |
+| `FF_LOCALE_ROADMAP_CARD` | Localization / i18n roadmap teaser |
 
 ### `FF_PERSONALIZED_AI_COACHING`
 

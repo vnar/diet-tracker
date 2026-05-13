@@ -8,6 +8,7 @@ import {
   isDeveloperHooksTeaserEnabled,
   isEmployerWellnessTeaserEnabled,
   isLabsRoadmapEnabled,
+  isLocaleRoadmapCardEnabled,
   isSsoForTeamsTeaserEnabled,
   isWearablesRoadmapEnabled,
 } from "@/lib/featureFlags";
@@ -144,6 +145,24 @@ export function DiscoveryTeasers({ userId }: { userId: string }) {
             >
               Star the repo / follow releases
             </Link>
+          </RoadmapInfoCard>
+        </motion.section>
+      ) : null}
+
+      {isLocaleRoadmapCardEnabled(userId) ? (
+        <motion.section {...fadeInUp} aria-label="Localization">
+          <RoadmapInfoCard eyebrow="Localization" title="Global-ready UI">
+            <p>
+              Spanish-first copy experiments, regional units, and meal vocabulary tuned per market — shipping
+              behind gradual flags so nothing breaks for existing users.
+            </p>
+            <button
+              type="button"
+              className="text-xs font-semibold text-emerald-400 underline-offset-2 hover:underline"
+              onClick={() => track("roadmap_locale_interest", {})}
+            >
+              Vote for your language
+            </button>
           </RoadmapInfoCard>
         </motion.section>
       ) : null}

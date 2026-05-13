@@ -280,3 +280,7 @@ export function isYearReviewPageEnabled(userId?: string): boolean {
 export function isAiTrustFooterEnabled(userId?: string): boolean {
   return isRoadmapOptIn("AI_TRUST_FOOTER", userId);
 }
+
+export function isLocaleRoadmapCardEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("LOCALE_ROADMAP_CARD", userId);
+}
