@@ -216,3 +216,67 @@ export function isWeightCsvExportEnabled(userId?: string): boolean {
 export function isWeightLogStreakEnabled(userId?: string): boolean {
   return isRoadmapOptIn("WEIGHT_LOG_STREAK", userId);
 }
+
+export function isCareCircleTeaserEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("CARE_CIRCLE_TEASER", userId);
+}
+
+export function isWearablesRoadmapEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("WEARABLES_ROADMAP", userId);
+}
+
+export function isLabsRoadmapEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("LABS_ROADMAP", userId);
+}
+
+export function isCommunityRoadmapEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("COMMUNITY_ROADMAP", userId);
+}
+
+export function isEmployerWellnessTeaserEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("EMPLOYER_WELLNESS_TEASER", userId);
+}
+
+export function isSsoForTeamsTeaserEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("SSO_FOR_TEAMS_TEASER", userId);
+}
+
+export function isDeveloperHooksTeaserEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("DEVELOPER_HOOKS_TEASER", userId);
+}
+
+export function isMealPlanTeaserEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("MEAL_PLAN_TEASER", userId);
+}
+
+export function isProteinHintStripEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("PROTEIN_HINT_STRIP", userId);
+}
+
+export function isSleepWeekCardEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("SLEEP_WEEK_CARD", userId);
+}
+
+export function isMedicationWellnessCardEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("MEDICATION_WELLNESS_CARD", userId);
+}
+
+export function isProValueStripEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("PRO_VALUE_STRIP", userId);
+}
+
+export function isReferralInviteEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("REFERRAL_INVITE", userId);
+}
+
+export function isOfflineAwarenessBannerEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("OFFLINE_AWARENESS_BANNER", userId);
+}
+
+export function isYearReviewPageEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("YEAR_REVIEW_PAGE", userId);
+}
+
+export function isAiTrustFooterEnabled(userId?: string): boolean {
+  return isRoadmapOptIn("AI_TRUST_FOOTER", userId);
+}

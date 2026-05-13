@@ -112,6 +112,30 @@
 - **Env keys:** `FF_WEIGHT_CSV_EXPORT`, `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT`. Per-user overrides: `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`.
 - **Analytics:** `weight_csv_export` with `rows` and `unit`.
 
+### Roadmap dashboard opt-ins (default **OFF**)
+
+Each flag uses `isRoadmapOptIn`: enable with `NEXT_PUBLIC_FF_<FLAG>=true` or `FF_<FLAG>=true`, or per-user `FeatureFlagOverrides` using the **`FF_…`** key name.
+
+| Flag | Purpose |
+|------|---------|
+| `FF_WEIGHT_LOG_STREAK` | Morning weigh-in streak card |
+| `FF_CARE_CIRCLE_TEASER` | Care-circle / sharing preview |
+| `FF_WEARABLES_ROADMAP` | Wearables sync preview |
+| `FF_LABS_ROADMAP` | Labs / biomarkers preview |
+| `FF_COMMUNITY_ROADMAP` | Community challenges preview |
+| `FF_EMPLOYER_WELLNESS_TEASER` | Employer wellness preview |
+| `FF_SSO_FOR_TEAMS_TEASER` | Enterprise SSO preview |
+| `FF_DEVELOPER_HOOKS_TEASER` | Webhooks / dev ecosystem teaser |
+| `FF_MEAL_PLAN_TEASER` | Static high-protein meal ideas |
+| `FF_PROTEIN_HINT_STRIP` | Protein band nudge when today's logged protein is below ~90g |
+| `FF_SLEEP_WEEK_CARD` | 7-night average of logged sleep hours |
+| `FF_MEDICATION_WELLNESS_CARD` | Medication consistency copy |
+| `FF_PRO_VALUE_STRIP` | Pro value + link to `/account/billing` |
+| `FF_REFERRAL_INVITE` | Mailto referral helper |
+| `FF_OFFLINE_AWARENESS_BANNER` | Offline connection reminder (wrapper; inner banner only shows when offline) |
+| `FF_YEAR_REVIEW_PAGE` | Link card to `/year-review` |
+| `FF_AI_TRUST_FOOTER` | Short disclaimer under dashboard insights hub |
+
 ### `FF_PERSONALIZED_AI_COACHING`
 
 - **Default:** `true` (CDK sets Lambda `FF_PERSONALIZED_AI_COACHING` to `true` unless deploy uses `FF_PERSONALIZED_AI_COACHING=false` — opt-out like `FF_MEAL_LIBRARY`).

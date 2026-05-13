@@ -42,6 +42,7 @@ import {
   isVoiceDailyLoggingEnabled,
   isProMonetizationEnabled,
   isWeightCsvExportEnabled,
+  isAiTrustFooterEnabled,
 } from "@/lib/featureFlags";
 import { useFeatureFlagOverridesEpoch } from "@/hooks/useFeatureFlagOverridesEpoch";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
@@ -652,6 +653,17 @@ export function HealthDashboard() {
             <motion.section {...fadeInUp}>
               <DashboardAiInsightsHub />
             </motion.section>
+            {status === "authenticated" && user?.id && isAiTrustFooterEnabled(user.id) ? (
+              <motion.section
+                {...fadeInUp}
+                className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-[11px] leading-relaxed text-zinc-500"
+              >
+                <p>
+                  AI-assisted summaries here are estimates and coaching tone only — not medical advice.
+                  Always verify numbers and decisions with a qualified professional.
+                </p>
+              </motion.section>
+            ) : null}
           </ProgressPhotoTrackerProvider>
 
           <motion.section {...fadeInUp} id="dashboard-history">
