@@ -44,6 +44,7 @@ import {
   handleV2MealsPatch,
   handleV2MealsSuggestMatch,
 } from "./meals-api";
+import { ensureAnthropicApiKeyFromSecrets } from "../../../lib/anthropic/lambdaApiKeyFromSecrets";
 import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
 import { handleBillingCheckoutSession, handleBillingPortalSession } from "./billing-api";
 import { handlePostV2WeeklyReportSendEmail } from "./weekly-report-email-send";
@@ -1803,6 +1804,7 @@ async function upsertFeatureFlagOverride(event: HttpEvent): Promise<HttpResult> 
 
 export async function handler(event: HttpEvent): Promise<HttpResult> {
   try {
+    await ensureAnthropicApiKeyFromSecrets();
     const userId = getUserId(event);
     if (!userId) return json(401, { error: "Unauthorized" });
     const method = (

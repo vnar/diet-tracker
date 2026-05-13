@@ -54,7 +54,9 @@ After sign-in, the app loads `GET /feature-flags` and caches those booleans. **L
 
    Template-only synth without a key is possible only with `CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true` (not for production).
 
-   The value is stored in CloudFormation like other Lambda env strings; rotate the key if the template is too exposed for your threat model, or move to Secrets Manager later.
+   On a normal deploy, the key is stored in **AWS Secrets Manager** and Lambdas read it via `GetSecretValue` using the ARN in their environment (the raw key is not kept in Lambda env vars after deploy).
+
+   The value is still supplied to CloudFormation when the secret resource is created or updated; rotate the key in Secrets Manager or redeploy with a new `ANTHROPIC_API_KEY` if needed.
 
 ## Docker Postgres (legacy, optional)
 

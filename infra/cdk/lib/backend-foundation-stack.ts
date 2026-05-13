@@ -8,6 +8,7 @@ import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from "node:path";
 import { DEFAULT_TRANSACTIONAL_EMAIL_FROM } from "../../../lib/email/defaultTransactionalFrom";
@@ -323,9 +324,25 @@ export class BackendFoundationStack extends cdk.Stack {
     /** Injected at CDK deploy time; `assertAnthropicApiKeyForCdk()` in `bin/backend-foundation.ts` rejects empty keys unless CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
+    /** Non-empty deploy key is stored in Secrets Manager; Lambdas receive only the ARN (no key in Lambda env). */
+    const anthropicApiKeySecret =
+      anthropicApiKeyDeploy.length > 0
+        ? new secretsmanager.Secret(this, "AnthropicApiKeySecret", {
+            secretName: `${this.stackName}-anthropic-api-key`,
+            description:
+              "Anthropic API key for Ojas Health (backend-api + meal-nl-parse). Populated from ANTHROPIC_API_KEY on the CDK deploy machine; rotate by updating the secret or redeploying with a new key.",
+            secretStringValue: cdk.SecretValue.unsafePlainText(anthropicApiKeyDeploy),
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+          })
+        : undefined;
+    const anthropicLambdaEnv: Record<string, string> = anthropicApiKeySecret
+      ? { ANTHROPIC_API_KEY_SECRET_ARN: anthropicApiKeySecret.secretArn }
+      : { ANTHROPIC_API_KEY: anthropicApiKeyDeploy };
     /** Set at deploy time; empty disables Stripe routes (503) until configured. */
     const stripeSecretKeyDeploy = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
     const billingAppUrlDeploy = process.env.BILLING_APP_URL?.trim() ?? process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+    /** Monorepo root — NodejsFunction bundling resolves deps from root `package-lock.json` (includes client-secrets-manager). */
+    const repoRootForLambdaBundle = path.join(__dirname, "..", "..", "..");
     const mealNlParseLambda = new NodejsFunction(this, "MealNlParseLambda", {
       functionName: `${this.stackName}-meal-nl-parse`,
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -334,12 +351,14 @@ export class BackendFoundationStack extends cdk.Stack {
       role: mealNlParseLambdaRole,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
+      projectRoot: repoRootForLambdaBundle,
+      depsLockFilePath: path.join(repoRootForLambdaBundle, "package-lock.json"),
       environment: {
         MEALS_TABLE_NAME: mealsTable.tableName,
         INSIGHT_CACHE_TABLE_NAME: insightCacheTable.tableName,
         FF_MEAL_LIBRARY: mealLibraryEnv,
         FF_NL_MEAL_PARSE: nlMealParseEnv,
-        ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
+        ...anthropicLambdaEnv,
         ...(process.env.ANTHROPIC_NL_MEAL_MODEL?.trim()
           ? { ANTHROPIC_NL_MEAL_MODEL: process.env.ANTHROPIC_NL_MEAL_MODEL.trim() }
           : {}),
@@ -360,6 +379,8 @@ export class BackendFoundationStack extends cdk.Stack {
       role: backendLambdaRole,
       timeout: cdk.Duration.seconds(60),
       memorySize: 512,
+      projectRoot: repoRootForLambdaBundle,
+      depsLockFilePath: path.join(repoRootForLambdaBundle, "package-lock.json"),
       environment: {
         ENTRIES_TABLE_NAME: entriesTable.tableName,
         SETTINGS_TABLE_NAME: settingsTable.tableName,
@@ -397,7 +418,7 @@ export class BackendFoundationStack extends cdk.Stack {
         ...(transactionalEmailListUnsubscribeUrlDeploy
           ? { TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_URL: transactionalEmailListUnsubscribeUrlDeploy }
           : {}),
-        ANTHROPIC_API_KEY: anthropicApiKeyDeploy,
+        ...anthropicLambdaEnv,
         STRIPE_SECRET_KEY: stripeSecretKeyDeploy,
         ...(billingAppUrlDeploy ? { BILLING_APP_URL: billingAppUrlDeploy } : {}),
         ...(anthropicFoodVisionModel
@@ -411,6 +432,11 @@ export class BackendFoundationStack extends cdk.Stack {
         forceDockerBundling: false,
       },
     });
+
+    if (anthropicApiKeySecret) {
+      anthropicApiKeySecret.grantRead(mealNlParseLambda);
+      anthropicApiKeySecret.grantRead(apiLambda);
+    }
 
     const weeklyDigestLambdaRole = new iam.Role(this, "WeeklyDigestLambdaRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -623,5 +649,13 @@ export class BackendFoundationStack extends cdk.Stack {
       value: photosBucket.bucketName,
       exportName: `${this.stackName}-bucket-name`,
     });
+
+    if (anthropicApiKeySecret) {
+      new cdk.CfnOutput(this, "AnthropicApiKeySecretArn", {
+        value: anthropicApiKeySecret.secretArn,
+        description: "Secrets Manager ARN for the Anthropic API key (Lambdas call GetSecretValue at runtime).",
+        exportName: `${this.stackName}-anthropic-secret-arn`,
+      });
+    }
   }
 }

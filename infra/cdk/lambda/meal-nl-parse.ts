@@ -2,6 +2,7 @@ import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { BatchWriteItemCommand, DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import Anthropic from "@anthropic-ai/sdk";
 import { NL_MEAL_PARSER_SYSTEM } from "../../../lib/meals/nlMealParsePrompt";
+import { ensureAnthropicApiKeyFromSecrets } from "../../../lib/anthropic/lambdaApiKeyFromSecrets";
 import {
   parseNlMealLlmJson,
   type NlMealParseItem,
@@ -176,6 +177,8 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
   if (method !== "POST") {
     return json(405, { error: "Method not allowed" });
   }
+
+  await ensureAnthropicApiKeyFromSecrets();
 
   const mealsTable = process.env.MEALS_TABLE_NAME?.trim();
   const insightCacheTable = process.env.INSIGHT_CACHE_TABLE_NAME?.trim();
