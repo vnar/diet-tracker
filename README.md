@@ -45,12 +45,14 @@ After sign-in, the app loads `GET /feature-flags` and caches those booleans. **L
 
    (or set the same env vars your CDK deploy pipeline uses before `cdk deploy`). Otherwise the UI may appear but meal requests return 403 until Lambda matches.
 
-3. **Food vision** needs **`ANTHROPIC_API_KEY`** on the same API Lambda. CDK passes it from the **deploy machine** when present (e.g. load `.env.local` before deploy). Example:
+3. **Anthropic / AI** — **`ANTHROPIC_API_KEY` is required** for `npm run infra:cdk:deploy` and `infra:cdk:synth` (see `infra/cdk/bin/backend-foundation.ts`). CDK bakes it into the **backend-api** and **meal-nl-parse** Lambdas. Load it from `.env.local` on the deploy machine, for example:
 
    ```bash
    set -a && [ -f .env.local ] && . ./.env.local && set +a
    FF_PHOTO_FOOD_LOG=true FF_MEAL_LIBRARY=true npm run infra:cdk:deploy
    ```
+
+   Template-only synth without a key is possible only with `CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true` (not for production).
 
    The value is stored in CloudFormation like other Lambda env strings; rotate the key if the template is too exposed for your threat model, or move to Secrets Manager later.
 

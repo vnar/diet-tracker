@@ -26,17 +26,20 @@ Stack outputs used: `ApiUrl`, `UserPoolId`, `UserPoolClientId`, `Region`, `Bucke
 
 ## CDK deploy-time (your laptop or CI shell)
 
-Passed into the stack when you run `npm run infra:cdk:deploy`. These **bake into Lambda** where noted; they are **not** secrets in CloudFormation if you set them here (especially `ANTHROPIC_API_KEY` — prefer AWS console / Secrets Manager for production if you tighten this later).
+Passed into the stack when you run `npm run infra:cdk:deploy` or `infra:cdk:synth`. These **bake into Lambda** where noted; they are **not** secrets in CloudFormation if you set them here (especially `ANTHROPIC_API_KEY` — prefer AWS console / Secrets Manager for production if you tighten this later).
+
+**Anthropic:** `bin/backend-foundation.ts` calls `assertAnthropicApiKeyForCdk()` so synth/deploy **fails** if `ANTHROPIC_API_KEY` is unset or an obvious placeholder. This stops accidentally shipping Lambdas with no AI key. To run CDK without a key (e.g. template-only CI), set `CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true` — do **not** use that for production deploys.
 
 | Variable | Purpose |
 |----------|---------|
 | `CDK_DEFAULT_ACCOUNT` | AWS account (optional if CLI default is set). |
 | `CDK_DEFAULT_REGION` | Region for the stack (optional if CLI default is set). |
+| `CDK_ALLOW_MISSING_ANTHROPIC_API_KEY` | Set to `true` only to skip the Anthropic key check (non-production synth). |
 | `ADMIN_EMAILS` | Comma-separated emails; Lambda `ADMIN_EMAILS` (default in code: app owner email). |
 | `INSIGHTS_LLM_REFINE` | `"false"` to deploy Lambda with LLM refine off; default `"true"`. |
 | `FF_PHOTO_FOOD_LOG` | `"true"` / `"false"` → Lambda feature flag for photo food logging. |
 | `FF_MEAL_LIBRARY` | `"true"` / `"false"` → Lambda feature flag for meal library. |
-| `ANTHROPIC_API_KEY` | Anthropic key on the **main** backend Lambda (vision + insights paths). |
+| `ANTHROPIC_API_KEY` | **Required** for CDK synth/deploy (checked in `bin/backend-foundation.ts`). Baked into **backend-api** and **meal-nl-parse** Lambdas (vision, insights, meal NL parse, activity burn). |
 | `ANTHROPIC_FOOD_VISION_MODEL` | Optional; vision model id for food photos. |
 | `ANTHROPIC_INSIGHTS_MODEL` | Read at runtime in `insights-ai-card` if set on the function; not always injected by CDK — set in Lambda console if you need a non-default model. |
 

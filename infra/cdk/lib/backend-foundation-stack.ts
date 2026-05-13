@@ -320,7 +320,7 @@ export class BackendFoundationStack extends cdk.Stack {
       process.env.TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_ONE_CLICK === "true" ? "true" : "false";
     /** Opt-in: EventBridge invokes weekly digest Lambda (Mondays UTC). Users must set `weeklyDigestEmail` in Settings. */
     const weeklyDigestSchedulerEnv = process.env.FF_WEEKLY_DIGEST_SCHEDULER === "true" ? "true" : "false";
-    /** Set on the machine that runs `cdk deploy` (never commit). Omitted empty string still keeps the env slot so food vision can be enabled without the console. */
+    /** Injected at CDK deploy time; `assertAnthropicApiKeyForCdk()` in `bin/backend-foundation.ts` rejects empty keys unless CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
     /** Set at deploy time; empty disables Stripe routes (503) until configured. */
