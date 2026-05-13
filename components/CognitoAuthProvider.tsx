@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
+  confirmForgotPasswordWithCognito,
   confirmSignUpWithCognito,
+  forgotPasswordWithCognito,
   resendConfirmationWithCognito,
   sessionFromAuthResult,
   signInWithCognito,
@@ -12,6 +14,7 @@ import {
   type CognitoSessionTokens,
   type CognitoUserProfile,
 } from "@/lib/cognito-client";
+import { mapCognitoAuthError } from "@/lib/cognito-map-auth-error";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -24,6 +27,14 @@ type SignInResult =
   | { ok: false; error: string };
 
 type ConfirmSignUpResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+type PasswordResetRequestResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+type PasswordResetCompleteResult =
   | { ok: true }
   | { ok: false; error: string };
 
@@ -43,6 +54,13 @@ type AuthContextValue = {
   signUp: (args: { email: string; password: string; name?: string }) => Promise<SignUpResult>;
   confirmSignUp: (args: { email: string; code: string }) => Promise<ConfirmSignUpResult>;
   resendConfirmation: (email: string) => Promise<ConfirmSignUpResult>;
+  /** Sends a reset code to the user's email. Does not reveal whether the email is registered. */
+  requestPasswordReset: (email: string) => Promise<PasswordResetRequestResult>;
+  completePasswordReset: (args: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }) => Promise<PasswordResetCompleteResult>;
   signOut: () => void;
   getAccessToken: () => string | null;
 };
@@ -63,28 +81,6 @@ function readStoredSession(): CognitoSessionTokens | null {
     return parsed;
   } catch {
     return null;
-  }
-}
-
-function mapAuthError(error: unknown) {
-  const err = error as { name?: string };
-  switch (err?.name) {
-    case "NotAuthorizedException":
-      return "Wrong email or password.";
-    case "UserNotConfirmedException":
-      return "Account created, but email is not confirmed yet.";
-    case "UsernameExistsException":
-      return "That email is already registered. Sign in instead.";
-    case "InvalidPasswordException":
-      return "Password does not meet Cognito policy requirements.";
-    case "CodeMismatchException":
-      return "Invalid verification code.";
-    case "ExpiredCodeException":
-      return "Verification code expired. Request a new code.";
-    case "LimitExceededException":
-      return "Too many attempts. Please wait and try again.";
-    default:
-      return "Authentication failed.";
   }
 }
 
@@ -150,7 +146,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
           setStatus("authenticated");
           return { ok: true };
         } catch (error) {
-          return { ok: false, error: mapAuthError(error) };
+          return { ok: false, error: mapCognitoAuthError(error) };
         }
       },
       async signUp(args) {
@@ -161,7 +157,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
             needsConfirmation: response.UserConfirmed === false,
           };
         } catch (error) {
-          return { ok: false, error: mapAuthError(error) };
+          return { ok: false, error: mapCognitoAuthError(error) };
         }
       },
       async confirmSignUp(args) {
@@ -169,7 +165,7 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
           await confirmSignUpWithCognito(args);
           return { ok: true };
         } catch (error) {
-          return { ok: false, error: mapAuthError(error) };
+          return { ok: false, error: mapCognitoAuthError(error) };
         }
       },
       async resendConfirmation(email) {
@@ -177,7 +173,27 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
           await resendConfirmationWithCognito(email);
           return { ok: true };
         } catch (error) {
-          return { ok: false, error: mapAuthError(error) };
+          return { ok: false, error: mapCognitoAuthError(error) };
+        }
+      },
+      async requestPasswordReset(email) {
+        try {
+          await forgotPasswordWithCognito(email);
+          return { ok: true };
+        } catch (error) {
+          const name = (error as { name?: string })?.name;
+          if (name === "UserNotFoundException") {
+            return { ok: true };
+          }
+          return { ok: false, error: mapCognitoAuthError(error) };
+        }
+      },
+      async completePasswordReset(args) {
+        try {
+          await confirmForgotPasswordWithCognito(args);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error: mapCognitoAuthError(error) };
         }
       },
       signOut() {

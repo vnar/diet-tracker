@@ -12,6 +12,8 @@ type JwtPayload = {
 
 /** Cognito IDP JSON API — works reliably in React Native; AWS SDK v3 often mis-reports errors here. */
 const INITIATE_AUTH_TARGET = "AWSCognitoIdentityProviderService.InitiateAuth";
+const FORGOT_PASSWORD_TARGET = "AWSCognitoIdentityProviderService.ForgotPassword";
+const CONFIRM_FORGOT_PASSWORD_TARGET = "AWSCognitoIdentityProviderService.ConfirmForgotPassword";
 
 export type InitiateAuthResponse = {
   AuthenticationResult?: {
@@ -111,30 +113,21 @@ export function enrichProfileWithAccessToken(
   return profile;
 }
 
-export async function signInWithCognito(
-  email: string,
-  password: string,
-): Promise<InitiateAuthResponse> {
-  const config = getCognitoConfig();
-  if (!config) {
-    throw new Error("COGNITO_NOT_CONFIGURED");
-  }
+type CognitoClientConfig = NonNullable<ReturnType<typeof getCognitoConfig>>;
 
+async function postCognitoIdp<T>(
+  config: CognitoClientConfig,
+  target: string,
+  body: Record<string, unknown>,
+): Promise<T> {
   const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-amz-json-1.1",
-      "X-Amz-Target": INITIATE_AUTH_TARGET,
+      "X-Amz-Target": target,
     },
-    body: JSON.stringify({
-      AuthFlow: "USER_PASSWORD_AUTH",
-      ClientId: config.userPoolClientId,
-      AuthParameters: {
-        USERNAME: email.trim().toLowerCase(),
-        PASSWORD: password,
-      },
-    }),
+    body: JSON.stringify(body),
   });
 
   let json: Record<string, unknown>;
@@ -158,7 +151,49 @@ export async function signInWithCognito(
     throw new Error("COGNITO_BAD_RESPONSE");
   }
 
-  return json as InitiateAuthResponse;
+  return json as T;
+}
+
+export async function signInWithCognito(
+  email: string,
+  password: string,
+): Promise<InitiateAuthResponse> {
+  const config = getCognitoConfig();
+  if (!config) throw new Error("COGNITO_NOT_CONFIGURED");
+  return postCognitoIdp<InitiateAuthResponse>(config, INITIATE_AUTH_TARGET, {
+    AuthFlow: "USER_PASSWORD_AUTH",
+    ClientId: config.userPoolClientId,
+    AuthParameters: {
+      USERNAME: email.trim().toLowerCase(),
+      PASSWORD: password,
+    },
+  });
+}
+
+/** Sends a password-reset code to the user's verified email. */
+export async function forgotPasswordWithCognito(email: string): Promise<void> {
+  const config = getCognitoConfig();
+  if (!config) throw new Error("COGNITO_NOT_CONFIGURED");
+  await postCognitoIdp(config, FORGOT_PASSWORD_TARGET, {
+    ClientId: config.userPoolClientId,
+    Username: email.trim().toLowerCase(),
+  });
+}
+
+/** Completes forgot-password with the emailed code and a new password. */
+export async function confirmForgotPasswordWithCognito(args: {
+  email: string;
+  code: string;
+  newPassword: string;
+}): Promise<void> {
+  const config = getCognitoConfig();
+  if (!config) throw new Error("COGNITO_NOT_CONFIGURED");
+  await postCognitoIdp(config, CONFIRM_FORGOT_PASSWORD_TARGET, {
+    ClientId: config.userPoolClientId,
+    Username: args.email.trim().toLowerCase(),
+    ConfirmationCode: args.code.trim(),
+    Password: args.newPassword,
+  });
 }
 
 export function mapAuthError(error: unknown): string {
@@ -171,7 +206,10 @@ export function mapAuthError(error: unknown): string {
   if (error instanceof TypeError) {
     return "Check your connection and try again.";
   }
-  if (error instanceof Error && /network request failed|failed to fetch|internet connection appears/i.test(error.message)) {
+  if (
+    error instanceof Error &&
+    /network request failed|failed to fetch|internet connection appears/i.test(error.message)
+  ) {
     return "Check your connection and try again.";
   }
 
@@ -186,7 +224,13 @@ export function mapAuthError(error: unknown): string {
     case "UserNotConfirmedException":
       return "Account created, but email is not confirmed yet.";
     case "PasswordResetRequiredException":
-      return "Password reset required. Reset it on the web app, then try again.";
+      return "Use Forgot password below to set a new password, then sign in.";
+    case "InvalidPasswordException":
+      return "Password does not meet Cognito policy requirements.";
+    case "CodeMismatchException":
+      return "Invalid reset code.";
+    case "ExpiredCodeException":
+      return "Reset code expired. Request a new code.";
     case "InvalidParameterException":
       return "Sign-in isn’t set up for this app build. Contact support.";
     case "ResourceNotFoundException":
@@ -195,6 +239,6 @@ export function mapAuthError(error: unknown): string {
     case "LimitExceededException":
       return "Too many attempts. Please wait and try again.";
     default:
-      return "Sign-in failed. Try again, or reset your password on the web.";
+      return "Sign-in failed. Try again, or use Forgot password.";
   }
 }

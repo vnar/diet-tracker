@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  confirmForgotPasswordWithCognito,
   enrichProfileWithAccessToken,
+  forgotPasswordWithCognito,
   mapAuthError,
   messageForAuthChallenge,
   sessionFromAuthResult,
@@ -15,10 +17,21 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type SignInResult = { ok: true } | { ok: false; error: string };
 
+type PasswordResetRequestResult = { ok: true } | { ok: false; error: string };
+
+type PasswordResetCompleteResult = { ok: true } | { ok: false; error: string };
+
 type AuthContextValue = {
   status: AuthStatus;
   user: CognitoUserProfile | null;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  /** Sends a reset code; does not reveal whether the email is registered. */
+  requestPasswordReset: (email: string) => Promise<PasswordResetRequestResult>;
+  completePasswordReset: (args: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }) => Promise<PasswordResetCompleteResult>;
   signOut: () => Promise<void>;
   getAccessToken: () => string | null;
 };
@@ -54,6 +67,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  const requestPasswordReset = useCallback(async (email: string): Promise<PasswordResetRequestResult> => {
+    try {
+      await forgotPasswordWithCognito(email);
+      return { ok: true };
+    } catch (error) {
+      const name = (error as { name?: string })?.name;
+      if (name === "UserNotFoundException") {
+        return { ok: true };
+      }
+      return { ok: false, error: mapAuthError(error) };
+    }
+  }, []);
+
+  const completePasswordReset = useCallback(
+    async (args: {
+      email: string;
+      code: string;
+      newPassword: string;
+    }): Promise<PasswordResetCompleteResult> => {
+      try {
+        await confirmForgotPasswordWithCognito(args);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: mapAuthError(error) };
+      }
+    },
+    [],
+  );
 
   const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
     try {
@@ -99,10 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status,
       user,
       signIn,
+      requestPasswordReset,
+      completePasswordReset,
       signOut,
       getAccessToken,
     }),
-    [getAccessToken, signIn, signOut, status, user],
+    [completePasswordReset, getAccessToken, requestPasswordReset, signIn, signOut, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

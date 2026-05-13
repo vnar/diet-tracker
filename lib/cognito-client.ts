@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
   CognitoIdentityProviderClient,
+  ForgotPasswordCommand,
   InitiateAuthCommand,
   ResendConfirmationCodeCommand,
   SignUpCommand,
@@ -171,4 +173,30 @@ export async function resendConfirmationWithCognito(email: string) {
   });
   const response = await client.send(command);
   return response;
+}
+
+/** Sends a password-reset code to the user's verified email (Cognito). */
+export async function forgotPasswordWithCognito(email: string) {
+  const { client, config } = getClient();
+  const command = new ForgotPasswordCommand({
+    ClientId: config.userPoolClientId,
+    Username: email.trim().toLowerCase(),
+  });
+  await client.send(command);
+}
+
+/** Completes forgot-password flow with the emailed code and a new password. */
+export async function confirmForgotPasswordWithCognito(args: {
+  email: string;
+  code: string;
+  newPassword: string;
+}) {
+  const { client, config } = getClient();
+  const command = new ConfirmForgotPasswordCommand({
+    ClientId: config.userPoolClientId,
+    Username: args.email.trim().toLowerCase(),
+    ConfirmationCode: args.code.trim(),
+    Password: args.newPassword,
+  });
+  await client.send(command);
 }
