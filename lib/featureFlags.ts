@@ -38,7 +38,9 @@ function readEnvFlag(flag: string): boolean | undefined {
   return publicValue;
 }
 
-/** Roadmap / dashboard experiments: OFF unless env or per-user override explicitly enables. */
+/**
+ * Roadmap / dashboard experiments: **ON when unset** (explicit `false` in env or per-user override turns off).
+ */
 function isRoadmapOptIn(flagSuffixWithoutFF: string, userId?: string): boolean {
   const full = normalizeFlag(flagSuffixWithoutFF);
   if (userId) {
@@ -48,7 +50,7 @@ function isRoadmapOptIn(flagSuffixWithoutFF: string, userId?: string): boolean {
   const v = readEnvFlag(flagSuffixWithoutFF);
   if (v === true) return true;
   if (v === false) return false;
-  return false;
+  return true;
 }
 
 export function setUserFlagOverrides(userId: string, overrides: OverrideMap): void {
@@ -154,8 +156,8 @@ export function isVoiceDailyLoggingEnabled(userId?: string): boolean {
 }
 
 /**
- * Pro paywall + Stripe checkout on the API (opt-in). Default OFF unless env explicitly enables.
- * Set `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` and deploy Lambda with Stripe keys + routes.
+ * Pro paywall + Stripe checkout on the API. **ON when unset**; set `FF_PRO_MONETIZATION=false` to disable.
+ * Deploy Lambda with Stripe keys + routes for checkout to work.
  */
 export function isProMonetizationEnabled(userId?: string): boolean {
   if (userId) {
@@ -165,7 +167,7 @@ export function isProMonetizationEnabled(userId?: string): boolean {
   const explicit = readEnvFlag("PRO_MONETIZATION");
   if (explicit === true) return true;
   if (explicit === false) return false;
-  return process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION === "true";
+  return true;
 }
 
 /**
@@ -199,7 +201,7 @@ export function isWeeklyReportEmailSendEnabled(userId?: string): boolean {
 
 /**
  * Dashboard: download weight history as CSV (client-side from synced entries).
- * Default OFF; enable with `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=true` or server `FF_WEIGHT_CSV_EXPORT=true`, or per-user override.
+ * **ON when unset**; set `FF_WEIGHT_CSV_EXPORT=false` / `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=false` to disable.
  */
 export function isWeightCsvExportEnabled(userId?: string): boolean {
   if (userId) {
@@ -209,7 +211,7 @@ export function isWeightCsvExportEnabled(userId?: string): boolean {
   const explicit = readEnvFlag("WEIGHT_CSV_EXPORT");
   if (explicit === true) return true;
   if (explicit === false) return false;
-  return process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT === "true";
+  return true;
 }
 
 /** Morning weight logging streak card on the dashboard. Default OFF. */

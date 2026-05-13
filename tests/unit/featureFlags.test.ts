@@ -4,7 +4,10 @@ import {
   isEnabled,
   isInsightsSourceLabelEnabled,
   isPersonalizedAiCoachingEnabled,
+  isProMonetizationEnabled,
   isVoiceDailyLoggingEnabled,
+  isWeightCsvExportEnabled,
+  isWeightLogStreakEnabled,
   setUserFlagOverrides,
 } from "@/lib/featureFlags";
 
@@ -93,5 +96,32 @@ describe("voice daily logging flag", () => {
   it("allows per-user override off", () => {
     setUserFlagOverrides("u1", { FF_VOICE_DAILY_LOGGING: false });
     expect(isVoiceDailyLoggingEnabled("u1")).toBe(false);
+  });
+});
+
+describe("defaults on when unset (roadmap, CSV, Pro web)", () => {
+  beforeEach(() => {
+    delete process.env.FF_WEIGHT_LOG_STREAK;
+    delete process.env.NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK;
+    delete process.env.FF_WEIGHT_CSV_EXPORT;
+    delete process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT;
+    delete process.env.FF_PRO_MONETIZATION;
+    delete process.env.NEXT_PUBLIC_FF_PRO_MONETIZATION;
+    clearUserFlagOverrides();
+  });
+
+  it("enables weight streak, CSV export, and Pro monetization when env unset", () => {
+    expect(isWeightLogStreakEnabled("u-road")).toBe(true);
+    expect(isWeightCsvExportEnabled("u-road")).toBe(true);
+    expect(isProMonetizationEnabled("u-road")).toBe(true);
+  });
+
+  it("respects explicit env false for roadmap and monetization flags", () => {
+    process.env.FF_WEIGHT_LOG_STREAK = "false";
+    process.env.NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT = "false";
+    process.env.FF_PRO_MONETIZATION = "false";
+    expect(isWeightLogStreakEnabled()).toBe(false);
+    expect(isWeightCsvExportEnabled()).toBe(false);
+    expect(isProMonetizationEnabled()).toBe(false);
   });
 });

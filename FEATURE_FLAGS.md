@@ -3,7 +3,7 @@
 ## Conventions
 
 - Flag names use `FF_*`.
-- Env-based defaults should be OFF in production unless explicitly approved.
+- **Client defaults (web `lib/featureFlags.ts`):** `isEnabled`, roadmap cards (`isRoadmapOptIn`), **weight CSV export**, and **Pro monetization** are **ON when unset** — set the corresponding `FF_*` or `NEXT_PUBLIC_FF_*` env to `false` (or a per-user override in `FeatureFlagOverrides`) to turn them **off**. Production should set explicit `false` for anything you do not want live.
 - Per-user overrides are stored in `FeatureFlagOverrides` and can be managed via `/admin/flags`.
 
 ## Flags
@@ -34,7 +34,7 @@
 
 ### `FF_PRO_MONETIZATION`
 
-- **Default:** `false` when unset (opt-in: set `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` and/or per-user override `FF_PRO_MONETIZATION` in `FeatureFlagOverrides`).
+- **Default (web):** `true` when unset — set `FF_PRO_MONETIZATION=false` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=false` or per-user override to disable.
 - **Scope:** Client-side Pro gates for NL meal parse, photo food estimate, and voice parse soft caps; `/account/billing` checkout CTA when combined with `FF_BILLING_ENABLED` or this flag. Requires API `GET /settings` `subscription` snapshot and deployed `POST /v2/billing/checkout-session` / `POST /v2/billing/portal` with `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY`.
 - **Env keys supported:** `FF_PRO_MONETIZATION`, `NEXT_PUBLIC_FF_PRO_MONETIZATION`.
 
@@ -101,18 +101,18 @@
 
 ### `FF_WEIGHT_LOG_STREAK`
 
-- **Default:** `false` when unset (opt-in: `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK=true` or `FF_WEIGHT_LOG_STREAK=true`, or per-user `FF_WEIGHT_LOG_STREAK` in `FeatureFlagOverrides`).
+- **Default (web):** `true` when unset — set `FF_WEIGHT_LOG_STREAK=false` / `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK=false` or per-user override to disable.
 - **Scope:** Dashboard card showing consecutive days with a morning weight logged (ends near today; same-day grace if today not logged yet). Analytics: `weight_streak_card_viewed`.
 - **Env keys:** `FF_WEIGHT_LOG_STREAK`, `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK`.
 
 ### `FF_WEIGHT_CSV_EXPORT`
 
-- **Default:** `false` when unset (opt-in: set `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=true` and/or per-user override `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`).
+- **Default (web):** `true` when unset — set `FF_WEIGHT_CSV_EXPORT=false` / `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=false` or per-user override to disable.
 - **Scope:** Below **History** on the dashboard when the user has at least one weight entry: a **Download CSV** control exports date, morning/night weights (in the user’s display unit), and notes. Client-side only from synced store data; no API change.
 - **Env keys:** `FF_WEIGHT_CSV_EXPORT`, `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT`. Per-user overrides: `FF_WEIGHT_CSV_EXPORT` in `FeatureFlagOverrides`.
 - **Analytics:** `weight_csv_export` with `rows` and `unit`.
 
-### Roadmap dashboard opt-ins (default **OFF**)
+### Roadmap dashboard opt-ins (web default **ON** when unset)
 
 Each flag uses `isRoadmapOptIn`: enable with `NEXT_PUBLIC_FF_<FLAG>=true` or `FF_<FLAG>=true`, or per-user `FeatureFlagOverrides` using the **`FF_…`** key name.
 
