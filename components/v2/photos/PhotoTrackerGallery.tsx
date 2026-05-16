@@ -1,6 +1,7 @@
 "use client";
 
-import { Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Sparkles, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useProgressPhotoTracker } from "@/components/v2/photos/ProgressPhotoTrackerContext";
 import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
@@ -41,6 +42,43 @@ export function PhotoTrackerGallery() {
   const nSelected = compareSelection.length;
   const twoPicked = comparePhotos.length === 2;
   const bothAnalyzable = twoPicked && comparePhotos.every((p) => isPhotoAiAssessable(p));
+
+  const navigablePhotos = useMemo(
+    () => displayPhotos.filter((p): p is (typeof displayPhotos)[number] & { imageUrl: string } => Boolean(p.imageUrl)),
+    [displayPhotos],
+  );
+
+  const previewIndex = previewPhoto
+    ? navigablePhotos.findIndex((p) => p.photoId === previewPhoto.photoId)
+    : -1;
+
+  const goPreview = useCallback(
+    (delta: number) => {
+      if (previewIndex < 0 || navigablePhotos.length === 0) return;
+      const nextIndex = (previewIndex + delta + navigablePhotos.length) % navigablePhotos.length;
+      const next = navigablePhotos[nextIndex];
+      if (!next?.imageUrl) return;
+      setPreviewPhoto({ url: next.imageUrl, date: next.date, photoId: next.photoId });
+    },
+    [navigablePhotos, previewIndex, setPreviewPhoto],
+  );
+
+  useEffect(() => {
+    if (!previewPhoto) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPreview(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goPreview(1);
+      } else if (e.key === "Escape") {
+        setPreviewPhoto(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewPhoto, goPreview, setPreviewPhoto]);
 
   if (loadingPhotos) {
     return (
@@ -116,7 +154,9 @@ export function PhotoTrackerGallery() {
                 <img
                   src={e.imageUrl}
                   alt={`Progress ${e.date}`}
-                  onClick={() => e.imageUrl && setPreviewPhoto({ url: e.imageUrl, date: e.date })}
+                  onClick={() =>
+                    e.imageUrl && setPreviewPhoto({ url: e.imageUrl, date: e.date, photoId: e.photoId })
+                  }
                   className="h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -206,23 +246,55 @@ export function PhotoTrackerGallery() {
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={() => setPreviewPhoto(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Progress photo preview"
         >
           <div
-            className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl"
+            className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewPhoto.url}
-              alt={`Progress ${previewPhoto.date}`}
-              className="max-h-[80vh] w-full object-contain"
-            />
-            <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
-              <p className="text-xs text-zinc-300">{formatDateLabel(previewPhoto.date)}</p>
+            <div className="relative flex min-h-[200px] items-center justify-center bg-black/40">
+              {navigablePhotos.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => goPreview(-1)}
+                  className="absolute left-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden />
+                </button>
+              ) : null}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhoto.url}
+                alt={`Progress ${previewPhoto.date}`}
+                className="max-h-[80vh] w-full object-contain"
+              />
+              {navigablePhotos.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => goPreview(1)}
+                  className="absolute right-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden />
+                </button>
+              ) : null}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-zinc-800 px-4 py-2.5">
+              <div className="min-w-0">
+                <p className="text-xs text-zinc-300">{formatDateLabel(previewPhoto.date)}</p>
+                {navigablePhotos.length > 1 && previewIndex >= 0 ? (
+                  <p className="text-[10px] text-zinc-500">
+                    {previewIndex + 1} of {navigablePhotos.length}
+                  </p>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => setPreviewPhoto(null)}
-                className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
               >
                 Close
               </button>

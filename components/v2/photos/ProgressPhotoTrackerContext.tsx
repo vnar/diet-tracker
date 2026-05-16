@@ -55,8 +55,8 @@ export type ProgressPhotoTrackerContextValue = {
   setCompareSelection: Dispatch<SetStateAction<string[]>>;
   compareAssessment: BodyCompareAssessment | null;
   assessing: boolean;
-  previewPhoto: { url: string; date: string } | null;
-  setPreviewPhoto: (v: { url: string; date: string } | null) => void;
+  previewPhoto: { url: string; date: string; photoId: string } | null;
+  setPreviewPhoto: (v: { url: string; date: string; photoId: string } | null) => void;
   onDeletePhoto: (photoId: string) => Promise<void>;
   toggleCompare: (photoId: string) => void;
   runAssessment: (photosToAssess: ProgressUiPhoto[], query: string) => Promise<boolean>;
@@ -79,7 +79,7 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
   const today = useClientTodayKey();
   const [photos, setPhotos] = useState<ProgressUiPhoto[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; date: string; photoId: string } | null>(null);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
   const [compareAssessment, setCompareAssessment] = useState<BodyCompareAssessment | null>(null);
   const [assessing, setAssessing] = useState(false);
@@ -175,6 +175,7 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
         if (!entry) return;
         await saveEntry({ ...entry, photoUrl: null });
         setCompareSelection((prev) => prev.filter((id) => id !== photoId));
+        setPreviewPhoto((prev) => (prev?.photoId === photoId ? null : prev));
         track("progress_photo_deleted", { photoId, date: existing.date, source: "legacy" });
         return;
       }
@@ -187,6 +188,7 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       }
       setPhotos((prev) => prev.filter((p) => p.photoId !== photoId));
       setCompareSelection((prev) => prev.filter((id) => id !== photoId));
+      setPreviewPhoto((prev) => (prev?.photoId === photoId ? null : prev));
       track("progress_photo_deleted", { photoId, date: existing?.date });
     },
     [displayPhotos, getAccessToken, saveEntry],
