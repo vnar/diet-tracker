@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PhotoTrackerGallery } from "@/components/v2/photos/PhotoTrackerGallery";
 
 const setPreviewPhoto = vi.fn();
@@ -42,9 +42,14 @@ vi.mock("@/components/v2/photos/ProgressPhotoTrackerContext", () => ({
 }));
 
 describe("PhotoTrackerGallery lightbox", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
   afterEach(() => {
     cleanup();
     setPreviewPhoto.mockClear();
+    vi.useRealTimers();
   });
 
   it("shows prev/next controls and navigates between photos", () => {
@@ -66,5 +71,19 @@ describe("PhotoTrackerGallery lightbox", () => {
       date: photos[0].date,
       photoId: photos[0].photoId,
     });
+  });
+
+  it("shows timelapse control and opens oldest photo when started from gallery", () => {
+    render(<PhotoTrackerGallery />);
+
+    expect(screen.getByRole("button", { name: /play progress photo timelapse/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /play progress photo timelapse/i }));
+
+    expect(setPreviewPhoto).toHaveBeenCalledWith({
+      url: photos[0].imageUrl,
+      date: photos[0].date,
+      photoId: photos[0].photoId,
+    });
+    expect(screen.getByRole("button", { name: /pause timelapse/i })).toBeInTheDocument();
   });
 });

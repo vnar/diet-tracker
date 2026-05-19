@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Sparkles, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Sparkles, Trash2 } from "lucide-react";
+import { useProgressPhotoTimelapse } from "@/components/v2/photos/useProgressPhotoTimelapse";
 import { Card } from "@/components/ui/Card";
 import { useProgressPhotoTracker } from "@/components/v2/photos/ProgressPhotoTrackerContext";
 import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
@@ -52,16 +53,44 @@ export function PhotoTrackerGallery() {
     ? navigablePhotos.findIndex((p) => p.photoId === previewPhoto.photoId)
     : -1;
 
+  const timelapseNavigablePhotos = useMemo(
+    () =>
+      navigablePhotos.map((p) => ({
+        photoId: p.photoId,
+        date: p.date,
+        url: p.imageUrl,
+      })),
+    [navigablePhotos],
+  );
+
+  const {
+    canTimelapse,
+    timelapsePlaying,
+    stopTimelapse,
+    startTimelapseFromGallery,
+    toggleTimelapse,
+  } = useProgressPhotoTimelapse({
+    navigablePhotos: timelapseNavigablePhotos,
+    previewPhoto,
+    setPreviewPhoto,
+  });
+
   const goPreview = useCallback(
     (delta: number) => {
       if (previewIndex < 0 || navigablePhotos.length === 0) return;
+      stopTimelapse();
       const nextIndex = (previewIndex + delta + navigablePhotos.length) % navigablePhotos.length;
       const next = navigablePhotos[nextIndex];
       if (!next?.imageUrl) return;
       setPreviewPhoto({ url: next.imageUrl, date: next.date, photoId: next.photoId });
     },
-    [navigablePhotos, previewIndex, setPreviewPhoto],
+    [navigablePhotos, previewIndex, setPreviewPhoto, stopTimelapse],
   );
+
+  const closePreview = useCallback(() => {
+    stopTimelapse();
+    setPreviewPhoto(null);
+  }, [setPreviewPhoto, stopTimelapse]);
 
   useEffect(() => {
     if (!previewPhoto) return;
@@ -72,13 +101,16 @@ export function PhotoTrackerGallery() {
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         goPreview(1);
+      } else if (e.key === " " && canTimelapse) {
+        e.preventDefault();
+        toggleTimelapse();
       } else if (e.key === "Escape") {
-        setPreviewPhoto(null);
+        closePreview();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [previewPhoto, goPreview, setPreviewPhoto]);
+  }, [previewPhoto, goPreview, closePreview, canTimelapse, toggleTimelapse]);
 
   if (loadingPhotos) {
     return (
@@ -120,7 +152,21 @@ export function PhotoTrackerGallery() {
       <div className="mb-2 shrink-0 space-y-1.5">
         <p className="text-[11px] leading-snug text-zinc-400">{PHOTO_COMPARE_INSTRUCTIONS}</p>
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Gallery</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Gallery</p>
+            {canTimelapse ? (
+              <button
+                type="button"
+                onClick={startTimelapseFromGallery}
+                className="inline-flex items-center gap-1 rounded-md border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-medium text-zinc-200 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80"
+                aria-label="Play progress photo timelapse"
+                title="Play timelapse (oldest → newest)"
+              >
+                <Play className="h-3 w-3 shrink-0" aria-hidden />
+                Timelapse
+              </button>
+            ) : null}
+          </div>
           <p className="text-[10px] text-zinc-500">
             {nSelected === 0
               ? "0 of 2 selected"
@@ -154,9 +200,12 @@ export function PhotoTrackerGallery() {
                 <img
                   src={e.imageUrl}
                   alt={`Progress ${e.date}`}
-                  onClick={() =>
-                    e.imageUrl && setPreviewPhoto({ url: e.imageUrl, date: e.date, photoId: e.photoId })
-                  }
+                  onClick={() => {
+                    stopTimelapse();
+                    if (e.imageUrl) {
+                      setPreviewPhoto({ url: e.imageUrl, date: e.date, photoId: e.photoId });
+                    }
+                  }}
                   className="h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -245,7 +294,7 @@ export function PhotoTrackerGallery() {
       {previewPhoto ? (
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setPreviewPhoto(null)}
+          onClick={closePreview}
           role="dialog"
           aria-modal="true"
           aria-label="Progress photo preview"
@@ -288,16 +337,35 @@ export function PhotoTrackerGallery() {
                 {navigablePhotos.length > 1 && previewIndex >= 0 ? (
                   <p className="text-[10px] text-zinc-500">
                     {previewIndex + 1} of {navigablePhotos.length}
+                    {timelapsePlaying ? " · Timelapse" : ""}
                   </p>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewPhoto(null)}
-                className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
-              >
-                Close
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {canTimelapse ? (
+                  <button
+                    type="button"
+                    onClick={toggleTimelapse}
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-600/50 bg-emerald-950/50 px-2.5 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80"
+                    aria-label={timelapsePlaying ? "Pause timelapse" : "Play timelapse"}
+                    title={timelapsePlaying ? "Pause timelapse" : "Play timelapse (oldest → newest)"}
+                  >
+                    {timelapsePlaying ? (
+                      <Pause className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    ) : (
+                      <Play className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    )}
+                    {timelapsePlaying ? "Pause" : "Play"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
