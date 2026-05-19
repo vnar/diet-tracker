@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   buildTimelapseSharePageUrl,
+  getTimelapseShareAudioSrc,
   getTimelapseSharePublicOrigin,
   resolveTimelapseSharePageUrl,
 } from "@/lib/share/timelapseShare";
@@ -9,6 +10,10 @@ import { resolvePublicAppBaseUrl, sanitizePublicAppUrl } from "@/lib/share/publi
 describe("timelapse share", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("resolves bundled audio with cache-bust version", () => {
+    expect(getTimelapseShareAudioSrc()).toBe("/audio/timelapse-share.mp3?v=champion");
   });
 
   it("builds share page URL from share id", () => {

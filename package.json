@@ -26,6 +26,7 @@
     "infra:cdk:bootstrap": "npm --prefix infra/cdk run bootstrap",
     "infra:cdk:deploy": "npm --prefix infra/cdk run deploy",
     "stage6:cutover": "node scripts/stage6-validate-cutover.mjs",
+    "install:timelapse-audio": "node scripts/install-timelapse-audio.mjs",
     "amplify:sync-env": "node scripts/sync-amplify-env.mjs",
     "amplify:deploy": "AMPLIFY_START_JOB=true node scripts/sync-amplify-env.mjs",
     "env:from-stack": "node scripts/print-dotenv-local-from-stack.mjs",

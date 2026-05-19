@@ -10,7 +10,7 @@ import {
   sortPhotosForTimelapse,
 } from "@/lib/photos/progressPhotoTimelapse";
 import type { PublicTimelapseSharePayload } from "@/lib/share/timelapseShare";
-import { TIMELAPSE_SHARE_AUDIO_SRC } from "@/lib/share/timelapseShare";
+import { getTimelapseShareAudioSrc } from "@/lib/share/timelapseShare";
 import {
   preloadTimelapseImages,
   type TimelapsePreloadProgress,
@@ -254,7 +254,7 @@ export function SharedTimelapseViewer({ payload }: Props) {
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-black text-white">
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio ref={audioRef} src={TIMELAPSE_SHARE_AUDIO_SRC} preload="auto" />
+      <audio ref={audioRef} src={getTimelapseShareAudioSrc()} preload="auto" />
 
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
         {phase === "idle" ? (

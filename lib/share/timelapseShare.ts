@@ -59,5 +59,18 @@ export function resolveTimelapseSharePageUrl(shareId: string, apiUrl?: string): 
   }
 }
 
-/** CC0 orchestral loop — see `public/audio/README.md` for source and license. */
+/** Bundled default — override with `NEXT_PUBLIC_TIMELAPSE_AUDIO_URL` for licensed tracks (e.g. KOHOD instrumental). */
 export const TIMELAPSE_SHARE_AUDIO_SRC = "/audio/timelapse-share.mp3";
+
+/** Cache-bust when replacing `public/audio/timelapse-share.mp3` without renaming. */
+export const TIMELAPSE_SHARE_AUDIO_VERSION = "champion";
+
+/** Resolved audio URL for the public share viewer (env override → bundled file). */
+export function getTimelapseShareAudioSrc(): string {
+  const custom =
+    typeof process !== "undefined"
+      ? process.env.NEXT_PUBLIC_TIMELAPSE_AUDIO_URL?.trim()
+      : "";
+  if (custom) return custom;
+  return `${TIMELAPSE_SHARE_AUDIO_SRC}?v=${TIMELAPSE_SHARE_AUDIO_VERSION}`;
+}
