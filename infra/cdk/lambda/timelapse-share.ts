@@ -17,8 +17,10 @@ export type TimelapseShareDeps = {
   shareEnabled: boolean;
   normalizePhotoReference: (photoUrl: string | null | undefined) => string | undefined;
   json: (statusCode: number, body: unknown) => { statusCode: number; body: string };
-  parseJsonBody: (event: { body?: string | null }) => unknown;
+  parseJsonBody: (event: unknown) => unknown;
 };
+
+type ShareHttpEvent = { body?: string | null };
 
 type SharePhotoSnapshot = {
   photoId: string;
@@ -26,8 +28,6 @@ type SharePhotoSnapshot = {
   photoRef: string;
   weightAtPhoto?: number;
 };
-
-type HttpEvent = { body?: string | null; queryStringParameters?: Record<string, string | undefined> };
 
 function isDateString(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -127,7 +127,7 @@ async function buildPhotoSnapshot(userId: string, deps: TimelapseShareDeps): Pro
 
 export async function createTimelapseShare(
   userId: string,
-  event: HttpEvent,
+  event: ShareHttpEvent,
   deps: TimelapseShareDeps,
 ): Promise<{ statusCode: number; body: string }> {
   if (!deps.shareEnabled) {

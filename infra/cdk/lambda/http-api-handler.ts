@@ -1826,7 +1826,7 @@ function timelapseShareDeps() {
     shareEnabled: timelapseShareEnabled,
     normalizePhotoReference,
     json,
-    parseJsonBody,
+    parseJsonBody: (e: unknown) => parseJsonBody(e as HttpEvent),
   };
 }
 
