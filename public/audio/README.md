@@ -1,7 +1,8 @@
 # Timelapse share music
 
-Place **`timelapse-share.mp3`** here (upbeat, royalty-free loop, ~30–90s).
+**`timelapse-share.mp3`** — upbeat loop used by the public share viewer at `/share?t=…`.
 
-The public share viewer at `/share/{token}` loads `/audio/timelapse-share.mp3`. If the file is missing, the timelapse still plays without music.
+- **Track:** “Happy Life” from [effacestudios/Royalty-Free-Music-Pack](https://github.com/effacestudios/Royalty-Free-Music-Pack) (CC0 / royalty-free pack license).
+- **Path in app:** `/audio/timelapse-share.mp3` (see `TIMELAPSE_SHARE_AUDIO_SRC` in `lib/share/timelapseShare.ts`).
 
-Suggested sources: [Pixabay Music](https://pixabay.com/music/) (license allows use in apps/sites).
+If the file is missing, the timelapse still plays; the UI offers **Tap to enable music** when autoplay is blocked.
