@@ -48,6 +48,11 @@ import { ensureAnthropicApiKeyFromSecrets } from "../../../lib/anthropic/lambdaA
 import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
 import { handleBillingCheckoutSession, handleBillingPortalSession } from "./billing-api";
 import { handlePostV2WeeklyReportSendEmail } from "./weekly-report-email-send";
+import {
+  createTimelapseShare,
+  getPublicTimelapseShare,
+  revokeTimelapseShare,
+} from "./timelapse-share";
 
 const ddb = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -62,6 +67,12 @@ const foodLogEntriesTableName = process.env.FOOD_LOG_ENTRIES_TABLE_NAME;
 const mealsTableName = process.env.MEALS_TABLE_NAME;
 const dayMealEntriesTableName = process.env.DAY_MEAL_ENTRIES_TABLE_NAME;
 const progressPhotosTableName = process.env.PROGRESS_PHOTOS_TABLE_NAME;
+const shareLinksTableName = process.env.SHARE_LINKS_TABLE_NAME;
+const shareAppBaseUrl =
+  process.env.SHARE_APP_BASE_URL?.trim() ||
+  process.env.BILLING_APP_URL?.trim() ||
+  "https://ojas-health.com";
+const timelapseShareEnabled = process.env.FF_PROGRESS_TIMELAPSE_SHARE === "true";
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");
 const analyticsMetaUserId = "__meta__";
@@ -1802,14 +1813,37 @@ async function upsertFeatureFlagOverride(event: HttpEvent): Promise<HttpResult> 
   return json(200, { ok: true, override: { userId, flag: normalizedFlag, enabled, ts } });
 }
 
+function timelapseShareDeps() {
+  return {
+    ddb,
+    s3,
+    shareLinksTableName: shareLinksTableName ?? "",
+    progressPhotosTableName: getRequiredEnv("PROGRESS_PHOTOS_TABLE_NAME", progressPhotosTableName),
+    entriesTableName: getRequiredEnv("ENTRIES_TABLE_NAME", entriesTableName),
+    photoBucketName: getRequiredEnv("PHOTO_BUCKET_NAME", photoBucketName),
+    downloadUrlTtlSeconds,
+    appBaseUrl: shareAppBaseUrl,
+    shareEnabled: timelapseShareEnabled,
+    normalizePhotoReference,
+    json,
+    parseJsonBody,
+  };
+}
+
 export async function handler(event: HttpEvent): Promise<HttpResult> {
   try {
     await ensureAnthropicApiKeyFromSecrets();
-    const userId = getUserId(event);
-    if (!userId) return json(401, { error: "Unauthorized" });
     const method = (
       event as { requestContext?: { http?: { method?: string } } }
     ).requestContext?.http?.method;
+
+    const publicShareMatch = event.rawPath.match(/^\/v2\/public\/share\/timelapse\/([^/]+)$/);
+    if (publicShareMatch && method === "GET") {
+      return getPublicTimelapseShare(decodeURIComponent(publicShareMatch[1] ?? ""), timelapseShareDeps());
+    }
+
+    const userId = getUserId(event);
+    if (!userId) return json(401, { error: "Unauthorized" });
 
     if (event.rawPath === "/entries") {
       if (method === "GET") {
@@ -1937,6 +1971,18 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
     const progressDelMatch = event.rawPath.match(/^\/v2\/progress-photos\/([^/]+)$/);
     if (progressDelMatch && method === "DELETE") {
       return deleteProgressPhoto(userId, decodeURIComponent(progressDelMatch[1] ?? ""));
+    }
+
+    if (event.rawPath === "/v2/share/timelapse" && method === "POST") {
+      return createTimelapseShare(userId, event, timelapseShareDeps());
+    }
+    const shareRevokeMatch = event.rawPath.match(/^\/v2\/share\/timelapse\/([^/]+)$/);
+    if (shareRevokeMatch && method === "DELETE") {
+      return revokeTimelapseShare(
+        userId,
+        decodeURIComponent(shareRevokeMatch[1] ?? ""),
+        timelapseShareDeps(),
+      );
     }
 
     if (event.rawPath === "/v2/food/meal-complete" && method === "POST") {

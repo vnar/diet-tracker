@@ -35,7 +35,7 @@
 
 ### `FF_PRO_MONETIZATION`
 
-- **Default (web):** `false` when unset — set `FF_PRO_MONETIZATION=true` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=true` or per-user override to enable paywalls.
+- **Default (web):** `true` when unset — set `FF_PRO_MONETIZATION=false` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=false` or per-user override to disable paywalls.
 - **Scope:** Client-side Pro gates for NL meal parse, photo food estimate, and voice parse soft caps; `/account/billing` checkout CTA when combined with `FF_BILLING_ENABLED` or this flag. Requires API `GET /settings` `subscription` snapshot and deployed `POST /v2/billing/checkout-session` / `POST /v2/billing/portal` with `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY`.
 - **Env keys supported:** `FF_PRO_MONETIZATION`, `NEXT_PUBLIC_FF_PRO_MONETIZATION`.
 
@@ -106,6 +106,13 @@
 - **Scope:** Dashboard card showing consecutive days with a morning weight logged (ends near today; same-day grace if today not logged yet). Analytics: `weight_streak_card_viewed`.
 - **Env keys:** `FF_WEIGHT_LOG_STREAK`, `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK`.
 
+### `FF_PROGRESS_TIMELAPSE_SHARE`
+
+- **Default:** `true` when unset (opt-out: `NEXT_PUBLIC_FF_PROGRESS_TIMELAPSE_SHARE=false` and `FF_PROGRESS_TIMELAPSE_SHARE=false` on API Lambda at deploy).
+- **Scope:** **Create share link** in the progress photo gallery; public page `/share/{token}` plays a branded timelapse (intro/outro **Ojas Health**, optional upbeat music) for viewers without an account. Requires `ShareLinks` DynamoDB table and `GET /v2/public/share/timelapse/{token}` (no JWT).
+- **Env keys:** `FF_PROGRESS_TIMELAPSE_SHARE`, `NEXT_PUBLIC_FF_PROGRESS_TIMELAPSE_SHARE`, `SHARE_LINKS_TABLE_NAME`, `SHARE_APP_BASE_URL` on Lambda.
+- **Analytics:** `timelapse_share_created`, `timelapse_share_copied`.
+
 ### `FF_WEIGHT_CSV_EXPORT`
 
 - **Default (web):** `true` when unset — set `FF_WEIGHT_CSV_EXPORT=false` / `NEXT_PUBLIC_FF_WEIGHT_CSV_EXPORT=false` or per-user override to disable.
@@ -115,7 +122,7 @@
 
 ### Roadmap dock (`roadmapEval`)
 
-Roadmap UI lives in a **collapsible “More tools & roadmap”** block at the bottom of the signed-in dashboard. **Working** tools default **on** when unset; **Coming soon** betas default **off** — set `NEXT_PUBLIC_FF_<FLAG>=true` to try a beta, or `=false` to hide a working tool.
+Roadmap UI lives in a **collapsible “More tools & roadmap”** block at the bottom of the signed-in dashboard. **All roadmap flags default on** when unset — set `NEXT_PUBLIC_FF_<FLAG>=false` to hide one.
 
 | Flag | Default (unset) | What it does |
 |------|------------------|----------------|
@@ -128,14 +135,14 @@ Roadmap UI lives in a **collapsible “More tools & roadmap”** block at the bo
 | `FF_REFERRAL_INVITE` | On | Mailto invite |
 | `FF_YEAR_REVIEW_PAGE` | On | Link to `/year-review` |
 | `FF_AI_TRUST_FOOTER` | On | AI disclaimer in the dock |
-| `FF_CARE_CIRCLE_TEASER` | Off | Copy 7-day summary to clipboard |
-| `FF_WEARABLES_ROADMAP` | Off | Apple / Google export how-to links |
-| `FF_LABS_ROADMAP` | Off | Local lab file preview (no upload) |
-| `FF_COMMUNITY_ROADMAP` | Off | Local challenge label |
-| `FF_EMPLOYER_WELLNESS_TEASER` | Off | Employer pilot interest |
-| `FF_SSO_FOR_TEAMS_TEASER` | Off | SSO roadmap interest |
-| `FF_DEVELOPER_HOOKS_TEASER` | Off | Build context + repo link |
-| `FF_LOCALE_ROADMAP_CARD` | Off | Localization interest |
+| `FF_CARE_CIRCLE_TEASER` | On | Copy 7-day summary to clipboard |
+| `FF_WEARABLES_ROADMAP` | On | Apple / Google export how-to links |
+| `FF_LABS_ROADMAP` | On | Local lab file preview (no upload) |
+| `FF_COMMUNITY_ROADMAP` | On | Local challenge label |
+| `FF_EMPLOYER_WELLNESS_TEASER` | On | Employer pilot interest |
+| `FF_SSO_FOR_TEAMS_TEASER` | On | SSO roadmap interest |
+| `FF_DEVELOPER_HOOKS_TEASER` | On | Build context + repo link |
+| `FF_LOCALE_ROADMAP_CARD` | On | Localization interest |
 
 Offline mode: a strip appears **above the KPI row** whenever the browser reports offline (no flag).
 

@@ -9,6 +9,7 @@ import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
 import { isPhotoAiAssessable } from "@/lib/progressPhotoAssessmentPayload";
 import { openAiPhotoCompareSection } from "@/lib/openAiPhotoCompareSection";
 import { ProgressPhotoWeightBadge } from "@/components/v2/photos/ProgressPhotoWeightBadge";
+import { ShareTimelapsePanel } from "@/components/v2/photos/ShareTimelapsePanel";
 import { useHealthStore } from "@/lib/store";
 
 function formatDateLabel(dateStr: string): string {
@@ -183,6 +184,7 @@ export function PhotoTrackerGallery() {
           </p>
         </div>
       </div>
+      <ShareTimelapsePanel photoCount={navigablePhotos.length} canTimelapse={canTimelapse} />
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-2">
         <div className="flex snap-x snap-mandatory gap-2.5">
           {displayPhotos.map((e) => {

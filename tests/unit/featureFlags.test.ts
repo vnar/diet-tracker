@@ -113,8 +113,8 @@ describe("roadmapEval: working vs teaser defaults", () => {
     expect(isWeightLogStreakEnabled("u1")).toBe(true);
   });
 
-  it("keeps teaser roadmap flags off when env unset", () => {
-    expect(isCareCircleTeaserEnabled("u1")).toBe(false);
+  it("enables teaser roadmap flags when env unset", () => {
+    expect(isCareCircleTeaserEnabled("u1")).toBe(true);
   });
 });
 
@@ -127,9 +127,9 @@ describe("defaults on when unset (CSV export)", () => {
     clearUserFlagOverrides();
   });
 
-  it("enables CSV export when env unset and keeps Pro monetization off", () => {
+  it("enables CSV export and Pro monetization when env unset", () => {
     expect(isWeightCsvExportEnabled("u-road")).toBe(true);
-    expect(isProMonetizationEnabled("u-road")).toBe(false);
+    expect(isProMonetizationEnabled("u-road")).toBe(true);
   });
 
   it("respects explicit env false for CSV and Pro", () => {

@@ -7,6 +7,10 @@ import type { Insight, InsightVote } from "@/lib/insights/types";
 import type { FoodEstimateResponse, FoodLogConfirmBody } from "@/lib/food/contracts";
 import type { MealType } from "@/lib/meals/mealTypes";
 import type { VoiceDailyParsedFields } from "@/lib/voiceDailyLog/types";
+import type {
+  CreateTimelapseShareResponse,
+  PublicTimelapseSharePayload,
+} from "@/lib/share/timelapseShare";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -855,6 +859,39 @@ export async function postProgressPhotoAssessment(
     true,
     accessToken,
     60000,
+  );
+}
+
+export async function createTimelapseShareLink(
+  accessToken: string,
+  body?: { includeWeight?: boolean; unit?: "kg" | "lbs"; expiryDays?: number },
+) {
+  return fetchJson<CreateTimelapseShareResponse>(
+    "/v2/share/timelapse",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    },
+    true,
+    accessToken,
+  );
+}
+
+export async function revokeTimelapseShareLink(shareId: string, accessToken: string) {
+  return fetchJson<{ ok: true }>(
+    `/v2/share/timelapse/${encodeURIComponent(shareId)}`,
+    { method: "DELETE" },
+    true,
+    accessToken,
+  );
+}
+
+export async function getPublicTimelapseShare(token: string) {
+  return fetchJson<PublicTimelapseSharePayload>(
+    `/v2/public/share/timelapse/${encodeURIComponent(token)}`,
+    undefined,
+    true,
   );
 }
 

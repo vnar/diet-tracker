@@ -1,6 +1,9 @@
 /** Milliseconds between frames when progress-photo timelapse is playing. */
 export const PROGRESS_PHOTO_TIMELAPSE_INTERVAL_MS = 900;
 
+/** Slightly slower cadence for public marketing share playback. */
+export const PROGRESS_PHOTO_SHARE_TIMELAPSE_INTERVAL_MS = 1100;
+
 export type TimelapsePhoto = {
   photoId: string;
   url: string;

@@ -157,8 +157,8 @@ export function isVoiceDailyLoggingEnabled(userId?: string): boolean {
 }
 
 /**
- * Pro paywall + Stripe checkout on the API. **OFF when unset**; set `FF_PRO_MONETIZATION=true` to enable.
- * Deploy Lambda with Stripe keys + routes for checkout to work.
+ * Pro paywall + Stripe checkout on the API. **ON when unset** (opt-out:
+ * `FF_PRO_MONETIZATION=false` / `NEXT_PUBLIC_FF_PRO_MONETIZATION=false`).
  */
 export function isProMonetizationEnabled(userId?: string): boolean {
   if (userId) {
@@ -166,9 +166,8 @@ export function isProMonetizationEnabled(userId?: string): boolean {
     if (typeof o === "boolean") return o;
   }
   const explicit = readEnvFlag("PRO_MONETIZATION");
-  if (explicit === true) return true;
   if (explicit === false) return false;
-  return false;
+  return true;
 }
 
 /**
@@ -221,31 +220,31 @@ export function isWeightLogStreakEnabled(userId?: string): boolean {
 }
 
 export function isCareCircleTeaserEnabled(userId?: string): boolean {
-  return roadmapEval("CARE_CIRCLE_TEASER", userId, false);
+  return roadmapEval("CARE_CIRCLE_TEASER", userId, true);
 }
 
 export function isWearablesRoadmapEnabled(userId?: string): boolean {
-  return roadmapEval("WEARABLES_ROADMAP", userId, false);
+  return roadmapEval("WEARABLES_ROADMAP", userId, true);
 }
 
 export function isLabsRoadmapEnabled(userId?: string): boolean {
-  return roadmapEval("LABS_ROADMAP", userId, false);
+  return roadmapEval("LABS_ROADMAP", userId, true);
 }
 
 export function isCommunityRoadmapEnabled(userId?: string): boolean {
-  return roadmapEval("COMMUNITY_ROADMAP", userId, false);
+  return roadmapEval("COMMUNITY_ROADMAP", userId, true);
 }
 
 export function isEmployerWellnessTeaserEnabled(userId?: string): boolean {
-  return roadmapEval("EMPLOYER_WELLNESS_TEASER", userId, false);
+  return roadmapEval("EMPLOYER_WELLNESS_TEASER", userId, true);
 }
 
 export function isSsoForTeamsTeaserEnabled(userId?: string): boolean {
-  return roadmapEval("SSO_FOR_TEAMS_TEASER", userId, false);
+  return roadmapEval("SSO_FOR_TEAMS_TEASER", userId, true);
 }
 
 export function isDeveloperHooksTeaserEnabled(userId?: string): boolean {
-  return roadmapEval("DEVELOPER_HOOKS_TEASER", userId, false);
+  return roadmapEval("DEVELOPER_HOOKS_TEASER", userId, true);
 }
 
 export function isMealPlanTeaserEnabled(userId?: string): boolean {
@@ -281,5 +280,10 @@ export function isAiTrustFooterEnabled(userId?: string): boolean {
 }
 
 export function isLocaleRoadmapCardEnabled(userId?: string): boolean {
-  return roadmapEval("LOCALE_ROADMAP_CARD", userId, false);
+  return roadmapEval("LOCALE_ROADMAP_CARD", userId, true);
+}
+
+/** Public marketing timelapse share links (no-login viewers). On when unset (opt-out via env). */
+export function isProgressTimelapseShareEnabled(userId?: string): boolean {
+  return roadmapEval("PROGRESS_TIMELAPSE_SHARE", userId, true);
 }

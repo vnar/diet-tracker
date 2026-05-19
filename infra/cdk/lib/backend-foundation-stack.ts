@@ -183,6 +183,15 @@ export class BackendFoundationStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
+
+    /** Public timelapse share tokens (shareId → photo snapshot metadata). */
+    const shareLinksTable = new dynamodb.Table(this, "ShareLinksTable", {
+      tableName: "ShareLinks",
+      partitionKey: { name: "shareId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
     progressPhotosTable.addGlobalSecondaryIndex({
       indexName: "UserDateIndex",
       partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
@@ -262,6 +271,7 @@ export class BackendFoundationStack extends cdk.Stack {
     mealsTable.grantReadWriteData(backendLambdaRole);
     dayMealEntriesTable.grantReadWriteData(backendLambdaRole);
     progressPhotosTable.grantReadWriteData(backendLambdaRole);
+    shareLinksTable.grantReadWriteData(backendLambdaRole);
 
     const mealNlParseLambdaRole = new iam.Role(this, "MealNlParseLambdaRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -320,7 +330,8 @@ export class BackendFoundationStack extends cdk.Stack {
     const transactionalEmailListUnsubscribeOneClickDeploy =
       process.env.TRANSACTIONAL_EMAIL_LIST_UNSUBSCRIBE_ONE_CLICK === "true" ? "true" : "false";
     /** Opt-in: EventBridge invokes weekly digest Lambda (Mondays UTC). Users must set `weeklyDigestEmail` in Settings. */
-    const weeklyDigestSchedulerEnv = process.env.FF_WEEKLY_DIGEST_SCHEDULER === "true" ? "true" : "false";
+    const weeklyDigestSchedulerEnv =
+      process.env.FF_WEEKLY_DIGEST_SCHEDULER === "false" ? "false" : "true";
     /** Injected at CDK deploy time; `assertAnthropicApiKeyForCdk()` in `bin/backend-foundation.ts` rejects empty keys unless CDK_ALLOW_MISSING_ANTHROPIC_API_KEY=true. */
     const anthropicApiKeyDeploy = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
     const anthropicFoodVisionModel = process.env.ANTHROPIC_FOOD_VISION_MODEL?.trim() ?? "";
@@ -341,6 +352,9 @@ export class BackendFoundationStack extends cdk.Stack {
     /** Set at deploy time; empty disables Stripe routes (503) until configured. */
     const stripeSecretKeyDeploy = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
     const billingAppUrlDeploy = process.env.BILLING_APP_URL?.trim() ?? process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+    const shareAppBaseUrlDeploy = billingAppUrlDeploy || "https://ojas-health.com";
+    const progressTimelapseShareEnv =
+      process.env.FF_PROGRESS_TIMELAPSE_SHARE === "false" ? "false" : "true";
     /** Monorepo root — NodejsFunction bundling resolves deps from root `package-lock.json` (includes client-secrets-manager). */
     const repoRootForLambdaBundle = path.join(__dirname, "..", "..", "..");
     const mealNlParseLambda = new NodejsFunction(this, "MealNlParseLambda", {
@@ -393,6 +407,9 @@ export class BackendFoundationStack extends cdk.Stack {
         MEALS_TABLE_NAME: mealsTable.tableName,
         DAY_MEAL_ENTRIES_TABLE_NAME: dayMealEntriesTable.tableName,
         PROGRESS_PHOTOS_TABLE_NAME: progressPhotosTable.tableName,
+        SHARE_LINKS_TABLE_NAME: shareLinksTable.tableName,
+        SHARE_APP_BASE_URL: shareAppBaseUrlDeploy,
+        FF_PROGRESS_TIMELAPSE_SHARE: progressTimelapseShareEnv,
         PHOTO_BUCKET_NAME: photosBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         ADMIN_EMAILS: adminEmailsDeploy,
@@ -564,6 +581,8 @@ export class BackendFoundationStack extends cdk.Stack {
       { routeKey: "POST /v2/progress-photos", id: "ProgressPhotosCreatePostRoute" },
       { routeKey: "DELETE /v2/progress-photos/{photoId}", id: "ProgressPhotosDeleteRoute" },
       { routeKey: "POST /v2/progress-photos/assessment", id: "ProgressPhotosAssessmentPostRoute" },
+      { routeKey: "POST /v2/share/timelapse", id: "TimelapseShareCreatePostRoute" },
+      { routeKey: "DELETE /v2/share/timelapse/{shareId}", id: "TimelapseShareRevokeDeleteRoute" },
       { routeKey: "POST /v2/food/meal-complete", id: "FoodMealCompletePostRoute" },
       { routeKey: "GET /v2/meals", id: "MealsListGetRoute" },
       { routeKey: "POST /v2/meals", id: "MealsCreatePostRoute" },
@@ -609,6 +628,13 @@ export class BackendFoundationStack extends cdk.Stack {
       target: `integrations/${mealNlParseIntegration.ref}`,
       authorizationType: "JWT",
       authorizerId: jwtAuthorizer.ref,
+    });
+
+    new apigwv2.CfnRoute(this, "PublicTimelapseShareGetRoute", {
+      apiId: httpApi.apiId,
+      routeKey: "GET /v2/public/share/timelapse/{token}",
+      target: `integrations/${integration.ref}`,
+      authorizationType: "NONE",
     });
 
     new lambda.CfnPermission(this, "ApiGatewayInvokePermission", {

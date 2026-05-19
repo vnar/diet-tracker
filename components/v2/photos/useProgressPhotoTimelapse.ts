@@ -7,18 +7,22 @@ import {
   type TimelapsePhoto,
 } from "@/lib/photos/progressPhotoTimelapse";
 
+const DEFAULT_INTERVAL_MS = PROGRESS_PHOTO_TIMELAPSE_INTERVAL_MS;
+
 type PreviewPhoto = TimelapsePhoto;
 
 type Args = {
   navigablePhotos: TimelapsePhoto[];
   previewPhoto: PreviewPhoto | null;
   setPreviewPhoto: (v: PreviewPhoto | null) => void;
+  intervalMs?: number;
 };
 
 export function useProgressPhotoTimelapse({
   navigablePhotos,
   previewPhoto,
   setPreviewPhoto,
+  intervalMs = DEFAULT_INTERVAL_MS,
 }: Args) {
   const [playing, setPlaying] = useState(false);
   const previewRef = useRef(previewPhoto);
@@ -88,9 +92,9 @@ export function useProgressPhotoTimelapse({
       if (next) openPhoto(next);
     };
 
-    const id = window.setInterval(tick, PROGRESS_PHOTO_TIMELAPSE_INTERVAL_MS);
+    const id = window.setInterval(tick, intervalMs);
     return () => window.clearInterval(id);
-  }, [playing, canTimelapse, timelapsePhotos, openPhoto]);
+  }, [playing, canTimelapse, timelapsePhotos, openPhoto, intervalMs]);
 
   return {
     timelapsePhotos,
