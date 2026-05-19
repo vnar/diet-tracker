@@ -59,5 +59,5 @@ export function resolveTimelapseSharePageUrl(shareId: string, apiUrl?: string): 
   }
 }
 
-/** CC0 / Pixabay-friendly upbeat loop bundled for marketing shares. */
+/** CC0 orchestral loop — see `public/audio/README.md` for source and license. */
 export const TIMELAPSE_SHARE_AUDIO_SRC = "/audio/timelapse-share.mp3";
