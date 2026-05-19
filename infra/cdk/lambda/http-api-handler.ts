@@ -45,6 +45,7 @@ import {
   handleV2MealsSuggestMatch,
 } from "./meals-api";
 import { ensureAnthropicApiKeyFromSecrets } from "../../../lib/anthropic/lambdaApiKeyFromSecrets";
+import { resolvePublicAppBaseUrl } from "../../../lib/share/publicAppUrl";
 import { parseVoiceDailyTranscriptWithAnthropic } from "../../../lib/voiceDailyLog/parseTranscript";
 import { handleBillingCheckoutSession, handleBillingPortalSession } from "./billing-api";
 import { handlePostV2WeeklyReportSendEmail } from "./weekly-report-email-send";
@@ -68,10 +69,10 @@ const mealsTableName = process.env.MEALS_TABLE_NAME;
 const dayMealEntriesTableName = process.env.DAY_MEAL_ENTRIES_TABLE_NAME;
 const progressPhotosTableName = process.env.PROGRESS_PHOTOS_TABLE_NAME;
 const shareLinksTableName = process.env.SHARE_LINKS_TABLE_NAME;
-const shareAppBaseUrl =
-  process.env.SHARE_APP_BASE_URL?.trim() ||
-  process.env.BILLING_APP_URL?.trim() ||
-  "https://ojas-health.com";
+const shareAppBaseUrl = resolvePublicAppBaseUrl(
+  process.env.SHARE_APP_BASE_URL,
+  process.env.BILLING_APP_URL,
+);
 const timelapseShareEnabled = process.env.FF_PROGRESS_TIMELAPSE_SHARE === "true";
 const uploadUrlTtlSeconds = Number(process.env.UPLOAD_URL_TTL_SECONDS ?? "900");
 const downloadUrlTtlSeconds = Number(process.env.DOWNLOAD_URL_TTL_SECONDS ?? "3600");

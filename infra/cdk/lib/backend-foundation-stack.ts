@@ -12,6 +12,7 @@ import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from "node:path";
 import { DEFAULT_TRANSACTIONAL_EMAIL_FROM } from "../../../lib/email/defaultTransactionalFrom";
+import { resolvePublicAppBaseUrl } from "../../../lib/share/publicAppUrl";
 
 /** Comma-separated https origins allowed to PUT/GET progress/food photos via presigned URLs (e.g. Amplify https://main.d123.amplifyapp.com). */
 function photoCorsExtraOriginsFromEnv(): string[] {
@@ -351,8 +352,11 @@ export class BackendFoundationStack extends cdk.Stack {
       : { ANTHROPIC_API_KEY: anthropicApiKeyDeploy };
     /** Set at deploy time; empty disables Stripe routes (503) until configured. */
     const stripeSecretKeyDeploy = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
-    const billingAppUrlDeploy = process.env.BILLING_APP_URL?.trim() ?? process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
-    const shareAppBaseUrlDeploy = billingAppUrlDeploy || "https://ojas-health.com";
+    const billingAppUrlDeploy = resolvePublicAppBaseUrl(
+      process.env.BILLING_APP_URL,
+      process.env.NEXT_PUBLIC_APP_URL,
+    );
+    const shareAppBaseUrlDeploy = billingAppUrlDeploy;
     const progressTimelapseShareEnv =
       process.env.FF_PROGRESS_TIMELAPSE_SHARE === "false" ? "false" : "true";
     /** Monorepo root — NodejsFunction bundling resolves deps from root `package-lock.json` (includes client-secrets-manager). */

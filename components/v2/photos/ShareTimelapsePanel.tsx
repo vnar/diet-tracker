@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link2, Loader2 } from "lucide-react";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { createTimelapseShareLink } from "@/lib/frontend-api-client";
+import { resolveTimelapseSharePageUrl } from "@/lib/share/timelapseShare";
 import { isProgressTimelapseShareEnabled } from "@/lib/featureFlags";
 import { useHealthStore } from "@/lib/store";
 import { track } from "@/lib/analytics";
@@ -41,7 +42,7 @@ export function ShareTimelapsePanel({ photoCount, canTimelapse }: Props) {
         setError(res.error);
         return;
       }
-      setShareUrl(res.data.url);
+      setShareUrl(resolveTimelapseSharePageUrl(res.data.shareId, res.data.url));
       track("timelapse_share_created", { photoCount, unit });
     } finally {
       setBusy(false);
