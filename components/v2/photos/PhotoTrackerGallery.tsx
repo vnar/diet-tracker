@@ -8,6 +8,8 @@ import { useProgressPhotoTracker } from "@/components/v2/photos/ProgressPhotoTra
 import { PHOTO_COMPARE_INSTRUCTIONS } from "@/lib/photoCompareHelp";
 import { isPhotoAiAssessable } from "@/lib/progressPhotoAssessmentPayload";
 import { openAiPhotoCompareSection } from "@/lib/openAiPhotoCompareSection";
+import { ProgressPhotoWeightBadge } from "@/components/v2/photos/ProgressPhotoWeightBadge";
+import { useHealthStore } from "@/lib/store";
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -40,6 +42,8 @@ export function PhotoTrackerGallery() {
     compareAssessment,
   } = useProgressPhotoTracker();
 
+  const unit = useHealthStore((s) => s.settings.unit);
+
   const nSelected = compareSelection.length;
   const twoPicked = comparePhotos.length === 2;
   const bothAnalyzable = twoPicked && comparePhotos.every((p) => isPhotoAiAssessable(p));
@@ -52,6 +56,9 @@ export function PhotoTrackerGallery() {
   const previewIndex = previewPhoto
     ? navigablePhotos.findIndex((p) => p.photoId === previewPhoto.photoId)
     : -1;
+
+  const previewWeightKg =
+    previewPhoto && previewIndex >= 0 ? navigablePhotos[previewIndex]?.weightAtPhoto : undefined;
 
   const timelapseNavigablePhotos = useMemo(
     () =>
@@ -187,6 +194,9 @@ export function PhotoTrackerGallery() {
                   selected ? "border-violet-400 ring-1 ring-violet-400/40" : "border-slate-600"
                 }`}
               >
+                {typeof e.weightAtPhoto === "number" ? (
+                  <ProgressPhotoWeightBadge weightKg={e.weightAtPhoto} unit={unit} variant="thumb" />
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void onDeletePhoto(e.photoId)}
@@ -222,11 +232,6 @@ export function PhotoTrackerGallery() {
                 >
                   {selected ? "Selected ✓" : "Select"}
                 </button>
-                {typeof e.weightAtPhoto === "number" ? (
-                  <span className="pointer-events-none absolute right-1.5 top-8 z-10 rounded border border-white/20 bg-black/65 px-1 py-0.5 text-[9px] text-white">
-                    {e.weightAtPhoto}
-                  </span>
-                ) : null}
               </div>
             );
           })}
@@ -304,6 +309,9 @@ export function PhotoTrackerGallery() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative flex min-h-[200px] items-center justify-center bg-black/40">
+              {typeof previewWeightKg === "number" ? (
+                <ProgressPhotoWeightBadge weightKg={previewWeightKg} unit={unit} variant="lightbox" />
+              ) : null}
               {navigablePhotos.length > 1 ? (
                 <button
                   type="button"

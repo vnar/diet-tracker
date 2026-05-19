@@ -25,6 +25,7 @@ import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { useHealthStore } from "@/lib/store";
 import { useClientTodayKey } from "@/hooks/useClientTodayKey";
 import { useSaveEntry } from "@/hooks/useHealthActions";
+import { resolvePhotoWeightKg } from "@/lib/photos/progressPhotoWeight";
 
 export type ProgressUiPhoto = {
   photoId: string;
@@ -116,6 +117,16 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
       .finally(() => setLoadingPhotos(false));
   }, [canUseCloud, getAccessToken]);
 
+  const morningWeightByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of entries) {
+      if (typeof e.morningWeight === "number" && Number.isFinite(e.morningWeight)) {
+        map.set(e.date, e.morningWeight);
+      }
+    }
+    return map;
+  }, [entries]);
+
   const legacyPhotos = useMemo<ProgressUiPhoto[]>(
     () =>
       entries
@@ -125,6 +136,7 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
           userId: "legacy",
           date: e.date,
           imageUrl: e.photoUrl ?? undefined,
+          weightAtPhoto: e.morningWeight,
           createdAt: new Date(e.date + "T00:00:00Z").toISOString(),
           source: "legacy" as const,
           legacyEntryId: e.id,
@@ -143,8 +155,13 @@ export function ProgressPhotoTrackerProvider({ children }: { children: ReactNode
         seen.add(key);
       }
     }
-    return merged.sort((a, b) => b.date.localeCompare(a.date));
-  }, [photos, legacyPhotos]);
+    return merged
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map((p) => {
+        const weightKg = resolvePhotoWeightKg(p, morningWeightByDate);
+        return weightKg != null ? { ...p, weightAtPhoto: weightKg } : p;
+      });
+  }, [photos, legacyPhotos, morningWeightByDate]);
 
   const comparePhotos = useMemo(() => {
     const selected = displayPhotos.filter((p) => compareSelection.includes(p.photoId));

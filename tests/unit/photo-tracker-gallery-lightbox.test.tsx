@@ -9,6 +9,7 @@ const photos = [
     userId: "u1",
     date: "2026-05-14",
     imageUrl: "https://example.com/a.jpg",
+    weightAtPhoto: 82.5,
     createdAt: "2026-05-14T00:00:00.000Z",
     source: "progress" as const,
   },
@@ -17,10 +18,16 @@ const photos = [
     userId: "u1",
     date: "2026-05-16",
     imageUrl: "https://example.com/b.jpg",
+    weightAtPhoto: 80.5,
     createdAt: "2026-05-16T00:00:00.000Z",
     source: "progress" as const,
   },
 ];
+
+vi.mock("@/lib/store", () => ({
+  useHealthStore: (selector: (s: { settings: { unit: "lbs" } }) => unknown) =>
+    selector({ settings: { unit: "lbs" } }),
+}));
 
 vi.mock("@/components/v2/photos/ProgressPhotoTrackerContext", () => ({
   useProgressPhotoTracker: () => ({
@@ -85,5 +92,12 @@ describe("PhotoTrackerGallery lightbox", () => {
       photoId: photos[0].photoId,
     });
     expect(screen.getByRole("button", { name: /pause timelapse/i })).toBeInTheDocument();
+  });
+
+  it("shows weight badge on thumbnails and in lightbox", () => {
+    render(<PhotoTrackerGallery />);
+
+    expect(screen.getAllByLabelText(/weight 177\.5 lbs/i)).toHaveLength(2);
+    expect(screen.getByLabelText(/weight 181\.9 lbs/i)).toBeInTheDocument();
   });
 });
