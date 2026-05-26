@@ -58,7 +58,10 @@ export function LoginForm({ compact = false }: { compact?: boolean }) {
       }
 
       if (signupResult.needsConfirmation) {
-        setMessage("Check your email for a verification code to confirm your account.");
+        const where = signupResult.deliveryDestination
+          ? ` (${signupResult.deliveryDestination})`
+          : "";
+        setMessage(`Check your email${where} for a verification code to confirm your account.`);
         setMode("confirm");
         return;
       }
@@ -104,7 +107,8 @@ export function LoginForm({ compact = false }: { compact?: boolean }) {
         setError(result.error);
         return;
       }
-      setMessage("A new verification code was sent to your email.");
+      const where = result.deliveryDestination ? ` (${result.deliveryDestination})` : "";
+      setMessage(`A new verification code was sent to your email${where}.`);
     } finally {
       setLoading(false);
     }

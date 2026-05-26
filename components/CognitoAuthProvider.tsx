@@ -19,7 +19,7 @@ import { mapCognitoAuthError } from "@/lib/cognito-map-auth-error";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type SignUpResult =
-  | { ok: true; needsConfirmation: boolean }
+  | { ok: true; needsConfirmation: boolean; deliveryDestination?: string }
   | { ok: false; error: string };
 
 type SignInResult =
@@ -27,7 +27,7 @@ type SignInResult =
   | { ok: false; error: string };
 
 type ConfirmSignUpResult =
-  | { ok: true }
+  | { ok: true; deliveryDestination?: string }
   | { ok: false; error: string };
 
 type PasswordResetRequestResult =
@@ -152,9 +152,11 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
       async signUp(args) {
         try {
           const response = await signUpWithCognito(args);
+          const destination = response.CodeDeliveryDetails?.Destination?.trim();
           return {
             ok: true,
             needsConfirmation: response.UserConfirmed === false,
+            deliveryDestination: destination && destination.length > 0 ? destination : undefined,
           };
         } catch (error) {
           return { ok: false, error: mapCognitoAuthError(error) };
@@ -170,8 +172,9 @@ export function CognitoAuthProvider({ children }: { children: React.ReactNode })
       },
       async resendConfirmation(email) {
         try {
-          await resendConfirmationWithCognito(email);
-          return { ok: true };
+          const response = await resendConfirmationWithCognito(email);
+          const destination = response.CodeDeliveryDetails?.Destination?.trim();
+          return { ok: true, deliveryDestination: destination && destination.length > 0 ? destination : undefined };
         } catch (error) {
           return { ok: false, error: mapCognitoAuthError(error) };
         }

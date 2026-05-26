@@ -19,6 +19,11 @@ export function mapCognitoAuthError(error: unknown): string {
       return "Too many attempts. Please wait and try again.";
     case "UserNotFoundException":
       return "No account found with that email.";
+    case "CodeDeliveryFailureException":
+    case "InvalidEmailRoleAccessPolicyException":
+      return "We couldn't send the verification email right now. Please retry or contact support.";
+    case "InvalidParameterException":
+      return "Please check the email format and try again.";
     default:
       return "Authentication failed.";
   }

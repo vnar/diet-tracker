@@ -15,6 +15,8 @@ describe("mapCognitoAuthError", () => {
     expect(mapCognitoAuthError(err("InvalidPasswordException"))).toMatch(/policy/i);
     expect(mapCognitoAuthError(err("TooManyRequestsException"))).toMatch(/Too many attempts/i);
     expect(mapCognitoAuthError(err("LimitExceededException"))).toMatch(/Too many attempts/i);
+    expect(mapCognitoAuthError(err("CodeDeliveryFailureException"))).toMatch(/couldn't send/i);
+    expect(mapCognitoAuthError(err("InvalidEmailRoleAccessPolicyException"))).toMatch(/couldn't send/i);
   });
 
   it("returns a generic message for unknown errors", () => {
