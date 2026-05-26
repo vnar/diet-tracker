@@ -106,6 +106,12 @@
 - **Scope:** Dashboard card showing consecutive days with a morning weight logged (ends near today; same-day grace if today not logged yet). Analytics: `weight_streak_card_viewed`.
 - **Env keys:** `FF_WEIGHT_LOG_STREAK`, `NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK`.
 
+### `FF_DAILY_READINESS_SCORE`
+
+- **Default (web):** `true` when unset — set `FF_DAILY_READINESS_SCORE=false` / `NEXT_PUBLIC_FF_DAILY_READINESS_SCORE=false` or per-user override to disable.
+- **Scope:** Roadmap dock card showing a daily readiness score (0-100) using the **prior day** check-in plus a **7-day trend baseline** from recent logs (sleep, steps, workout, and recovery habits). Copy includes Green/Yellow/Red recommendation and simple signal breakdown for explainability.
+- **Env keys:** `FF_DAILY_READINESS_SCORE`, `NEXT_PUBLIC_FF_DAILY_READINESS_SCORE`.
+
 ### `FF_PROGRESS_TIMELAPSE_SHARE`
 
 - **Default:** `true` when unset (opt-out: `NEXT_PUBLIC_FF_PROGRESS_TIMELAPSE_SHARE=false` and `FF_PROGRESS_TIMELAPSE_SHARE=false` on API Lambda at deploy).
@@ -127,6 +133,7 @@ Roadmap UI lives in a **collapsible “More tools & roadmap”** block at the bo
 | Flag | Default (unset) | What it does |
 |------|------------------|----------------|
 | `FF_WEIGHT_LOG_STREAK` | On | Morning weigh-in streak |
+| `FF_DAILY_READINESS_SCORE` | On | Readiness score from 7-day trend + yesterday |
 | `FF_MEAL_PLAN_TEASER` | On | High-protein meal ideas |
 | `FF_PROTEIN_HINT_STRIP` | On | Protein hint from today’s log |
 | `FF_SLEEP_WEEK_CARD` | On | 7-night sleep average |

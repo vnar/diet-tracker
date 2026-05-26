@@ -259,6 +259,11 @@ export function isSleepWeekCardEnabled(userId?: string): boolean {
   return roadmapEval("SLEEP_WEEK_CARD", userId, true);
 }
 
+/** Daily readiness score card (7-day trend + yesterday). On by default when unset. */
+export function isDailyReadinessScoreEnabled(userId?: string): boolean {
+  return roadmapEval("DAILY_READINESS_SCORE", userId, true);
+}
+
 export function isMedicationWellnessCardEnabled(userId?: string): boolean {
   return roadmapEval("MEDICATION_WELLNESS_CARD", userId, true);
 }

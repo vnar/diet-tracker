@@ -11,6 +11,7 @@ import {
   type DayMealEntryRow,
 } from "@/lib/frontend-api-client";
 import { estimateActivityBurnHeuristic } from "@/lib/activity/burnHeuristic";
+import { MAX_REASONABLE_DAILY_CALORIES, sanitizeDailyCalories } from "@/lib/nutrition/intakeBounds";
 
 function estimateBaselineBurn(weightKg: number): number {
   // Additive, stable heuristic: resting kcal/day ~ 22 kcal per kg.
@@ -38,7 +39,12 @@ type Props = {
 export function EnergyBalanceCard(props: Props) {
   const weightKg = props.todayEntry?.morningWeight ?? 70;
   const consumedMeals = props.mealEntries.reduce((sum, e) => sum + (e.kcal ?? 0), 0);
-  const consumed = consumedMeals > 0 ? consumedMeals : (props.todayEntry?.calories ?? 0);
+  const manualConsumed = sanitizeDailyCalories(props.todayEntry?.calories ?? null) ?? 0;
+  const consumed = consumedMeals > 0 ? consumedMeals : manualConsumed;
+  const consumedWasCapped =
+    consumedMeals <= 0 &&
+    typeof props.todayEntry?.calories === "number" &&
+    props.todayEntry.calories > MAX_REASONABLE_DAILY_CALORIES;
   const stepBurn = estimateStepBurn(props.todayEntry?.steps);
   const [activityText, setActivityText] = useState((props.todayEntry?.notes ?? "").trim());
   const [aiBurn, setAiBurn] = useState<number | null>(null);
@@ -187,6 +193,11 @@ export function EnergyBalanceCard(props: Props) {
       <p className="mt-1 text-[10px] text-zinc-500">
         Total burn = baseline ({baselineBurn}) + steps ({stepBurn}) + activities ({activityBurn})
       </p>
+      {consumedWasCapped ? (
+        <p className="mt-1 text-[10px] text-amber-300/90">
+          Consumed calories looked unusually high, so we capped display at {MAX_REASONABLE_DAILY_CALORIES} kcal.
+        </p>
+      ) : null}
       <div className="mt-2 flex gap-2">
         <input
           value={activityText}

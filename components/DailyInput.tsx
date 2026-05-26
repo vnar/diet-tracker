@@ -27,6 +27,7 @@ import {
 } from "@/lib/frontend-api-client";
 import { useCognitoAuth } from "@/components/CognitoAuthProvider";
 import { Mic, Trash2, Upload } from "lucide-react";
+import { sanitizeDailyCalories, sanitizeDailyProtein } from "@/lib/nutrition/intakeBounds";
 
 export type DailyInputCaloriesAccessoryContext = {
   todayKey: string;
@@ -177,18 +178,20 @@ export function DailyInput({
         night.trim() === "" || Number.isNaN(nightParsed)
           ? null
           : inputToKg(nightParsed, u);
-      const calOut =
+      const calRaw =
         caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.calories.trim() !== ""
-          ? Math.round(parseFloat(caloriesProteinAggregate.calories))
+          ? parseFloat(caloriesProteinAggregate.calories)
           : calories.trim() === ""
-            ? undefined
-            : Math.round(parseFloat(calories));
-      const protOut =
+            ? null
+            : parseFloat(calories);
+      const protRaw =
         caloriesProteinAggregate?.readOnly && caloriesProteinAggregate.protein.trim() !== ""
-          ? Math.round(parseFloat(caloriesProteinAggregate.protein))
+          ? parseFloat(caloriesProteinAggregate.protein)
           : protein.trim() === ""
-            ? undefined
-            : Math.round(parseFloat(protein));
+            ? null
+            : parseFloat(protein);
+      const calOut = sanitizeDailyCalories(calRaw) ?? undefined;
+      const protOut = sanitizeDailyProtein(protRaw) ?? undefined;
 
       return {
         id: todayEntry?.id ?? nanoid(),

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import {
+  isDailyReadinessScoreEnabled,
   isAiTrustFooterEnabled,
   isMedicationWellnessCardEnabled,
   isWeightLogStreakEnabled,
@@ -9,6 +10,7 @@ import {
 import { WeightStreakCard } from "@/components/v2/streaks/WeightStreakCard";
 import { NutritionEngagementTeasers } from "@/components/v2/roadmap/NutritionEngagementTeasers";
 import { MedicationChecklistCard } from "@/components/v2/roadmap/MedicationChecklistCard";
+import { DailyReadinessCard } from "@/components/v2/recovery/DailyReadinessCard";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 8 },
@@ -22,6 +24,16 @@ export function WorkingRoadmapFeatures({ userId }: { userId: string }) {
       {isWeightLogStreakEnabled(userId) ? (
         <motion.section {...fadeInUp} className="h-full min-h-0 sm:col-span-2" aria-label="Weight logging streak">
           <WeightStreakCard compact />
+        </motion.section>
+      ) : null}
+
+      {isDailyReadinessScoreEnabled(userId) ? (
+        <motion.section
+          {...fadeInUp}
+          className="h-full min-h-0 sm:col-span-2"
+          aria-label="Daily readiness score"
+        >
+          <DailyReadinessCard />
         </motion.section>
       ) : null}
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearUserFlagOverrides,
+  isDailyReadinessScoreEnabled,
   isCareCircleTeaserEnabled,
   isEnabled,
   isInsightsSourceLabelEnabled,
@@ -106,6 +107,8 @@ describe("roadmapEval: working vs teaser defaults", () => {
     delete process.env.NEXT_PUBLIC_FF_WEIGHT_LOG_STREAK;
     delete process.env.FF_CARE_CIRCLE_TEASER;
     delete process.env.NEXT_PUBLIC_FF_CARE_CIRCLE_TEASER;
+    delete process.env.FF_DAILY_READINESS_SCORE;
+    delete process.env.NEXT_PUBLIC_FF_DAILY_READINESS_SCORE;
     clearUserFlagOverrides();
   });
 
@@ -115,6 +118,10 @@ describe("roadmapEval: working vs teaser defaults", () => {
 
   it("enables teaser roadmap flags when env unset", () => {
     expect(isCareCircleTeaserEnabled("u1")).toBe(true);
+  });
+
+  it("enables readiness score when env unset", () => {
+    expect(isDailyReadinessScoreEnabled("u1")).toBe(true);
   });
 });
 
