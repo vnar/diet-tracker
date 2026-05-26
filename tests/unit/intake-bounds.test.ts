@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_REASONABLE_DAILY_CALORIES,
   MAX_REASONABLE_DAILY_PROTEIN_G,
+  resolveConsumedCalories,
   sanitizeDailyCalories,
   sanitizeDailyProtein,
 } from "@/lib/nutrition/intakeBounds";
@@ -21,5 +22,21 @@ describe("intake bounds", () => {
   it("caps protein grams too", () => {
     expect(sanitizeDailyProtein(180)).toBe(180);
     expect(sanitizeDailyProtein(900)).toBe(MAX_REASONABLE_DAILY_PROTEIN_G);
+  });
+
+  it("ignores invalid manual calories when no meals are logged", () => {
+    expect(resolveConsumedCalories(0, 15418)).toEqual({
+      consumed: 0,
+      usedMeals: false,
+      ignoredInvalidManual: true,
+    });
+  });
+
+  it("prefers meals total over manual input", () => {
+    expect(resolveConsumedCalories(1800, 15418)).toEqual({
+      consumed: 1800,
+      usedMeals: true,
+      ignoredInvalidManual: false,
+    });
   });
 });
